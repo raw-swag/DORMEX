@@ -24,7 +24,8 @@ const AppContent: React.FC = () => {
 
   return (
     <AppLayout currentTab={currentTab} setCurrentTab={setCurrentTab}>
-      {currentTab === 'student_allocation' && <StudentAllocationView />}
+      {currentTab === 'student_allocation' && <StudentAllocationView initialSubTab="allocation_map" />}
+      {currentTab === 'student_profile' && <StudentAllocationView initialSubTab="workflow" />}
       {currentTab === 'student_complaints' && <ComplaintsView />}
       {currentTab === 'student_mess_menu' && <MessMenuView />}
       {currentTab === 'admin_overview' && <AdminDashboard />}

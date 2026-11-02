@@ -35,7 +35,11 @@ import { RoomAllocationConfirmModal } from './RoomAllocationConfirmModal.js';
 import { RoommateAllocationDialogContext, THEME_COLORS } from '../config/theme.js';
 import { STITCH_ROOMS_DATA } from '../config/stitchRoomsData.js';
 
-export const StudentAllocationView: React.FC = () => {
+interface StudentAllocationViewProps {
+  initialSubTab?: 'workflow' | 'allocation_map' | 'room_change';
+}
+
+export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ initialSubTab = 'workflow' }) => {
   const { session } = useAuth();
   const [cycleId, setCycleId] = useState('cyc_bvb_pilot_2026');
   const [availableCycles, setAvailableCycles] = useState<any[]>([]);
@@ -88,7 +92,13 @@ export const StudentAllocationView: React.FC = () => {
   const [allRooms, setAllRooms] = useState<any[]>([]);
 
   // Active view tab: 'workflow' | 'allocation_map' | 'room_change'
-  const [activeSubTab, setActiveSubTab] = useState<'workflow' | 'allocation_map' | 'room_change'>('workflow');
+  const [activeSubTab, setActiveSubTab] = useState<'workflow' | 'allocation_map' | 'room_change'>(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Allocation Confirmed Success Modal
   const [showAllocationSuccessModal, setShowAllocationSuccessModal] = useState(false);
