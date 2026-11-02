@@ -710,11 +710,17 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       for (let i = 0; i < metrics.vacant; i++) dots.push('#1E7B54');
     }
 
+    const vacantCount = metrics.vacant;
+    const isFull = metrics.isFull;
+    const ariaLabel = `Room ${roomNum}, ${vacantCount} vacant of ${metrics.capacity} seats${isSelected ? ', currently selected' : ''}${isFull ? ', fully occupied' : ''}`;
+
     return (
       <button
         key={roomNum}
         type="button"
         data-room={roomNum}
+        aria-label={ariaLabel}
+        aria-pressed={isSelected}
         onClick={() => {
           setSelectedRoomNumber(roomNum);
           if (metrics.seats.length > 0) {
@@ -724,28 +730,28 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             setSelectedSeatId(`st_rm_bvb_${roomNum}_C`);
           }
         }}
-        className={`room-btn group flex flex-col items-center justify-center p-1.5 rounded transition-all text-left relative ${
+        className={`room-btn group flex flex-col items-center justify-center p-2 rounded-lg transition-all text-left relative min-h-[48px] min-w-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] focus-visible:ring-offset-1 select-none ${
           isSelected
-            ? 'bg-white ring-2 ring-[#1D63B8] shadow-md z-10'
-            : metrics.isFull
-            ? 'bg-[#dfe3e5] hover:bg-[#d6dbdd] shadow-xs'
-            : 'bg-white hover:bg-[#e5e9eb] shadow-xs border border-[#e5e9eb]'
+            ? 'bg-white ring-2 ring-[#1D63B8] shadow-md z-10 border-transparent'
+            : isFull
+            ? 'bg-[#dfe3e5] hover:bg-[#d6dbdd] shadow-xs border border-transparent'
+            : 'bg-white hover:bg-[#e5e9eb] shadow-xs border border-[#d2d7d9]'
         }`}
       >
         {isTarget202 && !isSelected && (
-          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 pointer-events-none">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#016a62] opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#016a62]" />
           </span>
         )}
         <span
-          className={`text-[11px] font-bold ${
-            isSelected ? 'text-[#07203c]' : metrics.isFull ? 'text-[#44474d]' : 'text-[#181c1e]'
+          className={`text-xs font-bold font-mono tracking-tight ${
+            isSelected ? 'text-[#07203c]' : isFull ? 'text-[#44474d]' : 'text-[#181c1e]'
           }`}
         >
           {roomNum}
         </span>
-        <div className="flex gap-0.5 mt-1">
+        <div className="flex gap-1 mt-1">
           {dots.map((c, idx) => (
             <span
               key={idx}
@@ -755,11 +761,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           ))}
         </div>
         <span
-          className={`text-[9px] font-medium mt-0.5 ${
-            metrics.isFull ? 'text-[#ba1a1a]' : 'text-[#1E7B54]'
+          className={`text-[9px] font-semibold mt-0.5 ${
+            isFull ? 'text-[#ba1a1a]' : 'text-[#1E7B54]'
           }`}
         >
-          {metrics.isFull ? 'Full' : `${metrics.vacant} Vacant`}
+          {isFull ? 'Full' : `${vacantCount} Vac`}
         </span>
       </button>
     );
@@ -1395,19 +1401,19 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     </div>
 
                     {/* North Wing Grid Row 1 (201-212) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["201","202","203","204","205","206","207","208","209","210","211","212"].map((rNum) => renderRoomButton(rNum))}
                     </div>
 
                     {/* North Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium">
-                      <span className="flex items-center gap-1">🏢 Staircase NW-2A</span>
-                      <span className="uppercase tracking-widest text-[#74777E] font-bold">◀ NORTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
-                      <span className="flex items-center gap-1">🚿 North Sanitization Block</span>
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                      <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>NW-2A</span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ NORTH CORRIDOR (2.4M) ▶</span>
+                      <span className="flex items-center gap-1 shrink-0">🚿 <span className="hidden xs:inline">North </span>Sanitization</span>
                     </div>
 
                     {/* North Wing Grid Row 2 (213-224) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["213","214","215","216","217","218","219","220","221","222","223","224"].map((rNum) => renderRoomButton(rNum))}
                     </div>
                   </div>
@@ -1438,7 +1444,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {["249","250","251","252"].map((rNum) => renderRoomButton(rNum))}
                       </div>
 
@@ -1463,19 +1469,19 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     </div>
 
                     {/* South Wing Grid Row 1 (225-236) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["225","226","227","228","229","230","231","232","233","234","235","236"].map((rNum) => renderRoomButton(rNum))}
                     </div>
 
                     {/* South Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium">
-                      <span className="flex items-center gap-1">🏢 Staircase SW-2B</span>
-                      <span className="uppercase tracking-widest text-[#74777E] font-bold">◀ SOUTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
-                      <span className="flex items-center gap-1 text-[#C93B3B]">🔥 Fire Exit S2</span>
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                      <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>SW-2B</span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ SOUTH CORRIDOR (2.4M) ▶</span>
+                      <span className="flex items-center gap-1 shrink-0 text-[#C93B3B]">🔥 Fire Exit<span className="hidden xs:inline"> S2</span></span>
                     </div>
 
                     {/* South Wing Grid Row 2 (237-248) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["237","238","239","240","241","242","243","244","245","246","247","248"].map((rNum) => renderRoomButton(rNum))}
                     </div>
                   </div>
