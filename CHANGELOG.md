@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.0] - 2026-11-02
+
+- **Feat(shell): Mobile-First Institutional Application Shell & Role-Aware Navigation**:
+  - **Mobile Shell & AppLayout Overhaul (`src/client/components/AppLayout.tsx`)**:
+    - Built a compact 56px sticky top header on mobile viewports (<768px) with DORMEX brand mark, role pill, dynamic workspace title, and accessible notification bell.
+    - Preserved full 250px persistent dark-navy sidebar and spacious 64px breadcrumb header for desktop viewports (≥768px).
+    - Added safe-area padding (`pb-24 md:pb-8`) to prevent mobile bottom bars from clipping content or floating actions.
+    - Added quick slide-over menu for persona switching (dev mode) and profile sign-out.
+  - **Role-Aware Mobile Bottom Navigation (`src/client/components/MobileBottomNav.tsx`, `src/client/config/navigation.ts`)**:
+    - Implemented high-contrast mobile bottom tab bar with 48×48px accessible touch targets and active state indicators.
+    - Implemented expandable "More" bottom sheet drawer for secondary operational tabs.
+    - Configured role-scoped navigation for `STUDENT`, `HOSTEL_OFFICE`, `WARDEN`, `CHIEF_WARDEN`, `SUPER_ADMIN`, and `PROCTOR`.
+    - Added direct **Profile** destination for `STUDENT` navigating directly to the existing student profile and responsibility accord workflow without data duplication.
+  - **Accessible Viewport & Notifications (`index.html`, `src/client/components/NotificationCenter.tsx`)**:
+    - Configured `viewport-fit=cover` and `<meta name="theme-color" content="#07203C" />` for mobile notch and gesture pill compatibility.
+    - Upgraded notification bell touch hit target to 44×44px and responsive drawer positioning (`max-w-[calc(100vw-1rem)]`).
+  - **Automated Verification**:
+    - 91/91 tests passing across 11 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
+    - Verified across 360px, 390px, 430px, 767px, 768px, 1024px, and 1440px viewports with zero horizontal scrolling.
+
 ## [2.5.5] - 2026-10-24
 
 - **Fix(admin & qa): Administrative Route Alignment, CSV Occupancy Export & QA Regression Suite**:

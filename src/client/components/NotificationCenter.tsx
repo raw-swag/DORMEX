@@ -211,15 +211,15 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Notifications & Notices"
-        className={`p-2 rounded-full transition-all relative ${
+        className={`min-h-[44px] min-w-[44px] p-2.5 rounded-full transition-all relative flex items-center justify-center ${
           isOpen
             ? 'bg-[#203653] text-white shadow-xs'
-            : 'text-[#627084] hover:text-[#203653] hover:bg-[#F7F6F1]'
+            : 'text-slate-300 md:text-[#627084] hover:text-white md:hover:text-[#203653] hover:bg-[#203653] md:hover:bg-[#F7F6F1]'
         }`}
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#C93B3B] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
+          <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-[#C93B3B] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -227,7 +227,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
 
       {/* Dropdown Notification Drawer */}
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-84 sm:w-96 bg-white rounded-xl shadow-xl border border-[#E2E6E8] z-50 overflow-hidden font-sans animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto right-0 sm:right-0 mt-3 sm:w-96 max-w-[calc(100vw-1rem)] bg-white rounded-xl shadow-2xl border border-[#E2E6E8] z-50 overflow-hidden font-sans animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Header */}
           <div className="bg-[#203653] text-white px-4 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">

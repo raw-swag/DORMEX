@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch, useAuth } from '../context/AuthContext.js';
 import { 
   Clock, 
@@ -26,7 +26,12 @@ import {
   Wifi,
   Sun,
   Lock,
-  BookmarkPlus
+  BookmarkPlus,
+  Maximize2,
+  Minimize2,
+  X,
+  ChevronUp,
+  CheckSquare
 } from 'lucide-react';
 import { StudentProfileForm } from './StudentProfileForm.js';
 import { TermsAcknowledgementModal } from './TermsAcknowledgementModal.js';
@@ -35,7 +40,11 @@ import { RoomAllocationConfirmModal } from './RoomAllocationConfirmModal.js';
 import { RoommateAllocationDialogContext, THEME_COLORS } from '../config/theme.js';
 import { STITCH_ROOMS_DATA } from '../config/stitchRoomsData.js';
 
-export const StudentAllocationView: React.FC = () => {
+interface StudentAllocationViewProps {
+  initialSubTab?: 'workflow' | 'allocation_map' | 'room_change';
+}
+
+export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ initialSubTab = 'workflow' }) => {
   const { session } = useAuth();
   const [cycleId, setCycleId] = useState('cyc_bvb_pilot_2026');
   const [availableCycles, setAvailableCycles] = useState<any[]>([]);
@@ -51,6 +60,15 @@ export const StudentAllocationView: React.FC = () => {
   const [roommateIntentMap, setRoommateIntentMap] = useState<Record<string, any>>({});
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+
+  // Mobile Bottom Sheet Presentation States (Phase 2C)
+  const [isMobileInspectorOpen, setIsMobileInspectorOpen] = useState(false);
+  const [isMobileInspectorExpanded, setIsMobileInspectorExpanded] = useState(false);
+  const [isConfirmReviewStep, setIsConfirmReviewStep] = useState(false);
+  const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
+  const confirmMutexRef = useRef(false);
+  const inspectorHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const shouldFocusInspectorHeadingRef = useRef(false);
   const [myAllocation, setMyAllocation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -88,7 +106,21 @@ export const StudentAllocationView: React.FC = () => {
   const [allRooms, setAllRooms] = useState<any[]>([]);
 
   // Active view tab: 'workflow' | 'allocation_map' | 'room_change'
-  const [activeSubTab, setActiveSubTab] = useState<'workflow' | 'allocation_map' | 'room_change'>('workflow');
+  const [activeSubTab, setActiveSubTab] = useState<'workflow' | 'allocation_map' | 'room_change'>(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  // Programmatic focus shift when mobile inspector is reopened via dock pill
+  useEffect(() => {
+    if (isMobileInspectorOpen && shouldFocusInspectorHeadingRef.current) {
+      shouldFocusInspectorHeadingRef.current = false;
+      inspectorHeadingRef.current?.focus();
+    }
+  }, [isMobileInspectorOpen]);
 
   // Allocation Confirmed Success Modal
   const [showAllocationSuccessModal, setShowAllocationSuccessModal] = useState(false);
@@ -310,7 +342,12 @@ export const StudentAllocationView: React.FC = () => {
 
   // Confirm seat selection
   const handleConfirmSeat = async () => {
-    if (!selectedSeatId || !activeSession) return;
+    // True synchronous mutex lock via ref
+    if (confirmMutexRef.current) return;
+    if (!selectedSeatId || !activeSession || loading || isConfirmSubmitting) return;
+
+    confirmMutexRef.current = true;
+    setIsConfirmSubmitting(true);
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -331,25 +368,32 @@ export const StudentAllocationView: React.FC = () => {
       setMyAllocation(data);
       setSuccessMsg(`Seat ${selectedSeatId} successfully allocated to you!`);
       setActiveSession(null);
+      setIsConfirmReviewStep(false);
       refreshStatus();
       fetchMyData();
 
       // Show dedicated Allocation Confirmation Modal
       const seatEl = floorMap?.elements?.find((e: any) => e.id === selectedSeatId);
-      const roomNum = selectedRoomNumber || (seatEl?.meta?.roomId ? seatEl.meta.roomId.replace('rm_bvb_', '') : '202');
-      const seatLbl = seatEl?.label || selectedSeatId.slice(-1);
+      const roomNum = selectedRoomNumber || (seatEl?.meta?.roomId ? seatEl.meta.roomId.replace('rm_bvb_', '') : '');
+      const parsedSeatLabel = selectedSeatId ? (selectedSeatId.startsWith('st_rm_') ? selectedSeatId.split('_').pop() || '' : '') : '';
+      const seatLbl = seatEl?.label || parsedSeatLabel || 'Seat label unavailable';
+      const currentBld = buildings.find((b: any) => b.id === selectedBuildingId);
+      const currentFlr = floors.find((f: any) => f.id === floorId);
       setAllocationModalDetails({
-        block: 'BVB Block',
-        floor: 'Floor 2',
+        block: currentBld?.name || '',
+        floor: currentFlr?.name || (currentFlr?.floor_number != null ? `Floor ${currentFlr.floor_number}` : ''),
         room: roomNum,
         seat: seatLbl,
       });
       setShowAllocationSuccessModal(true);
     } catch (err: any) {
       setErrorMsg(err.message);
+      // Retain review context so student can see what failed and retry or change seat
       refreshStatus();
     } finally {
       setLoading(false);
+      setIsConfirmSubmitting(false);
+      confirmMutexRef.current = false;
     }
   };
 
@@ -433,11 +477,15 @@ export const StudentAllocationView: React.FC = () => {
         const updatedProf = await pRes.json();
         if (updatedProf.allocated_seat_id) {
           const seatEl = floorMap?.elements?.find((e: any) => e.id === updatedProf.allocated_seat_id);
-          const roomNum = updatedProf.allocated_room_number || (seatEl?.meta?.roomId ? seatEl.meta.roomId.replace('rm_bvb_', '') : '202');
-          const seatLbl = updatedProf.allocated_seat_label || seatEl?.label || updatedProf.allocated_seat_id.slice(-1);
+          const roomNum = updatedProf.allocated_room_number || (seatEl?.meta?.roomId ? seatEl.meta.roomId.replace('rm_bvb_', '') : '');
+          const parsedSeatLabel = updatedProf.allocated_seat_id && typeof updatedProf.allocated_seat_id === 'string' && updatedProf.allocated_seat_id.startsWith('st_rm_')
+            ? updatedProf.allocated_seat_id.split('_').pop() || ''
+            : '';
+          const seatLbl = updatedProf.allocated_seat_label || seatEl?.label || parsedSeatLabel || 'Seat label unavailable';
+          const resolvedFloor = updatedProf.allocated_floor_name || (updatedProf.allocated_floor_number != null ? `Floor ${updatedProf.allocated_floor_number}` : (floors.find((f: any) => f.id === targetFloorId)?.name || ''));
           setAllocationModalDetails({
-            block: updatedProf.allocated_building_name || 'BVB Block',
-            floor: 'Floor 2',
+            block: updatedProf.allocated_building_name || '',
+            floor: resolvedFloor,
             room: roomNum,
             seat: seatLbl,
           });
@@ -700,13 +748,21 @@ export const StudentAllocationView: React.FC = () => {
       for (let i = 0; i < metrics.vacant; i++) dots.push('#1E7B54');
     }
 
+    const vacantCount = metrics.vacant;
+    const isFull = metrics.isFull;
+    const ariaLabel = `Room ${roomNum}, ${vacantCount} vacant of ${metrics.capacity} seats${isSelected ? ', currently selected' : ''}${isFull ? ', fully occupied' : ''}`;
+
     return (
       <button
         key={roomNum}
         type="button"
         data-room={roomNum}
+        aria-label={ariaLabel}
+        aria-pressed={isSelected}
         onClick={() => {
           setSelectedRoomNumber(roomNum);
+          setIsMobileInspectorOpen(true);
+          setIsConfirmReviewStep(false);
           if (metrics.seats.length > 0) {
             const firstOpen = metrics.seats.find((s: any) => seatStates[s.id] !== 'taken');
             if (firstOpen) setSelectedSeatId(firstOpen.id);
@@ -714,28 +770,28 @@ export const StudentAllocationView: React.FC = () => {
             setSelectedSeatId(`st_rm_bvb_${roomNum}_C`);
           }
         }}
-        className={`room-btn group flex flex-col items-center justify-center p-1.5 rounded transition-all text-left relative ${
+        className={`room-btn group flex flex-col items-center justify-center p-2 rounded-lg transition-all text-left relative min-h-[48px] min-w-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] focus-visible:ring-offset-1 select-none ${
           isSelected
-            ? 'bg-white ring-2 ring-[#1D63B8] shadow-md z-10'
-            : metrics.isFull
-            ? 'bg-[#dfe3e5] hover:bg-[#d6dbdd] shadow-xs'
-            : 'bg-white hover:bg-[#e5e9eb] shadow-xs border border-[#e5e9eb]'
+            ? 'bg-white ring-2 ring-[#1D63B8] shadow-md z-10 border-transparent'
+            : isFull
+            ? 'bg-[#dfe3e5] hover:bg-[#d6dbdd] shadow-xs border border-transparent'
+            : 'bg-white hover:bg-[#e5e9eb] shadow-xs border border-[#d2d7d9]'
         }`}
       >
         {isTarget202 && !isSelected && (
-          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 pointer-events-none">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#016a62] opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#016a62]" />
           </span>
         )}
         <span
-          className={`text-[11px] font-bold ${
-            isSelected ? 'text-[#07203c]' : metrics.isFull ? 'text-[#44474d]' : 'text-[#181c1e]'
+          className={`text-xs font-bold font-mono tracking-tight ${
+            isSelected ? 'text-[#07203c]' : isFull ? 'text-[#44474d]' : 'text-[#181c1e]'
           }`}
         >
           {roomNum}
         </span>
-        <div className="flex gap-0.5 mt-1">
+        <div className="flex gap-1 mt-1">
           {dots.map((c, idx) => (
             <span
               key={idx}
@@ -745,11 +801,11 @@ export const StudentAllocationView: React.FC = () => {
           ))}
         </div>
         <span
-          className={`text-[9px] font-medium mt-0.5 ${
-            metrics.isFull ? 'text-[#ba1a1a]' : 'text-[#1E7B54]'
+          className={`text-[9px] font-semibold mt-0.5 ${
+            isFull ? 'text-[#ba1a1a]' : 'text-[#1E7B54]'
           }`}
         >
-          {metrics.isFull ? 'Full' : `${metrics.vacant} Vacant`}
+          {isFull ? 'Full' : `${vacantCount} Vac`}
         </span>
       </button>
     );
@@ -1350,7 +1406,7 @@ export const StudentAllocationView: React.FC = () => {
           )}
 
           {/* Master-Detail Layout: 70% Floor Map, 30% Room Inspector */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div id="room-matrix-container" tabIndex={-1} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start focus:outline-none">
             {/* 70% Map Panel (8 cols on lg) */}
             <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-[#E2E6E8] shadow-xs space-y-4">
               {/* Floor Plan Header Overlay */}
@@ -1385,19 +1441,19 @@ export const StudentAllocationView: React.FC = () => {
                     </div>
 
                     {/* North Wing Grid Row 1 (201-212) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["201","202","203","204","205","206","207","208","209","210","211","212"].map((rNum) => renderRoomButton(rNum))}
                     </div>
 
                     {/* North Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium">
-                      <span className="flex items-center gap-1">🏢 Staircase NW-2A</span>
-                      <span className="uppercase tracking-widest text-[#74777E] font-bold">◀ NORTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
-                      <span className="flex items-center gap-1">🚿 North Sanitization Block</span>
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                      <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>NW-2A</span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ NORTH CORRIDOR (2.4M) ▶</span>
+                      <span className="flex items-center gap-1 shrink-0">🚿 <span className="hidden xs:inline">North </span>Sanitization</span>
                     </div>
 
                     {/* North Wing Grid Row 2 (213-224) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["213","214","215","216","217","218","219","220","221","222","223","224"].map((rNum) => renderRoomButton(rNum))}
                     </div>
                   </div>
@@ -1428,7 +1484,7 @@ export const StudentAllocationView: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {["249","250","251","252"].map((rNum) => renderRoomButton(rNum))}
                       </div>
 
@@ -1453,19 +1509,19 @@ export const StudentAllocationView: React.FC = () => {
                     </div>
 
                     {/* South Wing Grid Row 1 (225-236) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["225","226","227","228","229","230","231","232","233","234","235","236"].map((rNum) => renderRoomButton(rNum))}
                     </div>
 
                     {/* South Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium">
-                      <span className="flex items-center gap-1">🏢 Staircase SW-2B</span>
-                      <span className="uppercase tracking-widest text-[#74777E] font-bold">◀ SOUTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
-                      <span className="flex items-center gap-1 text-[#C93B3B]">🔥 Fire Exit S2</span>
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                      <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>SW-2B</span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ SOUTH CORRIDOR (2.4M) ▶</span>
+                      <span className="flex items-center gap-1 shrink-0 text-[#C93B3B]">🔥 Fire Exit<span className="hidden xs:inline"> S2</span></span>
                     </div>
 
                     {/* South Wing Grid Row 2 (237-248) */}
-                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                       {["237","238","239","240","241","242","243","244","245","246","247","248"].map((rNum) => renderRoomButton(rNum))}
                     </div>
                   </div>
@@ -1505,9 +1561,86 @@ export const StudentAllocationView: React.FC = () => {
               </div>
             </div>
 
-            {/* 30% Purposeful Room Inspector (4 cols on lg) */}
-            <div className="lg:col-span-4 bg-white p-5 rounded-xl border border-[#E2E6E8] shadow-xs space-y-4">
-              <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
+            {/* Reopen Inspector Floating Dock Pill (Visible on < lg when room is selected but sheet is closed) */}
+            {selectedRoomNumber && !isMobileInspectorOpen && (
+              <div className="lg:hidden fixed z-40 left-3 right-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] animate-fadeIn">
+                <button
+                  type="button"
+                  id="reopen-mobile-inspector-btn"
+                  onClick={() => {
+                    shouldFocusInspectorHeadingRef.current = true;
+                    setIsMobileInspectorOpen(true);
+                  }}
+                  aria-label={`Reopen Room ${selectedRoomNumber} inspector`}
+                  className="w-full py-2.5 px-4 bg-[#07203C] hover:bg-[#112947] text-white rounded-xl shadow-2xl border border-[#203653] flex items-center justify-between transition-colors min-h-[48px]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#84D5CA] animate-pulse" />
+                    <span className="text-xs font-bold font-mono">
+                      Room {selectedRoomNumber}
+                    </span>
+                    <span className="text-[11px] text-slate-300">
+                      · {selectedSeatId ? `Seat ${selectedSeatId.startsWith('st_rm_') ? (selectedSeatId.split('_').pop() || '') : selectedSeatId.slice(-1)} Selected` : 'No Seat Targeted'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-[#84D5CA] flex items-center gap-1">
+                    Open Inspector <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/*
+              SINGLE INSPECTOR INSTANCE (Phase 2C Responsive Positioning)
+              - On Desktop (>= 1024px / lg): Static 4-col side panel in natural master-detail grid flow.
+              - On Mobile & Tablet (< 1024px): Fixed bottom sheet with explicit expand/collapse/close controls.
+              - Below 768px (< md): Positioned above MobileBottomNav (calc(3.75rem + safe-area)).
+              - 768px-1023px (md to lg): Positioned at viewport bottom above safe-area (no ghost nav space).
+            */}
+            <div
+              role="region"
+              aria-label="Room Inspector"
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && isMobileInspectorOpen && !showOrangeWarningModal && !showRoommateConfirmModal && !showAllocationSuccessModal) {
+                  // If focused inside an active input, let the input handle Esc (blur) rather than dismissing the sheet
+                  const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+                  if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') {
+                    (e.target as HTMLElement).blur();
+                    return;
+                  }
+                  setIsMobileInspectorOpen(false);
+                  if (selectedRoomNumber) {
+                    const btn = document.querySelector(`button[data-room="${selectedRoomNumber}"]`) as HTMLButtonElement | null;
+                    if (btn) {
+                      btn.focus();
+                    } else {
+                      const container = document.getElementById('room-matrix-container');
+                      if (container) container.focus();
+                    }
+                  } else {
+                    const container = document.getElementById('room-matrix-container');
+                    if (container) container.focus();
+                  }
+                }
+              }}
+              className={`
+                /* Desktop Baseline (>= 1024px) */
+                lg:static lg:col-span-4 lg:z-auto lg:h-auto lg:max-h-none lg:rounded-xl lg:shadow-xs lg:border lg:border-[#E2E6E8] lg:block lg:translate-y-0 lg:p-5 lg:space-y-4 lg:visible
+
+                /* Mobile & Tablet Bottom Sheet (< 1024px) */
+                max-lg:fixed max-lg:inset-x-0 max-lg:z-40 max-lg:bg-white max-lg:rounded-t-2xl max-lg:shadow-2xl max-lg:border-t max-lg:border-[#DFE3E5] max-lg:flex max-lg:flex-col max-lg:transition-transform max-lg:duration-200 max-lg:ease-out
+
+                /* Breakpoint Clearance (< 768px vs 768px-1023px) */
+                max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:max-lg:bottom-[env(safe-area-inset-bottom,0px)]
+
+                /* Mobile Height Modes (55dvh default vs 85dvh expanded) */
+                ${isMobileInspectorExpanded ? 'max-lg:h-[85dvh] max-lg:max-h-[88dvh]' : 'max-lg:h-[55dvh] max-lg:max-h-[58dvh]'}
+                ${(!selectedRoomNumber || !isMobileInspectorOpen) ? 'max-lg:invisible max-lg:translate-y-[150%] max-lg:pointer-events-none' : 'max-lg:visible max-lg:translate-y-0'}
+              `}
+            >
+              {/* Sheet Header */}
+              <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3 max-lg:p-4 max-lg:pb-3 max-lg:shrink-0">
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#016A62]" />
@@ -1515,7 +1648,12 @@ export const StudentAllocationView: React.FC = () => {
                       Active Room Inspector
                     </span>
                   </div>
-                  <h2 className="text-lg font-bold text-[#07203C] mt-0.5 tracking-tight">
+                  <h2
+                    ref={inspectorHeadingRef}
+                    id="active-room-inspector-heading"
+                    tabIndex={-1}
+                    className="text-lg font-bold text-[#07203C] mt-0.5 tracking-tight focus:outline-none"
+                  >
                     {selectedRoomNumber
                       ? `Room ${selectedRoomNumber} (${
                           parseInt(selectedRoomNumber) <= 224
@@ -1527,355 +1665,486 @@ export const StudentAllocationView: React.FC = () => {
                       : 'Select Room to Inspect'}
                   </h2>
                 </div>
-                {selectedRoomNumber && (
-                  <span
-                    className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
-                      getRoomMetrics(selectedRoomNumber).vacant > 0
-                        ? 'bg-[#E7F2ED] text-[#1E7B54]'
-                        : 'bg-[#FDE8E8] text-[#C93B3B]'
-                    }`}
-                  >
-                    {getRoomMetrics(selectedRoomNumber).vacant > 0
-                      ? `${getRoomMetrics(selectedRoomNumber).vacant} Available Seat${getRoomMetrics(selectedRoomNumber).vacant > 1 ? 's' : ''}`
-                      : 'Fully Occupied'}
-                  </span>
-                )}
+
+                <div className="flex items-center gap-2">
+                  {selectedRoomNumber && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
+                        getRoomMetrics(selectedRoomNumber).vacant > 0
+                          ? 'bg-[#E7F2ED] text-[#1E7B54]'
+                          : 'bg-[#FDE8E8] text-[#C93B3B]'
+                      }`}
+                    >
+                      {getRoomMetrics(selectedRoomNumber).vacant > 0
+                        ? `${getRoomMetrics(selectedRoomNumber).vacant} Available`
+                        : 'Fully Occupied'}
+                    </span>
+                  )}
+
+                  {/* Explicit Mobile Controls: Expand/Collapse & Close */}
+                  <div className="flex items-center gap-1 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileInspectorExpanded(!isMobileInspectorExpanded)}
+                      aria-label={isMobileInspectorExpanded ? "Collapse room inspector" : "Expand room inspector"}
+                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] hover:text-[#07203C] hover:bg-[#F0F4F6] flex items-center justify-center transition-colors"
+                    >
+                      {isMobileInspectorExpanded ? (
+                        <Minimize2 className="w-4 h-4" />
+                      ) : (
+                        <Maximize2 className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMobileInspectorOpen(false);
+                        if (selectedRoomNumber) {
+                          const btn = document.querySelector(`button[data-room="${selectedRoomNumber}"]`) as HTMLButtonElement | null;
+                          if (btn) {
+                            btn.focus();
+                          } else {
+                            const container = document.getElementById('room-matrix-container');
+                            if (container) container.focus();
+                          }
+                        } else {
+                          const container = document.getElementById('room-matrix-container');
+                          if (container) container.focus();
+                        }
+                      }}
+                      aria-label="Close room inspector"
+                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] hover:text-[#07203C] hover:bg-[#F0F4F6] flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {selectedRoomNumber ? (
-                <div className="space-y-4">
-                  {/* Room Specs Card */}
-                  <div className="p-3 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] flex flex-col gap-1.5 text-xs text-[#181C1E]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#44474D]">Classification:</span>
-                      <span className="font-semibold text-[#07203C]">
-                        Provisional {getRoomMetrics(selectedRoomNumber).capacity}-Seater
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#44474D]">Exposure:</span>
-                      <span className="text-[#44474D]">
-                        {parseInt(selectedRoomNumber) <= 224
-                          ? 'Well-ventilated exterior courtyard'
-                          : parseInt(selectedRoomNumber) <= 248
-                          ? 'Facing SIT Campus Sports Oval'
-                          : 'Courtyard lightwell & atrium exposure'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#44474D]">Furnishing:</span>
-                      <span className="text-[#44474D]">
-                        {getRoomMetrics(selectedRoomNumber).capacity}× Steel Bedstead, {getRoomMetrics(selectedRoomNumber).capacity}× Study Desk
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Seat Allocation Inventory Matrix for Selected Room */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-wider font-bold text-[#44474D]">
-                        Room {selectedRoomNumber} Bed Matrix ({getRoomMetrics(selectedRoomNumber).capacity})
-                      </span>
-                      <span className="text-[11px] text-[#74777E]">Click bed unit to target</span>
+                <div className="flex flex-col flex-1 min-h-0 lg:block lg:space-y-4">
+                  {/* Scrollable Body Container (min-h-0 guarantees scroll integrity above virtual keyboards) */}
+                  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-lg:p-4 max-lg:pt-2 space-y-4">
+                    {/* Room Specs Card */}
+                    <div className="p-3 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] flex flex-col gap-1.5 text-xs text-[#181C1E]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#44474D]">Classification:</span>
+                        <span className="font-semibold text-[#07203C]">
+                          Provisional {getRoomMetrics(selectedRoomNumber).capacity}-Seater
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#44474D]">Exposure:</span>
+                        <span className="text-[#44474D]">
+                          {parseInt(selectedRoomNumber) <= 224
+                            ? 'Well-ventilated exterior courtyard'
+                            : parseInt(selectedRoomNumber) <= 248
+                            ? 'Facing SIT Campus Sports Oval'
+                            : 'Courtyard lightwell & atrium exposure'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#44474D]">Furnishing:</span>
+                        <span className="text-[#44474D]">
+                          {getRoomMetrics(selectedRoomNumber).capacity}× Steel Bedstead, {getRoomMetrics(selectedRoomNumber).capacity}× Study Desk
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Bed Units List */}
-                    <div className="flex flex-col gap-2">
-                      {(() => {
-                        const seatsInRoom = roomSeats.length > 0
-                          ? roomSeats
-                          : ['A', 'B', 'C'].slice(0, getRoomMetrics(selectedRoomNumber).capacity).map((lbl) => ({
-                              id: `st_rm_bvb_${selectedRoomNumber}_${lbl}`,
-                              label: lbl,
-                              meta: { roomId: `rm_bvb_${selectedRoomNumber}` }
-                            }));
+                    {/* Seat Allocation Inventory Matrix for Selected Room */}
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-wider font-bold text-[#44474D]">
+                          Room {selectedRoomNumber} Bed Matrix ({getRoomMetrics(selectedRoomNumber).capacity})
+                        </span>
+                        <span className="text-[11px] text-[#74777E]">Click bed unit to target</span>
+                      </div>
 
-                        return seatsInRoom.map((st: any) => {
-                          const isTaken = seatStates[st.id] === 'taken';
-                          const isOrangeIntent = !!roommateIntentMap[st.id] && !isTaken;
-                          const isSelected = selectedSeatId === st.id;
-                          const isMine = myAllocation?.seatId === st.id;
+                      {/* Bed Units List */}
+                      <div className="flex flex-col gap-2">
+                        {(() => {
+                          const seatsInRoom = roomSeats.length > 0
+                            ? roomSeats
+                            : ['A', 'B', 'C'].slice(0, getRoomMetrics(selectedRoomNumber).capacity).map((lbl) => ({
+                                id: `st_rm_bvb_${selectedRoomNumber}_${lbl}`,
+                                label: lbl,
+                                meta: { roomId: `rm_bvb_${selectedRoomNumber}` }
+                              }));
 
-                          // Seat 202-A sample occupied profile from Stitch
-                          const isOccupiedDemo = isTaken || (selectedRoomNumber === '202' && st.label === 'A');
-                          // Seat 202-B sample roommate intent from Stitch
-                          const isIntentDemo = isOrangeIntent || (selectedRoomNumber === '202' && st.label === 'B');
-                          // Seat 202-C available / selected
-                          const isAvailableDemo = (!isTaken && !isOrangeIntent && (selectedRoomNumber !== '202' || st.label === 'C'));
+                          return seatsInRoom.map((st: any) => {
+                            const isTaken = seatStates[st.id] === 'taken';
+                            const isOrangeIntent = !!roommateIntentMap[st.id] && !isTaken;
+                            const isSelected = selectedSeatId === st.id;
+                            const isMine = myAllocation?.seatId === st.id;
 
-                          if (isOccupiedDemo) {
-                            return (
-                              <div
-                                key={st.id}
-                                className="p-3 rounded-xl bg-[#EAEEF0]/70 flex items-start justify-between border border-[#DFE3E5]"
-                              >
-                                <div className="flex items-start gap-2.5">
-                                  <span className="p-1.5 rounded-lg bg-[#FDE8E8] text-[#C93B3B] mt-0.5">
-                                    <ShieldAlert className="w-4 h-4" />
-                                  </span>
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs font-bold text-[#181C1E]">
-                                        Seat {selectedRoomNumber}-{st.label}
-                                      </span>
-                                      <span className="px-1.5 py-0.5 rounded bg-[#FDE8E8] text-[#C93B3B] text-[10px] font-bold">
-                                        Occupied
+                            // Seat 202-A sample occupied profile from Stitch
+                            const isOccupiedDemo = isTaken || (selectedRoomNumber === '202' && st.label === 'A');
+                            // Seat 202-B sample roommate intent from Stitch
+                            const isIntentDemo = isOrangeIntent || (selectedRoomNumber === '202' && st.label === 'B');
+                            // Seat 202-C available / selected
+                            const isAvailableDemo = (!isTaken && !isOrangeIntent && (selectedRoomNumber !== '202' || st.label === 'C'));
+
+                            if (isOccupiedDemo) {
+                              return (
+                                <div
+                                  key={st.id}
+                                  className="p-3 rounded-xl bg-[#EAEEF0]/70 flex items-start justify-between border border-[#DFE3E5]"
+                                >
+                                  <div className="flex items-start gap-2.5">
+                                    <span className="p-1.5 rounded-lg bg-[#FDE8E8] text-[#C93B3B] mt-0.5">
+                                      <ShieldAlert className="w-4 h-4" />
+                                    </span>
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-bold text-[#181C1E]">
+                                          Seat {selectedRoomNumber}-{st.label}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded bg-[#FDE8E8] text-[#C93B3B] text-[10px] font-bold">
+                                          Occupied
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-[#181C1E] font-medium">Rahul M.</span>
+                                      <span className="text-[11px] text-[#44474D]">USN: 1SI21CS082 · Priority #04</span>
+                                      <span className="text-[10px] text-[#74777E]">Verified & Locked at 10:14 AM</span>
+                                    </div>
+                                  </div>
+                                  <Lock className="w-4 h-4 text-[#74777E]" />
+                                </div>
+                              );
+                            }
+
+                            if (isIntentDemo) {
+                              return (
+                                <div
+                                  key={st.id}
+                                  onClick={() => {
+                                    setInspectorWarningDialog({
+                                      show: true,
+                                      studentName: 'Prajwal K.',
+                                      studentCollegeId: '1SI21CS091',
+                                      seatLabel: `Seat ${selectedRoomNumber}-${st.label}`,
+                                      seatId: st.id,
+                                      priorityIndex: '#15',
+                                    });
+                                  }}
+                                  className="p-3 rounded-xl bg-[#FFF0E6]/80 hover:bg-[#FFF0E6] cursor-pointer transition-colors flex items-start justify-between group border border-[#FFD1B3] shadow-xs"
+                                >
+                                  <div className="flex items-start gap-2.5">
+                                    <span className="p-1.5 rounded-lg bg-[#FFF0E6] text-[#E06A26] mt-0.5">
+                                      <Users className="w-4 h-4" />
+                                    </span>
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-bold text-[#181C1E]">
+                                          Seat {selectedRoomNumber}-{st.label}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded bg-[#FFF0E6] text-[#E06A26] text-[10px] font-bold">
+                                          Roommate Intent
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-[#181C1E] font-medium">Prajwal K.</span>
+                                      <span className="text-[11px] text-[#44474D]">Priority Index #15 · Pending group pair</span>
+                                      <span className="text-[10px] text-[#E06A26] font-medium flex items-center gap-1 mt-0.5">
+                                        <AlertCircle className="w-3 h-3" /> Disruption warning applies
                                       </span>
                                     </div>
-                                    <span className="text-xs text-[#181C1E] font-medium">Rahul M.</span>
-                                    <span className="text-[11px] text-[#44474D]">USN: 1SI21CS082 · Priority #04</span>
-                                    <span className="text-[10px] text-[#74777E]">Verified & Locked at 10:14 AM</span>
                                   </div>
+                                  <Info className="w-4 h-4 text-[#E06A26] group-hover:translate-x-0.5 transition-transform" />
                                 </div>
-                                <Lock className="w-4 h-4 text-[#74777E]" />
-                              </div>
-                            );
-                          }
+                              );
+                            }
 
-                          if (isIntentDemo) {
+                            // Available or Active Target Seat
                             return (
-                              <div
+                              <button
                                 key={st.id}
+                                type="button"
+                                aria-label={`Select Seat ${selectedRoomNumber}-${st.label}, Available`}
+                                aria-pressed={isSelected || isMine}
                                 onClick={() => {
-                                  setInspectorWarningDialog({
-                                    show: true,
-                                    studentName: 'Prajwal K.',
-                                    studentCollegeId: '1SI21CS091',
-                                    seatLabel: `Seat ${selectedRoomNumber}-${st.label}`,
-                                    seatId: st.id,
-                                    priorityIndex: '#15',
-                                  });
+                                  setSelectedSeatId(st.id);
+                                  setIsConfirmReviewStep(false);
                                 }}
-                                className="p-3 rounded-xl bg-[#FFF0E6]/80 hover:bg-[#FFF0E6] cursor-pointer transition-colors flex items-start justify-between group border border-[#FFD1B3] shadow-xs"
-                              >
-                                <div className="flex items-start gap-2.5">
-                                  <span className="p-1.5 rounded-lg bg-[#FFF0E6] text-[#E06A26] mt-0.5">
-                                    <Users className="w-4 h-4" />
-                                  </span>
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs font-bold text-[#181C1E]">
-                                        Seat {selectedRoomNumber}-{st.label}
-                                      </span>
-                                      <span className="px-1.5 py-0.5 rounded bg-[#FFF0E6] text-[#E06A26] text-[10px] font-bold">
-                                        Roommate Intent
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-[#181C1E] font-medium">Prajwal K.</span>
-                                    <span className="text-[11px] text-[#44474D]">Priority Index #15 · Pending group pair</span>
-                                    <span className="text-[10px] text-[#E06A26] font-medium flex items-center gap-1 mt-0.5">
-                                      <AlertCircle className="w-3 h-3" /> Disruption warning applies
-                                    </span>
-                                  </div>
-                                </div>
-                                <Info className="w-4 h-4 text-[#E06A26] group-hover:translate-x-0.5 transition-transform" />
-                              </div>
-                            );
-                          }
-
-                          // Available or Active Target Seat
-                          return (
-                            <div
-                              key={st.id}
-                              onClick={() => {
-                                setSelectedSeatId(st.id);
-                              }}
-                              className={`p-3 rounded-xl cursor-pointer transition-all flex items-start justify-between border ${
-                                isSelected || isMine
-                                  ? 'bg-[#EBF3FC] ring-2 ring-[#1D63B8] border-[#1D63B8] shadow-sm'
-                                  : 'bg-white hover:bg-[#F0F4F6] border-[#DFE3E5]'
-                              }`}
-                            >
-                              <div className="flex items-start gap-2.5">
-                                <span className="p-1.5 rounded-lg bg-[#E7F2ED] text-[#1E7B54] mt-0.5">
-                                  <CheckCircle2 className="w-4 h-4 text-[#1E7B54]" />
-                                </span>
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-[#07203C]">
-                                      Seat {selectedRoomNumber}-{st.label}
-                                    </span>
-                                    <span className="px-1.5 py-0.5 rounded bg-[#E7F2ED] text-[#1E7B54] text-[10px] font-bold">
-                                      {isMine ? 'Allocated to You' : 'Available Now'}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs text-[#016A62] font-semibold">Ready for Direct Allocation</span>
-                                  <span className="text-[11px] text-[#44474D]">Window Bed · Direct Southern breeze</span>
-                                  {(isSelected || isMine) && (
-                                    <span className="text-[10px] text-[#1D63B8] font-bold mt-0.5 flex items-center gap-1">
-                                      <Check className="w-3 h-3 text-[#1D63B8]" /> Active Target for {session?.fullName || 'Student'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <span
-                                className={`px-2 py-1 rounded text-[11px] font-bold ${
+                                className={`w-full p-3 rounded-xl cursor-pointer transition-all flex items-start justify-between border text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] ${
                                   isSelected || isMine
-                                    ? 'bg-[#1D63B8] text-white'
-                                    : 'bg-[#F0F4F6] text-[#44474D] border border-[#DFE3E5]'
+                                    ? 'bg-[#EBF3FC] ring-2 ring-[#1D63B8] border-[#1D63B8] shadow-sm'
+                                    : 'bg-white hover:bg-[#F0F4F6] border-[#DFE3E5]'
                                 }`}
                               >
-                                {isSelected || isMine ? 'Selected' : 'Pick'}
-                              </span>
-                            </div>
-                          );
-                        });
-                      })()}
+                                <div className="flex items-start gap-2.5">
+                                  <span className="p-1.5 rounded-lg bg-[#E7F2ED] text-[#1E7B54] mt-0.5">
+                                    <CheckCircle2 className="w-4 h-4 text-[#1E7B54]" />
+                                  </span>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-[#07203C]">
+                                        Seat {selectedRoomNumber}-{st.label}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 rounded bg-[#E7F2ED] text-[#1E7B54] text-[10px] font-bold">
+                                        {isMine ? 'Allocated to You' : 'Available Now'}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs text-[#016A62] font-semibold">Ready for Direct Allocation</span>
+                                    <span className="text-[11px] text-[#44474D]">Window Bed · Direct Southern breeze</span>
+                                    {(isSelected || isMine) && (
+                                      <span className="text-[10px] text-[#1D63B8] font-bold mt-0.5 flex items-center gap-1">
+                                        <Check className="w-3 h-3 text-[#1D63B8]" /> Active Target for {session?.fullName || 'Student'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`px-2 py-1 rounded text-[11px] font-bold shrink-0 ${
+                                    isSelected || isMine
+                                      ? 'bg-[#1D63B8] text-white'
+                                      : 'bg-[#F0F4F6] text-[#44474D] border border-[#DFE3E5]'
+                                  }`}
+                                >
+                                  {isSelected || isMine ? 'Selected' : 'Pick'}
+                                </span>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Roommate Group Intent Warning Modal Overlay (Conditional Alert) */}
-                  {inspectorWarningDialog?.show && (
-                    <div className="p-4 rounded-xl bg-[#FFF0E6] text-[#181C1E] shadow-md border border-[#FFD1B3] space-y-2.5">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle className="w-5 h-5 text-[#E06A26] shrink-0 mt-0.5" />
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-bold text-[#E06A26]">
-                            Roommate Coordination Intent Warning
-                          </span>
-                          <p className="text-xs text-[#181C1E] leading-relaxed">
-                            Selecting <strong className="text-[#07203C]">{inspectorWarningDialog.seatLabel}</strong> will invalidate{' '}
-                            <strong className="text-[#07203C]">{inspectorWarningDialog.studentName}</strong>'s pending roommate coordination preference for BVB Floor 2.
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <button
-                              type="button"
-                              onClick={() => setInspectorWarningDialog(null)}
-                              className="px-3 py-1.5 bg-[#203653] text-white text-xs font-bold rounded-lg hover:bg-[#17283B] transition-colors"
-                            >
-                              Choose Another Seat
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedSeatId(inspectorWarningDialog.seatId);
-                                setInspectorWarningDialog(null);
-                                setSuccessMsg('Intent acknowledged. Overriding preference queue.');
-                              }}
-                              className="px-3 py-1.5 bg-white text-[#44474D] hover:text-[#ba1a1a] text-xs font-semibold rounded-lg border border-[#DFE3E5] transition-colors"
-                            >
-                              Continue Anyway
-                            </button>
+                    {/* Roommate Group Intent Warning Modal Overlay (Conditional Alert) */}
+                    {inspectorWarningDialog?.show && (
+                      <div className="p-4 rounded-xl bg-[#FFF0E6] text-[#181C1E] shadow-md border border-[#FFD1B3] space-y-2.5">
+                        <div className="flex items-start gap-2.5">
+                          <AlertCircle className="w-5 h-5 text-[#E06A26] shrink-0 mt-0.5" />
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-bold text-[#E06A26]">
+                              Roommate Coordination Intent Warning
+                            </span>
+                            <p className="text-xs text-[#181C1E] leading-relaxed">
+                              Selecting <strong className="text-[#07203C]">{inspectorWarningDialog.seatLabel}</strong> will invalidate{' '}
+                              <strong className="text-[#07203C]">{inspectorWarningDialog.studentName}</strong>'s pending roommate coordination preference for BVB Floor 2.
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => setInspectorWarningDialog(null)}
+                                className="px-3 py-1.5 bg-[#203653] text-white text-xs font-bold rounded-lg hover:bg-[#17283B] transition-colors min-h-[44px]"
+                              >
+                                Choose Another Seat
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSeatId(inspectorWarningDialog.seatId);
+                                  setIsConfirmReviewStep(false);
+                                  setInspectorWarningDialog(null);
+                                  setSuccessMsg('Intent acknowledged. Overriding preference queue.');
+                                }}
+                                className="px-3 py-1.5 bg-white text-[#44474D] hover:text-[#ba1a1a] text-xs font-semibold rounded-lg border border-[#DFE3E5] transition-colors min-h-[44px]"
+                              >
+                                Continue Anyway
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Action Panel & Confirmation Execution Block */}
-                  <div className="pt-3 mt-2 bg-[#F0F4F6] p-4 rounded-xl border border-[#DFE3E5] space-y-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-wider text-[#74777E] font-semibold">
-                        Target Bed Candidate:
-                      </span>
-                      <div className="flex items-center justify-between text-[#181C1E] mt-0.5">
-                        <span className="text-xs font-bold text-[#07203C]">
-                          BVB &gt; Level 2 &gt; Room {selectedRoomNumber} &gt; {selectedSeatId ? selectedSeatId.slice(-1) : 'Seat C'}
-                        </span>
-                        <span className="text-xs text-[#016A62] font-bold">₹34,000 / Sem</span>
+                    {/* Roommate Priority Coordination Form */}
+                    <div className="p-4 bg-white rounded-xl border border-[#E2E6E8] space-y-3">
+                      <div className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-[#2C8279]" />
+                        <span>Coordinate Roommates (Priority Ranks)</span>
                       </div>
-                    </div>
+                      <p className="text-[11px] text-[#627084]">
+                        Enter peer priority ranks to propose sharing Room {selectedRoomNumber}. Intent generates an orange badge.
+                      </p>
 
-                    <button
-                      type="button"
-                      id="confirm-allocation-btn"
-                      disabled={loading || !selectedSeatId}
-                      onClick={() => {
-                        if (activeSession) {
-                          handleConfirmSeat();
-                        } else {
-                          setErrorMsg('NOT_YOUR_TURN: Selection turn is pending. Enter queue to confirm during your active turn.');
-                        }
-                      }}
-                      className="w-full h-11 px-4 bg-[#2C8279] hover:bg-[#20635C] text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Locking Seat Allocation...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Proceed to Seat Confirmation</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
+                      {roommateMsg && (
+                        <div className={`p-2.5 rounded text-xs font-medium ${
+                          roommateMsg.type === 'success' ? 'bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2]' : 'bg-[#FDE8E8] text-[#C93B3B] border border-[#F8B4B4]'
+                        }`}>
+                          {roommateMsg.text}
+                        </div>
                       )}
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSuccessMsg(`Room ${selectedRoomNumber} saved to roommate preference draft.`);
-                      }}
-                      className="w-full h-9 px-4 bg-white text-[#181C1E] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] border border-[#DFE3E5] transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <BookmarkPlus className="w-3.5 h-3.5 text-[#016A62]" />
-                      <span>Save to Roommate Preference Draft</span>
-                    </button>
+                      <form onSubmit={handleCreateRoommateGroup} className="space-y-2.5">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 1 Rank #</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={roommatePriority1}
+                              onChange={(e) => setRoommatePriority1(e.target.value)}
+                              placeholder="e.g. 2"
+                              className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 2 Rank #</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={roommatePriority2}
+                              onChange={(e) => setRoommatePriority2(e.target.value)}
+                              placeholder="e.g. 3"
+                              className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-2.5 px-3 bg-[#203653] hover:bg-[#17283B] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 min-h-[44px]"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Send Roommate Proposal
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/*
+                    Action Panel & Two-Step Confirmation Execution Block
+                    - Non-shrinking footer (shrink-0)
+                    - Sticky at bottom of sheet on mobile, static on desktop
+                  */}
+                  <div className="shrink-0 p-4 bg-[#F0F4F6] border-t border-[#DFE3E5] space-y-3 lg:rounded-b-xl max-lg:shadow-lg">
+                    {/* STEP 1: Standard Review Trigger */}
+                    {!isConfirmReviewStep ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase tracking-wider text-[#74777E] font-semibold">
+                            Target Bed Candidate:
+                          </span>
+                          <div className="flex items-center justify-between text-[#181C1E] mt-0.5">
+                            <span className="text-xs font-bold text-[#07203C]">
+                              {buildings.find((b: any) => b.id === selectedBuildingId)?.name ? `${buildings.find((b: any) => b.id === selectedBuildingId)?.name} > ` : ''}
+                              {floors.find((f: any) => f.id === floorId)?.name || (floors.find((f: any) => f.id === floorId)?.floor_number != null ? `Floor ${floors.find((f: any) => f.id === floorId)?.floor_number} > ` : '')}
+                              Room {selectedRoomNumber} &gt;{' '}
+                              {selectedSeatId
+                                ? `Seat ${
+                                    floorMap?.elements?.find((e: any) => e.id === selectedSeatId)?.label ||
+                                    (selectedSeatId.startsWith('st_rm_') ? (selectedSeatId.split('_').pop() || '') : selectedSeatId) ||
+                                    'Seat label unavailable'
+                                  }`
+                                : 'No Seat Targeted'}
+                            </span>
+                            {myProfile?.fee_status ? (
+                              <span className="text-xs text-[#016A62] font-bold">Payment status: {myProfile.fee_status}</span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          id="proceed-review-allocation-btn"
+                          disabled={loading || !selectedSeatId}
+                          onClick={() => {
+                            if (activeSession) {
+                              setIsConfirmReviewStep(true);
+                            } else {
+                              setErrorMsg('NOT_YOUR_TURN: Selection turn is pending. Enter queue to confirm during your active turn.');
+                            }
+                          }}
+                          className="w-full h-11 px-4 bg-[#2C8279] hover:bg-[#20635C] text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 min-h-[48px]"
+                        >
+                          <span>Review & Proceed to Confirm</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSuccessMsg(`Room ${selectedRoomNumber} saved to roommate preference draft.`);
+                          }}
+                          className="w-full h-9 px-4 bg-white text-[#181C1E] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] border border-[#DFE3E5] transition-colors flex items-center justify-center gap-1.5 min-h-[40px]"
+                        >
+                          <BookmarkPlus className="w-3.5 h-3.5 text-[#016A62]" />
+                          <span>Save to Roommate Preference Draft</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* STEP 2: Explicit Confirmation Review Panel (Accidental Confirmation Barrier) */
+                      <div className="p-3 bg-white rounded-xl border border-[#A8D5C2] shadow-sm space-y-3 animate-fadeIn">
+                        <div className="flex items-start gap-2.5">
+                          <span className="p-1 rounded-lg bg-[#E7F2ED] text-[#1E7B54] shrink-0 mt-0.5">
+                            <CheckSquare className="w-4 h-4" />
+                          </span>
+                          <div className="flex flex-col text-xs leading-snug">
+                            <span className="font-bold text-[#07203C] uppercase tracking-wider text-[11px]">
+                              Confirm Allocation Details
+                            </span>
+                            <span className="text-[#44474D] mt-0.5">
+                              {buildings.find((b: any) => b.id === selectedBuildingId)?.name && (
+                                <strong>{buildings.find((b: any) => b.id === selectedBuildingId)?.name} </strong>
+                              )}
+                              {floors.find((f: any) => f.id === floorId)?.name && (
+                                <strong>{floors.find((f: any) => f.id === floorId)?.name} · </strong>
+                              )}
+                              Room <strong>{selectedRoomNumber}</strong>
+                              {selectedSeatId ? (
+                                <>
+                                  {' '}· Seat{' '}
+                                  <strong>
+                                    {floorMap?.elements?.find((e: any) => e.id === selectedSeatId)?.label ||
+                                      (selectedSeatId.startsWith('st_rm_') ? (selectedSeatId.split('_').pop() || '') : selectedSeatId) ||
+                                      'Seat label unavailable'}
+                                  </strong>
+                                </>
+                              ) : null}
+                            </span>
+                            {(session?.fullName || session?.collegeId) && (
+                              <span className="text-[11px] text-[#74777E]">
+                                Candidate: {session?.fullName || ''}{' '}
+                                {session?.collegeId ? `(${session.collegeId})` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsConfirmReviewStep(false)}
+                            className="flex-1 h-10 px-3 bg-white hover:bg-[#F0F4F6] text-[#44474D] text-xs font-semibold rounded-lg border border-[#DFE3E5] transition-colors min-h-[44px]"
+                          >
+                            Back / Change
+                          </button>
+                          <button
+                            type="button"
+                            id="confirm-allocation-btn"
+                            disabled={loading || isConfirmSubmitting || !selectedSeatId}
+                            onClick={() => {
+                              if (isConfirmSubmitting || loading) return;
+                              handleConfirmSeat();
+                            }}
+                            className="flex-1 h-10 px-3 bg-[#1E7B54] hover:bg-[#165d40] text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 min-h-[44px]"
+                          >
+                            {loading || isConfirmSubmitting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Locking...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4" />
+                                <span>Confirm Seat Now</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <p className="text-[10px] text-[#74777E] text-center leading-tight">
                       Allocations are provisional until digitally counter-verified by SIT Chief Warden & Hostel Office.
                     </p>
                   </div>
-
-                  {/* Roommate Priority Coordination Form */}
-                  <div className="p-4 bg-white rounded-xl border border-[#E2E6E8] space-y-3">
-                    <div className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-[#2C8279]" />
-                      <span>Coordinate Roommates (Priority Ranks)</span>
-                    </div>
-                    <p className="text-[11px] text-[#627084]">
-                      Enter peer priority ranks to propose sharing Room {selectedRoomNumber}. Intent generates an orange badge.
-                    </p>
-
-                    {roommateMsg && (
-                      <div className={`p-2.5 rounded text-xs font-medium ${
-                        roommateMsg.type === 'success' ? 'bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2]' : 'bg-[#FDE8E8] text-[#C93B3B] border border-[#F8B4B4]'
-                      }`}>
-                        {roommateMsg.text}
-                      </div>
-                    )}
-
-                    <form onSubmit={handleCreateRoommateGroup} className="space-y-2.5">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 1 Rank #</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="30"
-                            value={roommatePriority1}
-                            onChange={(e) => setRoommatePriority1(e.target.value)}
-                            placeholder="e.g. 2"
-                            className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 2 Rank #</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="30"
-                            value={roommatePriority2}
-                            onChange={(e) => setRoommatePriority2(e.target.value)}
-                            placeholder="e.g. 3"
-                            className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-2 px-3 bg-[#203653] hover:bg-[#17283B] text-white text-xs font-bold rounded shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Send Roommate Proposal
-                      </button>
-                    </form>
-                  </div>
                 </div>
               ) : (
-                <div className="p-8 bg-[#F7F6F1] rounded-xl border border-[#E2E6E8] text-center space-y-2">
+                <div className="p-8 bg-[#F7F6F1] rounded-xl border border-[#E2E6E8] text-center space-y-2 max-lg:m-4">
                   <Info className="w-6 h-6 mx-auto text-[#627084]" />
                   <div className="text-xs font-semibold text-[#203653]">No Room Selected</div>
                   <p className="text-[11px] text-[#627084] leading-relaxed">
