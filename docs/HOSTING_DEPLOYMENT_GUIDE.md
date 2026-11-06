@@ -22,7 +22,8 @@ This guide documents the exact, production-verified procedure for provisioning a
 |  - Output Directory: dist/client                                                                                  |
 |  - Routing: SPA Fallback -> /index.html                                                                           |
 |  - API Proxy: /api/* -> https://dormex-api.onrender.com/api/*                                                     |
-|  - Health Proxy: /health -> https://dormex-api.onrender.com/health                                                 |
+|  - Liveness Proxy: /health -> https://dormex-api.onrender.com/health                                               |
+|  - Readiness Proxy: /readyz -> https://dormex-api.onrender.com/readyz                                             |
 |  - Cookie Handling: HttpOnly session cookie stored under frontend origin (credentials: 'same-origin')             |
 +-------------------------------------------------------------------------------------------------------------------+
                                                              |
@@ -35,18 +36,20 @@ This guide documents the exact, production-verified procedure for provisioning a
 |  - Region: Singapore (ap-southeast-1)                                                                             |
 |  - Host Binding: 0.0.0.0 (via process.env.HOST)                                                                    |
 |  - Port: $PORT (provided by Render)                                                                               |
-|  - Health & Readiness: GET /health (checks database alive and service status)                                      |
+|  - Health & Liveness Probe: GET /health (checks process alive; zero DB dependencies)                              |
+|  - Readiness Probe: GET /readyz (checks live PostgreSQL connectivity via SELECT 1)                                |
 |  - Graceful Shutdown: Handles SIGTERM & SIGINT for zero-downtime rolling deploys                                  |
 |  - Service Tier: Paid / Always-On (Standard/Starter) — DO NOT use sleeping free tier for live allocation turns     |
 +-------------------------------------------------------------------------------------------------------------------+
                                                              |
-                                                             | TLS / SSL (Pooled & Direct Connection)
+                                                             | Verified TLS (rejectUnauthorized: true)
                                                              v
 +-------------------------------------------------------------------------------------------------------------------+
 | Neon PostgreSQL: Singapore Region (Matching Render)                                                               |
 |                                                                                                                   |
 |  - Pooled Connection: postgresql://[user]:[pwd]@[ep]-pooler.ap-southeast-1.aws.neon.tech/dormex?sslmode=require  |
 |  - Direct Connection: postgresql://[user]:[pwd]@[ep].ap-southeast-1.aws.neon.tech/dormex?sslmode=require         |
+|  - TLS Security: Strictly verified certificate validation (rejectUnauthorized: true)                              |
 |  - Relational Schema: 20+ relational tables, partial unique indexes, foreign keys                                 |
 |  - Concurrency Safety: Atomic transactions with BEGIN/COMMIT/ROLLBACK and conflict rejection                      |
 +-------------------------------------------------------------------------------------------------------------------+
@@ -74,7 +77,7 @@ This guide documents the exact, production-verified procedure for provisioning a
      ```text
      postgresql://[user]:[password]@[endpoint].ap-southeast-1.aws.neon.tech/dormex_production?sslmode=require
      ```
-   *Note: DORMEX's `PostgresDatabaseService` automatically detects `-pooler` and `neon.tech` hostnames, enforcing TLS SSL (`rejectUnauthorized: false`).*
+   *Note: DORMEX's `PostgresDatabaseService` automatically enforces verified TLS with certificate validation (`rejectUnauthorized: true`). Neon uses Let's Encrypt ISRG Root X1, which is natively trusted by Node.js.*
 
 ---
 
@@ -111,8 +114,8 @@ This guide documents the exact, production-verified procedure for provisioning a
    | `INITIAL_ADMIN_PASSWORD` | Strong production password | Optional |
    | `SEED_DEMO_DATA` | `false` (Blocked by server regardless) | Optional |
 6. Configure Health Check Path in Render:
-   - **Health Check Path**: `/health`
-   *(Render will probe `GET /health` during deployments. The endpoint verifies database responsiveness and returns HTTP 200 `UP` only when Neon PostgreSQL is connected).*
+   - **Health Check Path**: `/health` (Recommended for Render zero-downtime rolling deploys as a pure process liveness probe).
+   - Alternatively, use `/readyz` for readiness probing once the database is fully migrated and reachable.
 
 ---
 
@@ -133,35 +136,41 @@ This guide documents the exact, production-verified procedure for provisioning a
        "rewrites": [
          { "source": "/api/(.*)", "destination": "https://dormex-api.onrender.com/api/$1" },
          { "source": "/health", "destination": "https://dormex-api.onrender.com/health" },
+         { "source": "/readyz", "destination": "https://dormex-api.onrender.com/readyz" },
          { "source": "/(.*)", "destination": "/index.html" }
        ]
      }
      ```
-   - **Update Destination URL**: If your Render service URL differs from `dormex-api.onrender.com`, update the destination host in `vercel.json` to match your actual Render hostname.
+   - **Update Destination URL**: The hostname `dormex-api.onrender.com` is a clearly documented placeholder. If your Render service URL differs upon creation (e.g. `dormex-backend-xyz.onrender.com`), update the destination host in `vercel.json` to match your actual Render hostname.
    - **Why This Matters**: Because the browser communicates with `https://dormex.vercel.app/api/...`, all requests are strictly same-origin. The backend's `Set-Cookie: token=...; HttpOnly; SameSite=Lax; Secure` cookie is stored directly under `dormex.vercel.app`. No third-party cookie restrictions or cross-origin credential bypasses are needed.
 6. Click **Deploy**.
 
 ---
 
-## 3. Safe Database Migration & First-Admin Bootstrap
+## 3. Safe Database Migration & Backup Procedure
+
+### Pre-Migration Database Backup
+Before executing schema migrations or configuration changes on an active database:
+```bash
+# Export schema and data using pg_dump
+pg_dump "$DATABASE_URL" -Fc -f "dormex_backup_$(date +%Y%m%d_%H%M%S).dump"
+```
 
 ### Initializing Neon PostgreSQL Schema
-Before traffic arrives, execute the safe migration runner against the Neon database:
+Execute the safe migration runner against the Neon database:
 
 ```bash
-# Run migration runner pointing to Neon Direct or Pooled connection URL
 DATABASE_URL="postgresql://[user]:[password]@[endpoint].ap-southeast-1.aws.neon.tech/dormex_production?sslmode=require" \
 NODE_ENV=production \
 npm run migrate
 ```
 
-### What the Migration Runner Does:
-1. Validates connection to the database.
-2. Applies all idempotent schema statements from `SCHEMA_SQL` (tables, constraints, foreign keys).
-3. Seeds institutional roles (`SUPER_ADMIN`, `HOSTEL_OFFICE`, `CHIEF_WARDEN`, `WARDEN`, `PROCTOR`, `STUDENT`).
-4. Seeds official master room inventory (BVB Block Floor 2, 72 rooms 201–272).
-5. **Strictly omits all synthetic demo students** (`DEMO-001` through `DEMO-030`) and test accounts because `NODE_ENV=production`.
-6. Creates the initial Super Administrator using `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` (or `INITIAL_ADMIN_HASH`) if configured.
+### Safeguards Implemented in `src/db/migrate.ts`:
+1. **Migration Tracking Table**: Uses `schema_migrations` (`id`, `name`, `applied_at`) to record every applied version atomically.
+2. **Idempotent DDL Execution**: All tables, foreign keys, and indexes use `IF NOT EXISTS`. Never executes `DROP TABLE`, `TRUNCATE`, or `DROP DATABASE`.
+3. **No Synthetic Student Data**: In production (`NODE_ENV=production`), synthetic demo students (`DEMO-001` through `DEMO-030`) and mock payment records are strictly excluded.
+4. **Integrity Guard**: Asserts `COUNT(*) == 0` for `DEMO-%` users at the conclusion of migration; aborts with `CRITICAL_INTEGRITY_VIOLATION` if synthetic records are detected.
+5. **Legitimate Master Inventory**: Sets up authorized institutional roles and published Terms & Conditions document (Version 1). Initial super admin is created only if `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` (or `INITIAL_ADMIN_HASH`) are explicitly supplied.
 
 ---
 
@@ -169,27 +178,21 @@ npm run migrate
 
 After deploying both services:
 
-- [ ] **1. Health Check Response**:
+- [ ] **1. Process Liveness Check**:
   `curl -i https://dormex-api.onrender.com/health`
-  Expect:
-  ```json
-  HTTP/2 200
-  {
-    "status": "UP",
-    "database": "CONNECTED",
-    "environment": "production",
-    "service": "DORMEX Hostel Allocation Engine"
-  }
-  ```
-- [ ] **2. Vercel SPA Routing**:
+  Expect HTTP 200 with `status: "UP"`.
+- [ ] **2. Database Readiness Check**:
+  `curl -i https://dormex-api.onrender.com/readyz`
+  Expect HTTP 200 with `status: "READY"` and `database: "CONNECTED"`.
+- [ ] **3. Vercel SPA Routing**:
   Visit `https://dormex.vercel.app/` and reload. Verify no 404 error is returned.
-- [ ] **3. Vercel API Proxy**:
-  `curl -i https://dormex.vercel.app/health`
-  Expect HTTP 200 forwarded from Render.
-- [ ] **4. Production Seed Isolation**:
+- [ ] **4. Vercel API Proxy**:
+  `curl -i https://dormex.vercel.app/health` and `curl -i https://dormex.vercel.app/readyz`
+  Expect HTTP 200 forwarded cleanly from Render.
+- [ ] **5. Production Seed Isolation**:
   Confirm in Neon database that `SELECT count(*) FROM users WHERE college_id LIKE 'DEMO-%';` returns `0`.
-- [ ] **5. Cookie-Based Session Restoration**:
+- [ ] **6. Cookie-Based Session Restoration**:
   Log in as the initial administrator on `https://dormex.vercel.app/`.
-  Confirm `Set-Cookie` is received, refresh the browser, and verify `/api/auth/me` restores the session without token storage in `localStorage`.
-- [ ] **6. PWA Installation Experience**:
+  Confirm `Set-Cookie` is received without a conflicting domain, refresh the browser, and verify `/api/auth/me` restores the session without token storage in `localStorage`.
+- [ ] **7. PWA Installation Experience**:
   On an Android device, open Chrome and confirm the branded DORMEX install prompt displays. On iOS Safari, confirm the share sheet instructions are available.
