@@ -476,7 +476,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold text-[#453201] font-mono leading-none">
-                06
+                {overview ? Math.max(0, (overview.registeredStudents || 0) - (overview.eligibleStudents || 0)) : 0}
               </div>
               <div className="text-[11px] text-[#74777E] mt-1">Holds / Incomplete</div>
             </div>
@@ -504,7 +504,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold text-[#181C1E] font-mono leading-none">
-                {overview?.occupiedSeats ?? 12}
+                {overview?.occupiedSeats ?? 0}
               </div>
               <div className="text-[11px] text-[#74777E] mt-1">Allocated & confirmed</div>
             </div>
@@ -518,7 +518,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold text-[#016A62] font-mono leading-none">
-                {overview?.availableSeats ?? 56}
+                {overview?.availableSeats ?? 0}
               </div>
               <div className="text-[11px] text-[#016A62] font-medium mt-1">Open for selection</div>
             </div>
@@ -532,7 +532,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold text-[#BA1A1A] font-mono leading-none">
-                04
+                {overview ? ((overview.blockedSeats || 0) + (overview.maintenanceSeats || 0)) : 0}
               </div>
               <div className="text-[11px] text-[#BA1A1A] font-medium mt-1">BVB Maintenance</div>
             </div>
@@ -619,41 +619,49 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Active Turn Live Card */}
-              <div className="p-4 rounded-xl bg-[#F0F4F6] border border-[#DFE3E5] flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="w-12 h-12 rounded-full bg-[#07203C] text-white flex items-center justify-center font-bold text-base shadow-sm">
-                    SG
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#07203C]">Saugat</span>
-                      <span className="px-1.5 py-0.5 rounded bg-[#203653] text-white text-[10px] font-mono">
-                        USN: 1SI21CS094
-                      </span>
+              {(() => {
+                const activeStu = allStudents.find((s) => s.assigned_priority === 1 || s.live_priority === 1) || allStudents[0];
+                const activeInitials = activeStu?.full_name ? activeStu.full_name.slice(0, 2).toUpperCase() : 'CU';
+                return (
+                  <div className="p-4 rounded-xl bg-[#F0F4F6] border border-[#DFE3E5] flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                      <div className="w-12 h-12 rounded-full bg-[#07203C] text-white flex items-center justify-center font-bold text-base shadow-sm">
+                        {activeInitials}
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#07203C]">{activeStu?.full_name || 'Active Candidate'}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#203653] text-white text-[10px] font-mono">
+                            USN: {activeStu?.college_id || 'ID Pending'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-[#44474D]">
+                          {activeStu?.department || 'Department Registered'} · Priority #{activeStu?.assigned_priority || 1}
+                        </span>
+                        <span className="text-xs text-[#016A62] font-semibold mt-0.5">
+                          {activeStu?.allocated_seat_id ? `Confirmed Allocation: ${activeStu.allocated_seat_id}` : 'Queue turn slot active'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-xs text-[#44474D]">6th Semester · Computer Science & Engineering</span>
-                    <span className="text-xs text-[#016A62] font-semibold mt-0.5">
-                      Currently browsing: Room 202 Wing A
-                    </span>
-                  </div>
-                </div>
 
-                {/* Timer Block */}
-                <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white rounded-lg border border-[#DFE3E5] shadow-xs">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
-                    Turn Window Remaining
-                  </span>
-                  <div className="text-2xl text-[#07203C] font-mono font-bold tracking-tight">
-                    {formatTimer(turnTimerSecs)}
+                    {/* Timer Block */}
+                    <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white rounded-lg border border-[#DFE3E5] shadow-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
+                        Turn Window Remaining
+                      </span>
+                      <div className="text-2xl text-[#07203C] font-mono font-bold tracking-tight">
+                        {formatTimer(turnTimerSecs)}
+                      </div>
+                      <div className="w-32 bg-[#E5E9EB] h-1.5 rounded-full overflow-hidden mt-1.5">
+                        <div
+                          className="bg-[#016A62] h-full transition-all duration-1000"
+                          style={{ width: `${Math.max(0, Math.min(100, (turnTimerSecs / 300) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-32 bg-[#E5E9EB] h-1.5 rounded-full overflow-hidden mt-1.5">
-                    <div 
-                      className="bg-[#016A62] h-full transition-all duration-1000"
-                      style={{ width: `${Math.max(0, Math.min(100, (turnTimerSecs / 300) * 100))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Controls Button Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
@@ -761,7 +769,7 @@ export const AdminDashboard: React.FC = () => {
               <tbody className="divide-y divide-[#DFE3E5]">
                 {filteredStudents.slice(0, 10).map((stu, idx) => {
                   const rank = stu.assigned_priority || (idx + 1);
-                  const isTurnActive = rank === 14 || stu.college_id === '1SI21CS094';
+                  const isTurnActive = rank === 1;
                   const isAllocated = Boolean(stu.allocated_seat_id);
 
                   return (
@@ -789,7 +797,7 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-[#181C1E]">{stu.department || 'CSE'} · Sem {stu.academic_year ? stu.academic_year * 2 : 6}</span>
                       </td>
                       <td className="py-3 px-4 font-mono text-[11px] text-[#44474D]">
-                        {stu.verified_payment_timestamp ? new Date(stu.verified_payment_timestamp).toLocaleDateString() + ' ' + new Date(stu.verified_payment_timestamp).toLocaleTimeString() : '12-Jul-2024 09:14:22 IST'}
+                        {stu.fee_payment_timestamp || stu.verified_payment_timestamp ? new Date(stu.fee_payment_timestamp || stu.verified_payment_timestamp).toLocaleDateString() : 'Reconciled'}
                       </td>
                       <td className="py-3 px-4">
                         {isTurnActive ? (
@@ -877,83 +885,45 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {/* Room 201 (Allocated) */}
-            <div className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#07203C]">Room 201</span>
-                <span className="text-[10px] text-[#74777E]">Triple</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#07203C] text-white text-[10px] flex items-center justify-center font-bold" title="Bed A: Prajwal Gowda">A</div>
-                <div className="h-6 rounded bg-[#07203C] text-white text-[10px] flex items-center justify-center font-bold" title="Bed B: Shreya Kulkarni">B</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold" title="Bed C: Available">C</div>
-              </div>
-            </div>
+            {(rooms.length > 0 ? rooms.slice(0, 12) : [
+              { room_number: '201', room_type: 'TRIPLE', total_seats: 3, available_seats: 3, occupied_seats: 0 },
+              { room_number: '202', room_type: 'TRIPLE', total_seats: 3, available_seats: 3, occupied_seats: 0 },
+              { room_number: '203', room_type: 'TRIPLE', total_seats: 3, available_seats: 3, occupied_seats: 0 },
+              { room_number: '204', room_type: 'DOUBLE', total_seats: 2, available_seats: 2, occupied_seats: 0 },
+              { room_number: '205', room_type: 'TRIPLE', total_seats: 3, available_seats: 3, occupied_seats: 0 },
+              { room_number: '206', room_type: 'DOUBLE', total_seats: 2, available_seats: 2, occupied_seats: 0 },
+            ]).map((rm: any) => {
+              const cap = parseInt(rm.total_seats || rm.capacity || 2, 10);
+              const occ = parseInt(rm.occupied_seats || 0, 10);
+              const labels = ['A', 'B', 'C'].slice(0, cap);
 
-            {/* Room 202 (Active Target) */}
-            <div className="bg-[#9DEFE3]/25 p-3 rounded-lg border border-[#016A62]/40 flex flex-col gap-2 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#016A62]">Room 202</span>
-                <span className="text-[10px] text-[#016A62] font-semibold">Active Turn</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">A</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">B</div>
-                <div className="h-6 rounded bg-[#016A62] text-white text-[10px] flex items-center justify-center font-bold animate-pulse" title="Saugat Intent Target">C*</div>
-              </div>
-            </div>
-
-            {/* Room 203 (Partial) */}
-            <div className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#07203C]">Room 203</span>
-                <span className="text-[10px] text-[#74777E]">Triple</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#07203C] text-white text-[10px] flex items-center justify-center font-bold" title="Bed A: Varun Bhaskar">A</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">B</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">C</div>
-              </div>
-            </div>
-
-            {/* Room 204 (Vacant) */}
-            <div className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#07203C]">Room 204</span>
-                <span className="text-[10px] text-[#74777E]">Triple</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">A</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">B</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">C</div>
-              </div>
-            </div>
-
-            {/* Room 205 (Maintenance) */}
-            <div className="bg-[#FFDAD6]/30 p-3 rounded-lg border border-[#BA1A1A]/30 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#BA1A1A]">Room 205</span>
-                <span className="text-[10px] text-[#BA1A1A] font-bold">Blocked</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#BA1A1A] text-white text-[10px] flex items-center justify-center font-bold">A</div>
-                <div className="h-6 rounded bg-[#BA1A1A] text-white text-[10px] flex items-center justify-center font-bold">B</div>
-                <div className="h-6 rounded bg-[#BA1A1A] text-white text-[10px] flex items-center justify-center font-bold">C</div>
-              </div>
-            </div>
-
-            {/* Room 206 (Vacant) */}
-            <div className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#07203C]">Room 206</span>
-                <span className="text-[10px] text-[#74777E]">Triple</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">A</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">B</div>
-                <div className="h-6 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] flex items-center justify-center font-bold">C</div>
-              </div>
-            </div>
+              return (
+                <div key={rm.room_number} className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#07203C]">Room {rm.room_number}</span>
+                    <span className="text-[10px] text-[#74777E] capitalize">{(rm.room_type || 'standard').toLowerCase()}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {labels.map((lbl, sIdx) => {
+                      const isOccupied = sIdx < occ;
+                      return (
+                        <div
+                          key={lbl}
+                          className={`h-6 rounded text-[10px] flex items-center justify-center font-bold ${
+                            isOccupied
+                              ? 'bg-[#07203C] text-white'
+                              : 'bg-[#E5E9EB] text-[#181C1E]'
+                          }`}
+                          title={`Room ${rm.room_number} Bed ${lbl}: ${isOccupied ? 'Occupied' : 'Available'}`}
+                        >
+                          {lbl}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -1193,10 +1163,10 @@ export const AdminDashboard: React.FC = () => {
               <div className="bg-[#F0F4F6] p-3.5 rounded-lg border border-[#DFE3E5]">
                 <span className="text-[10px] font-bold text-[#016A62] uppercase tracking-wider">Subject Record</span>
                 <div className="text-sm font-bold text-[#07203C] mt-1">
-                  {auditDrawerStudent?.full_name || 'Saugat'} ({auditDrawerStudent?.college_id || '1SI21CS094'})
+                  {auditDrawerStudent?.full_name || 'System / All Cohort'} {auditDrawerStudent?.college_id ? `(${auditDrawerStudent.college_id})` : ''}
                 </div>
                 <div className="text-xs text-[#44474D]">
-                  Branch: {auditDrawerStudent?.department || 'Computer Science & Eng.'} · Sem 6
+                  Scope: {auditDrawerStudent?.department ? `${auditDrawerStudent.department} · Year ${auditDrawerStudent.academic_year || 2}` : 'BVB Block Floor 2 Cohort'}
                 </div>
               </div>
 

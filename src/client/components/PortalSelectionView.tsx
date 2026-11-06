@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth, DEV_USERS } from '../context/AuthContext.js';
+import { useAuth, DEV_USERS, apiFetch } from '../context/AuthContext.js';
 import { 
   GraduationCap, 
   ShieldCheck, 
@@ -13,7 +13,9 @@ import {
   KeyRound,
   UserCheck,
   Eye,
-  EyeOff
+  EyeOff,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { DormexLogo } from './DormexLogo.js';
 
@@ -25,6 +27,17 @@ export const PortalSelectionView: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Forgot Password Modal State (Phase Five)
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Reset Password Execution State
+  const [resetTokenInput, setResetTokenInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const handlePortalSelect = (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
     setSelectedPortal(portal);
@@ -276,7 +289,7 @@ export const PortalSelectionView: React.FC = () => {
                 </select>
               </div>
 
-              <div className="pt-3">
+              <div className="pt-3 space-y-3">
                 <button
                   type="submit"
                   className="w-full py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
@@ -284,10 +297,192 @@ export const PortalSelectionView: React.FC = () => {
                   <span>Authenticate with ID & Password</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal(true);
+                      setForgotIdentifier(authIdInput);
+                      setForgotResult(null);
+                    }}
+                    className="text-xs text-[#016A62] hover:underline font-semibold flex items-center gap-1"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>Forgot password or lost credential?</span>
+                  </button>
+
+                  <span className="text-[11px] text-[#627084]">15-min single-use link</span>
+                </div>
               </div>
             </form>
           </div>
       </main>
+
+      {/* Forgot Password / Recovery Modal (Phase Five) */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#E2E6E8] shadow-2xl animate-fadeIn">
+            <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] text-[#1E7B54] flex items-center justify-center font-bold">
+                  <KeyRound className="w-5 h-5 text-[#1E7B54]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#203653]">Institutional Password Recovery</h3>
+                  <p className="text-xs text-[#627084]">Single-use cryptographic token reset</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="p-1 rounded-lg text-[#627084] hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {forgotResult && (
+              <div className={`p-3.5 rounded-lg text-xs font-medium space-y-1.5 ${
+                forgotResult.type === 'success'
+                  ? 'bg-[#E7F2ED] border border-[#A8D5C2] text-[#1E7B54]'
+                  : 'bg-[#FDE8E8] border border-[#F8B4B4] text-[#C93B3B]'
+              }`}>
+                <div>{forgotResult.message}</div>
+              </div>
+            )}
+
+            {!resetSuccess ? (
+              <div className="space-y-4">
+                {/* Step 1: Request Token */}
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setForgotLoading(true);
+                    setForgotResult(null);
+                    try {
+                      const res = await apiFetch('/api/auth/forgot-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ identifier: forgotIdentifier }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Password reset request failed');
+                      setForgotResult({
+                        type: 'success',
+                        message: data.message,
+                      });
+                    } catch (err: any) {
+                      setForgotResult({ type: 'error', message: err.message });
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="text-xs font-semibold text-[#203653] block mb-1">
+                      Institutional ID or Registered Email
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={forgotIdentifier}
+                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      placeholder="e.g. DEMO-001 or admin@college.edu"
+                      className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full py-2 bg-[#203653] hover:bg-[#17283B] text-white text-xs font-bold rounded-lg shadow-xs transition-colors"
+                  >
+                    {forgotLoading ? 'Dispatching Token...' : 'Send Reset Instructions'}
+                  </button>
+                </form>
+
+                {/* Step 2: Redeem Token & Set New Password */}
+                <div className="pt-3 border-t border-[#E2E6E8] space-y-3">
+                  <h4 className="text-xs font-bold text-[#203653] uppercase tracking-wider">
+                    Have a Reset Token? Set New Password
+                  </h4>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setForgotLoading(true);
+                      setForgotResult(null);
+                      try {
+                        const res = await apiFetch('/api/auth/reset-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            token: resetTokenInput,
+                            newPassword: newPasswordInput,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Password update failed');
+                        setResetSuccess(true);
+                        setForgotResult({
+                          type: 'success',
+                          message: data.message || 'Password successfully updated!',
+                        });
+                      } catch (err: any) {
+                        setForgotResult({ type: 'error', message: err.message });
+                      } finally {
+                        setForgotLoading(false);
+                      }
+                    }}
+                    className="space-y-2.5"
+                  >
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#627084] block mb-1">Reset Token</label>
+                      <input
+                        type="text"
+                        required
+                        value={resetTokenInput}
+                        onChange={(e) => setResetTokenInput(e.target.value)}
+                        placeholder="Paste single-use token..."
+                        className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#203653]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#627084] block mb-1">New Password (min. 8 characters)</label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={newPasswordInput}
+                        onChange={(e) => setNewPasswordInput(e.target.value)}
+                        placeholder="Enter new secure password..."
+                        className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#203653]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading || !resetTokenInput || newPasswordInput.length < 8}
+                      className="w-full py-2 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Updating Password...' : 'Save New Password & Return to Login'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full py-2.5 bg-[#016A62] text-white text-xs font-bold rounded-lg shadow-sm"
+                >
+                  Return to Institutional Sign In
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-500">

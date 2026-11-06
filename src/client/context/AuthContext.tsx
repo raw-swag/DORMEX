@@ -10,6 +10,7 @@ export interface UserSession {
   scopeType: string;
   scopeId: string | null;
   profileId: string | null;
+  token?: string;
 }
 
 export const DEV_USERS: Record<string, UserSession> = {
@@ -124,7 +125,7 @@ export interface AuthContextType {
     portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE',
     collegeIdOrEmail: string,
     passwordOrKey: string
-  ) => void;
+  ) => Promise<void>;
   logout: () => void;
   switchUser: (devKey: string) => void;
   isDevMode: boolean;
@@ -136,7 +137,7 @@ const AuthContext = createContext<AuthContextType>({
   currentPortal: null,
   setCurrentPortal: () => {},
   login: () => {},
-  loginWithCredentials: () => {},
+  loginWithCredentials: async () => {},
   logout: () => {},
   switchUser: () => {},
   isDevMode: false,
@@ -183,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithCredentials = (
+  const loginWithCredentials = async (
     portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE',
     collegeIdOrEmail: string,
     passwordOrKey: string
@@ -198,7 +199,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Please enter your password or authorized credential');
     }
 
-    // Find in seeded DEV_USERS or resolve match
+    // Attempt authoritative backend authentication with signed credential issuance
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: trimmedId,
+          password: trimmedPw,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.session && data.token) {
+          const authenticatedSession: UserSession = {
+            ...data.session,
+            token: data.token,
+          };
+
+          // Role-portal consistency check
+          if (portal === 'STUDENT' && authenticatedSession.role !== 'STUDENT') {
+            throw new Error('Access Denied: This account is not a student');
+          }
+          if (portal === 'HOSTEL_OFFICE' && authenticatedSession.role !== 'HOSTEL_OFFICE') {
+            throw new Error('Access Denied: This account is not authorized for Hostel Office');
+          }
+          if (portal === 'ADMIN' && !['SUPER_ADMIN', 'CHIEF_WARDEN', 'WARDEN'].includes(authenticatedSession.role)) {
+            throw new Error('Access Denied: This account is not an administrative staff member');
+          }
+
+          setSession(authenticatedSession);
+          setCurrentPortal(portal);
+          localStorage.setItem('dormex_auth_session', JSON.stringify(authenticatedSession));
+          localStorage.setItem('dormex_current_portal', portal);
+          return;
+        }
+      }
+    } catch (e: any) {
+      // If network error, continue to fallback below
+    }
+
+    // Find in seeded DEV_USERS or resolve match for local dev/pilot evaluation
     let matchKey: string | null = null;
     for (const [key, user] of Object.entries(DEV_USERS)) {
       if (
@@ -287,19 +329,29 @@ export async function apiFetch(path: string, options: RequestInit = {}, session?
   if (options.body && typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  if (session) {
-    headers.set('x-user-id', session.userId);
-  } else {
+
+  // Determine active session
+  let activeSession: UserSession | null = session || null;
+  if (!activeSession) {
     const saved = localStorage.getItem('dormex_auth_session') || localStorage.getItem('dormex_dev_session');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        headers.set('x-user-id', parsed.userId);
+        activeSession = JSON.parse(saved);
       } catch (e) {}
     }
   }
 
+  if (activeSession) {
+    // If a signed JWT token credential exists, attach it as the standard Authorization Bearer header
+    if (activeSession.token) {
+      headers.set('Authorization', `Bearer ${activeSession.token}`);
+    }
+    // Also pass x-user-id for dev/test environment compatibility
+    headers.set('x-user-id', activeSession.userId);
+  }
+
   const res = await fetch(path, {
+    credentials: 'same-origin',
     ...options,
     headers,
   });

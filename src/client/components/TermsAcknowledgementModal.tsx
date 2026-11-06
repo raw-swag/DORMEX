@@ -45,13 +45,25 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
     setErrorMsg(null);
 
     try {
-      const res = await apiFetch(`/api/students/${session.profileId}/accept-terms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ termsVersion: terms.version }),
-      });
+      const res = await apiFetch(
+        `/api/students/${session.profileId}/accept-terms`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            termsVersion: terms.version,
+            acknowledged: true,
+          }),
+        },
+        session
+      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to record acceptance');
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Your session has expired or is invalid. Please log in again to complete agreement.');
+        }
+        throw new Error(data.error || 'Failed to record acceptance');
+      }
 
       onAccepted();
     } catch (err: any) {
