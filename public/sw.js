@@ -1,13 +1,14 @@
 // DORMEX Progressive Web App Service Worker
 // STRICT SECURITY COMPLIANCE (Section 8):
-// - Caches ONLY an explicit allowlist of versioned, non-sensitive static assets.
+// - Caches ONLY an explicit allowlist of non-sensitive static assets and application shell.
 // - NEVER caches API requests (/api/*).
 // - NEVER caches user profiles, allocation state, sessions, credentials, tokens, complaints, or occupancy.
 // - Never confirms seats or replays allocations offline.
+// - Only approved DORMEX caches ('dormex-static-') are cleaned up upon activation.
 
-const CACHE_NAME = 'dormex-static-v1.0.1';
+const CACHE_NAME = 'dormex-static-v1.1.0';
 
-// Explicit Allowlist of Static & Versioned Application Assets
+// Explicit Allowlist of Static Application Shell Assets
 const STATIC_ALLOWLIST = [
   '/',
   '/index.html',
@@ -19,7 +20,6 @@ const STATIC_ALLOWLIST = [
   '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/assets/index-DwXmj5D1.js',
   '/assets/floor-plans/bvb-floor-2.svg',
   '/assets/brand-logo-primary.png',
   '/assets/brand-logo-primary-transparent.png',
@@ -44,7 +44,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: purge stale cache generations
+// Activate: purge stale dormex cache generations only
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -73,8 +73,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Only serve or cache assets that exist in the explicit allowlist
-  if (!ALLOWED_SET.has(url.pathname)) {
+  // 3. For hashed build assets in /assets/ (e.g. index-[hash].js, index-[hash].css), cache-first with network fallback
+  const isHashedAsset = url.pathname.startsWith('/assets/') && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+
+  if (!ALLOWED_SET.has(url.pathname) && !isHashedAsset) {
     // Navigational fallback for client routing
     if (event.request.mode === 'navigate') {
       event.respondWith(
@@ -84,7 +86,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Explicit Allowlisted static asset caching (Cache first, falling back to network)
+  // 4. Safe static asset caching (Cache first, falling back to network)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {

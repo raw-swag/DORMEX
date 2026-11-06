@@ -1,5 +1,6 @@
-﻿import { DatabaseService } from './index.js';
+import { DatabaseService } from './index.js';
 import { bvbRooms } from '../inventory/bvbRooms.js';
+import { AuthService } from '../auth/service.js';
 
 export async function seedDatabase(db: DatabaseService): Promise<void> {
   // 1. Roles
@@ -23,7 +24,11 @@ export async function seedDatabase(db: DatabaseService): Promise<void> {
   // In production, default test credentials are NEVER inserted unless explicitly supplied via
   // INITIAL_ADMIN_PASSWORD / INITIAL_ADMIN_EMAIL environment variables.
   const isProd = process.env.NODE_ENV === 'production';
-  const defaultHash = isProd ? (process.env.INITIAL_ADMIN_HASH || null) : 'argon2id_mock_hash_for_dev_seed';
+  const authService = new AuthService(db);
+  // Canonical development password hash using scrypt (for documented test password 'password')
+  const defaultHash = isProd
+    ? (process.env.INITIAL_ADMIN_HASH || null)
+    : authService.hashPassword('password');
   const staffUsers = [
     ['usr_admin', 'ADM001', 'admin@college.edu', 'System Administrator', defaultHash, 'SUPER_ADMIN', 'SYSTEM', null],
     ['usr_office', 'OFF001', 'office@college.edu', 'Hostel Office Staff', defaultHash, 'HOSTEL_OFFICE', 'SYSTEM', null],

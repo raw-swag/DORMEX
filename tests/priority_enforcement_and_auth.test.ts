@@ -3,6 +3,7 @@ import request from 'supertest';
 import { buildApp } from '../src/app.js';
 import { getDatabaseService, resetDatabaseInstance } from '../src/db/index.js';
 import { testEmailOutbox } from '../src/auth/service.js';
+import { seedDatabase } from '../src/db/seed.js';
 
 describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () => {
   let app: any;
@@ -452,6 +453,70 @@ describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () 
       expect(res.demoCount).toBe(0);
       expect(res.bvbBuildingExists).toBe(true);
       expect(res.hasSeats).toBe(true);
+    });
+
+    it('Case 5: NODE_ENV unset -> blocked (0 demo records seeded, fail-safe)', async () => {
+      const res = await runSeedWithEnv('', 'false');
+      expect(res.demoCount).toBe(0);
+      expect(res.bvbBuildingExists).toBe(true);
+      expect(res.hasSeats).toBe(true);
+    });
+
+    it('Case 6: unknown NODE_ENV (e.g. staging) -> blocked (0 demo records seeded, fail-safe)', async () => {
+      const res = await runSeedWithEnv('staging', 'false');
+      expect(res.demoCount).toBe(0);
+      expect(res.bvbBuildingExists).toBe(true);
+      expect(res.hasSeats).toBe(true);
+    });
+
+    it('Case 7: production startup without JWT_SECRET fails safely', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalJwt = process.env.JWT_SECRET;
+      try {
+        process.env.NODE_ENV = 'production';
+        delete process.env.JWT_SECRET;
+        resetDatabaseInstance();
+        await expect(buildApp()).rejects.toThrow(/FATAL_CONFIG_ERROR/);
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv;
+        if (originalJwt !== undefined) process.env.JWT_SECRET = originalJwt;
+      }
+    });
+
+    it('Case 8: Re-seeding preserves valid DEMO-029 and DEMO-030 authentication hashes', async () => {
+      resetDatabaseInstance();
+      const testDb = getDatabaseService(true);
+      process.env.NODE_ENV = 'test';
+      process.env.SEED_DEMO_DATA = 'true';
+      const fastifyApp = await buildApp(testDb);
+      await fastifyApp.ready();
+
+      // First login verification
+      const login1 = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: 'password' },
+      });
+      expect(login1.statusCode).toBe(200);
+
+      // Re-run seed on the same database
+      await seedDatabase(testDb);
+
+      // Second login verification after re-seed
+      const login2 = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: 'password' },
+      });
+      expect(login2.statusCode).toBe(200);
+
+      const login3 = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-030', password: 'password' },
+      });
+      expect(login3.statusCode).toBe(200);
+      await fastifyApp.close();
     });
   });
 

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.8.0] - 2026-11-06
+
+- **Feat(pwa-ux): Mobile UX Final Polish, PWA Install Experience, Authentication Hardening & Production Release**:
+  - **PWA Installation Experience (`src/client/context/PWAInstallContext.tsx`, `src/client/components/PWAInstallPrompt.tsx`, `src/client/App.tsx`)**:
+    - Created browser-aware PWA installation provider and context capturing native `beforeinstallprompt` on Android and Chromium browsers.
+    - Implemented a branded responsive bottom sheet explaining key institutional benefits with minimum 44px touch targets.
+    - Added dedicated iOS Safari step-by-step installation instructions with the authentic Share and Add to Home Screen guidelines.
+    - Standalone display mode detection across desktop and mobile devices prevents displaying prompts when already installed.
+    - Dismissal cooldown logic (7 days) persisted cleanly in localStorage without storing sensitive user credentials or tokens.
+    - Install prompt respects active student workflows, remaining suppressed during login, terms agreement, or seat confirmation.
+  - **Production Asset Integrity & Tailwind Integration (`index.html`, `tailwind.config.js`, `postcss.config.cjs`, `src/client/index.css`)**:
+    - Removed Tailwind CSS CDN script and replaced it with build-time Tailwind CSS v3 and PostCSS with Autoprefixer.
+    - Added modern mobile web app metadata tags (`mobile-web-app-capable`) while preserving Apple legacy metadata.
+    - Updated `public/manifest.json` with explicit `scope: "/"` and maskable icon declarations.
+    - Hardened `public/sw.js` cache activation to purge only stale DORMEX caches and enforce strict network-only bypass for `/api/*` requests and mutations.
+  - **Authentication Hardening & Safe Environment Isolation (`src/server.ts`, `src/db/seed.ts`, `scripts/dev.js`, `src/client/components/PortalSelectionView.tsx`)**:
+    - Removed fail-open `process.env.NODE_ENV = process.env.NODE_ENV || 'development'` fallback in `src/server.ts`.
+    - Implemented `scripts/dev.js` cross-platform runner explicitly setting `NODE_ENV=development` and loopback `127.0.0.1`.
+    - Protected demo data seeding: production (`NODE_ENV=production`) strictly blocks synthetic demo records regardless of overrides; unset or unknown environments fail safely.
+    - Quick Pilot Presets populate institutional IDs only and leave password inputs blank, eliminating placeholder bullet submissions.
+    - Removed mock hash bypasses; all credentials strictly verified via timing-safe `scrypt` hashing.
+  - **Automated Verification & Testing (`tests/pwa_install_and_assets.test.ts`, `tests/agreement_auth_and_acceptance.test.ts`, `tests/priority_enforcement_and_auth.test.ts`)**:
+    - Added comprehensive PWA installability, manifest, service worker security, and dismissal cooldown test suite.
+    - 141/141 automated tests passing across 14 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client and server builds (`npm run build:client`, `npm run build:server`).
+
+---
+
 ## [2.7.0] - 2026-11-03
 
 - **Feat(mvp): Final MVP System Completion, Strict Priority Enforcement, PWA & Production Hardening**:

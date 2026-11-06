@@ -1,5 +1,6 @@
 import { DatabaseService } from '../db/index.js';
 import { AuthActor, can } from '../auth/policy.js';
+import { AuthService } from '../auth/service.js';
 
 export interface CreateAdmissionInput {
   academic_year_code: string;
@@ -157,7 +158,8 @@ export class StudentAdmissionService {
       // 5. Authoritatively integrate into student user & profile accounts (preserving unverified fee / terms)
       const userId = `usr_${collegeId.toLowerCase()}`;
       const profileId = `prof_${collegeId.toLowerCase()}`;
-      const defaultPasswordHash = 'mock_default_hash';
+      const authService = new AuthService(this.db);
+      const defaultPasswordHash = authService.hashPassword('password');
 
       // Ensure user entry exists
       await client.query(

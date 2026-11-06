@@ -37,6 +37,7 @@ export type PermissionAction =
 export interface AuthActor {
   id: string;
   college_id: string;
+  full_name?: string;
   role: SystemRole;
   scope_type: 'SYSTEM' | 'BUILDING' | 'STUDENT';
   scope_id?: string | null;
