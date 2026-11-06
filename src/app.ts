@@ -141,7 +141,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
     // 5. Canonical database actor lookup and mapping
     const userRes = await database.query(
-      `SELECT u.id, u.college_id, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
+      `SELECT u.id, u.college_id, u.full_name, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
        FROM users u
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
@@ -158,6 +158,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     return {
       id: row.id,
       college_id: row.college_id,
+      full_name: row.full_name,
       role: row.role_name,
       scope_type: row.scope_type,
       scope_id: row.scope_id,
@@ -246,6 +247,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send({
         userId: actor.id,
         collegeId: actor.college_id,
+        fullName: actor.full_name || actor.college_id,
         role: actor.role,
         scopeType: actor.scope_type,
         scopeId: actor.scope_id,
@@ -254,6 +256,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     } catch (err: any) {
       return reply.code(401).send({ error: err.message });
     }
+  });
+
+  app.post('/api/auth/logout', async (req: any, reply) => {
+    reply.clearCookie('token', { path: '/' });
+    return reply.send({ success: true, message: 'Logged out successfully' });
   });
 
   app.post('/api/auth/forgot-password', async (req: any, reply) => {

@@ -72,14 +72,11 @@ export class AuthService {
   }
 
   /**
-   * Verify password against standard scrypt hash or seeded legacy hash
+   * Verify password against standard scrypt hash.
+   * Special-case bypasses or plaintext comparisons are strictly rejected.
    */
   verifyPassword(password: string, storedHash: string): boolean {
-    if (!storedHash) return false;
-    // Support legacy dev seeds if needed
-    if (storedHash === 'argon2id_mock_hash_for_dev_seed' || storedHash === 'mock_default_hash') {
-      return true;
-    }
+    if (!storedHash || !password) return false;
     const parts = storedHash.split('$');
     if (parts.length === 3 && parts[0] === 'scrypt') {
       const salt = parts[1];

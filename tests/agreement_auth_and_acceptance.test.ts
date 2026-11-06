@@ -557,5 +557,154 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
       expect(p2.rows.length).toBe(1);
       expect(p1.rows[0].id).not.toBe(p2.rows[0].id);
     });
+
+    it('5. Session Lifecycle: Session restoration via HttpOnly cookie, persistence, and agreement acceptance', async () => {
+      // 1. Quick Pilot Preset selection cannot create an unauthenticated session (Login with invalid credentials rejected)
+      const badLogin = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'NONEXISTENT', password: 'password' },
+      });
+      expect(badLogin.statusCode).toBe(401);
+
+      // 1b. Literal bullet placeholder password rejected (bullet bypass forbidden)
+      const bulletLogin = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: '••••••••' },
+      });
+      expect(bulletLogin.statusCode).toBe(401);
+
+      // 1c. Empty password rejected
+      const emptyLogin = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: '' },
+      });
+      expect(emptyLogin.statusCode).toBe(401);
+
+      // 2. Login with valid documented password successfully calls the real login endpoint
+      const loginRes = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: 'password' },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const cookies = loginRes.cookies;
+      const tokenCookie = cookies.find((c: any) => c.name === 'token');
+      expect(tokenCookie).toBeDefined();
+      expect(tokenCookie?.httpOnly).toBe(true);
+
+      // 3. Both login methods produce the same authenticated actor
+      const credLoginRes = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { collegeIdOrEmail: 'demo.029@college.edu', password: 'password' },
+      });
+      expect(credLoginRes.statusCode).toBe(200);
+      expect(credLoginRes.json().session.userId).toBe('usr_demo_029');
+      expect(loginRes.json().session.userId).toBe(credLoginRes.json().session.userId);
+
+      // 4. Login followed by /api/auth/me succeeds via HttpOnly cookie
+      const meRes = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        cookies: { token: tokenCookie!.value },
+      });
+      expect(meRes.statusCode).toBe(200);
+      const meData = meRes.json();
+      expect(meData.userId).toBe('usr_demo_029');
+      expect(meData.profileId).toBe('prof_demo_029');
+
+      // 5. Authentication persists after page reload through the HttpOnly cookie
+      const reloadMe = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        cookies: { token: tokenCookie!.value },
+      });
+      expect(reloadMe.statusCode).toBe(200);
+      expect(reloadMe.json().collegeId).toBe('DEMO-029');
+
+      // 6. Agreement acceptance works after session restoration using cookie only (no Bearer header)
+      const accordRes = await app.inject({
+        method: 'POST',
+        url: '/api/students/prof_demo_029/accept-terms',
+        cookies: { token: tokenCookie!.value },
+        payload: { termsVersion: 1, acknowledged: true },
+      });
+      expect(accordRes.statusCode).toBe(200);
+      expect(accordRes.json().success).toBe(true);
+
+      // 7. Missing and expired sessions return 401
+      const noCookieRes = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+      });
+      expect(noCookieRes.statusCode).toBe(401);
+
+      const expiredToken = signToken(
+        { sub: 'usr_demo_029', role: 'STUDENT', college_id: 'DEMO-029' },
+        { expiresIn: '-1s' }
+      );
+      const expiredCookieRes = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        cookies: { token: expiredToken },
+      });
+      expect(expiredCookieRes.statusCode).toBe(401);
+
+      // 8. A fresh login restores access
+      const freshLogin = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-029', password: 'password' },
+      });
+      expect(freshLogin.statusCode).toBe(200);
+      const freshCookie = freshLogin.cookies.find((c: any) => c.name === 'token')!.value;
+      const freshMe = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        cookies: { token: freshCookie },
+      });
+      expect(freshMe.statusCode).toBe(200);
+
+      // 9. Conflicting x-user-id cannot override the verified actor
+      const conflictRes = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        cookies: { token: freshCookie },
+        headers: { 'x-user-id': 'usr_admin' },
+      });
+      expect(conflictRes.statusCode).toBe(200);
+      expect(conflictRes.json().userId).toBe('usr_demo_029'); // Must remain verified subject
+
+      // 10. Student cannot accept another student\'s agreement
+      const crossAccept = await app.inject({
+        method: 'POST',
+        url: '/api/students/prof_demo_030/accept-terms',
+        cookies: { token: freshCookie },
+        payload: { termsVersion: 1, acknowledged: true },
+      });
+      expect(crossAccept.statusCode).toBe(403);
+
+      // 11. Logout clears the session
+      const logoutRes = await app.inject({
+        method: 'POST',
+        url: '/api/auth/logout',
+        cookies: { token: freshCookie },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+      const clearedCookie = logoutRes.cookies.find((c: any) => c.name === 'token');
+      expect(clearedCookie?.value === '' || clearedCookie?.maxAge === 0 || clearedCookie?.expires).toBeTruthy();
+
+      // 12. The agreement state remains correct after reload
+      const termsStatusCheck = await app.inject({
+        method: 'GET',
+        url: '/api/students/prof_demo_029/terms-status',
+        cookies: { token: freshCookie },
+      });
+      expect(termsStatusCheck.statusCode).toBe(200);
+      expect(termsStatusCheck.json().accepted).toBe(true);
+    });
   });
 });

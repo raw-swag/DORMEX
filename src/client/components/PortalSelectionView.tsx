@@ -42,33 +42,35 @@ export const PortalSelectionView: React.FC = () => {
   const handlePortalSelect = (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
     setSelectedPortal(portal);
     setErrorMsg(null);
+    setPasswordInput('');
     if (portal === 'STUDENT') {
       setSelectedUserKey('demo1');
       setAuthIdInput('DEMO-001');
-      setPasswordInput('••••••••');
     }
     if (portal === 'ADMIN') {
       setSelectedUserKey('superAdmin');
       setAuthIdInput('ADM001');
-      setPasswordInput('••••••••');
     }
     if (portal === 'HOSTEL_OFFICE') {
       setSelectedUserKey('hostelOffice');
       setAuthIdInput('OFF001');
-      setPasswordInput('••••••••');
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPortal) return;
     setErrorMsg(null);
     try {
-      if (authIdInput.trim()) {
-        loginWithCredentials(selectedPortal, authIdInput, passwordInput || 'password');
-      } else if (selectedUserKey) {
-        login(selectedPortal, selectedUserKey);
+      if (!authIdInput.trim()) {
+        setErrorMsg('Please enter your Institutional ID or email address');
+        return;
       }
+      if (!passwordInput) {
+        setErrorMsg('Please enter your password');
+        return;
+      }
+      await loginWithCredentials(selectedPortal, authIdInput, passwordInput);
     } catch (err: any) {
       setErrorMsg(err.message || 'Login failed');
     }
@@ -257,7 +259,6 @@ export const PortalSelectionView: React.FC = () => {
                     const user = DEV_USERS[key];
                     if (user) {
                       setAuthIdInput(user.collegeId);
-                      setPasswordInput('••••••••');
                     }
                   }}
                   className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"

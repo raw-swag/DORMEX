@@ -1,5 +1,6 @@
 import { DatabaseService } from '../db/index.js';
 import { AuthActor, can } from '../auth/policy.js';
+import { AuthService } from '../auth/service.js';
 
 export interface RegisterStudentInput {
   college_id: string;
@@ -25,7 +26,8 @@ export class StudentRegistryService {
     return this.db.transaction(async (client) => {
       const userId = `usr_${input.college_id.toLowerCase()}`;
       const profileId = `prof_${input.college_id.toLowerCase()}`;
-      const defaultPasswordHash = 'mock_default_hash';
+      const authService = new AuthService(this.db);
+      const defaultPasswordHash = authService.hashPassword('password');
 
       await client.query(
         `INSERT INTO users (id, college_id, email, full_name, phone, password_hash)
