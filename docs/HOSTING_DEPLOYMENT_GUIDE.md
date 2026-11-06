@@ -93,7 +93,7 @@ This guide documents the exact, production-verified procedure for provisioning a
    - **Runtime**: `Node`
    - **Build Command**:
      ```bash
-     npm ci && npm run build:server
+     npm ci --include=dev && npm run build:server
      ```
    - **Start Command**:
      ```bash
