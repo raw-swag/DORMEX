@@ -166,8 +166,25 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     };
   };
 
-  // Health check
-  app.get('/health', async () => ({ status: 'UP', service: 'DORMEX Hostel Allocation Engine' }));
+  // Health check & Readiness endpoint
+  app.get('/health', async (req, reply) => {
+    let dbStatus = 'UNKNOWN';
+    try {
+      const dbCheck = await database.query('SELECT 1 as alive');
+      dbStatus = dbCheck.rows[0]?.alive === 1 ? 'CONNECTED' : 'DISCONNECTED';
+    } catch {
+      dbStatus = 'DISCONNECTED';
+    }
+
+    const isHealthy = dbStatus === 'CONNECTED';
+    return reply.code(isHealthy ? 200 : 503).send({
+      status: isHealthy ? 'UP' : 'DEGRADED',
+      database: dbStatus,
+      environment: process.env.NODE_ENV || 'development',
+      service: 'DORMEX Hostel Allocation Engine',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // Authentication & Session Endpoints
   app.post('/api/auth/login', async (req: any, reply) => {
