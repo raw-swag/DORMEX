@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import fastifyJwt from '@fastify/jwt';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import fs from 'fs';
@@ -15,9 +16,17 @@ import { OperationsService } from './operations/service.js';
 import { NotificationService } from './notifications/service.js';
 import { StudentAdmissionService } from './student/admissionService.js';
 import { MessMenuService } from './operations/messMenuService.js';
+import { AuthService } from './auth/service.js';
 import { AuthActor } from './auth/policy.js';
 
 export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
+  const isProd = process.env.NODE_ENV === 'production';
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (isProd && (!jwtSecret || jwtSecret.trim().length < 32)) {
+    throw new Error('FATAL_CONFIG_ERROR: Production requires an externally supplied JWT_SECRET with at least 32 characters');
+  }
+
   const app = Fastify({ 
     logger: false,
     bodyLimit: 15 * 1024 * 1024, // 15MB to comfortably accommodate high-res weekly mess menu images
@@ -30,6 +39,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
   await app.register(cors, { origin: true });
   await app.register(cookie);
+
+  const effectiveJwtSecret = jwtSecret || 'dormex-super-secure-jwt-signing-key-2026';
+  await app.register(fastifyJwt, {
+    secret: effectiveJwtSecret,
+  });
 
   const clientDist = path.join(process.cwd(), 'dist', 'client');
   const publicDir = path.join(process.cwd(), 'public');
@@ -64,10 +78,68 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const notificationService = new NotificationService(database);
   const admissionService = new StudentAdmissionService(database);
   const messMenuService = new MessMenuService(database);
+  const authService = new AuthService(database);
 
-  // Helper auth extractor (supports dev token/header for seamless verification)
+  // Helper auth extractor (enforces cryptographically signed JWT tokens, with test/dev compatibility)
   const extractActor = async (req: any): Promise<AuthActor> => {
-    const userId = req.headers['x-user-id'] || 'usr_student_1';
+    let userId: string | null = null;
+
+    // 1. Check Authorization Bearer header first
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader && typeof authHeader === 'string') {
+      const parts = authHeader.trim().split(' ');
+      if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
+        throw new Error('UNAUTHORIZED: Malformed Authorization header');
+      }
+      const token = parts[1];
+      try {
+        const decoded = (await app.jwt.verify(token)) as any;
+        if (!decoded || !decoded.sub) {
+          throw new Error('UNAUTHORIZED: Missing mandatory identity claims');
+        }
+        userId = decoded.sub;
+      } catch (err: any) {
+        if (err.message?.startsWith('UNAUTHORIZED')) {
+          throw err;
+        }
+        if (err.code === 'FAST_JWT_EXPIRED' || err.message?.toLowerCase().includes('expired')) {
+          throw new Error('UNAUTHORIZED: Token expired');
+        }
+        if (err.code === 'FAST_JWT_INVALID_SIGNATURE' || err.message?.toLowerCase().includes('signature')) {
+          throw new Error('UNAUTHORIZED: Invalid signature');
+        }
+        throw new Error(`UNAUTHORIZED: Malformed or invalid token (${err.message})`);
+      }
+    }
+
+    // 2. Fall back to signed cookie if present
+    if (!userId && req.cookies?.token) {
+      try {
+        const decoded = (await app.jwt.verify(req.cookies.token)) as any;
+        if (decoded?.sub) {
+          userId = decoded.sub;
+        }
+      } catch (err: any) {
+        if (err.code === 'FAST_JWT_EXPIRED') {
+          throw new Error('UNAUTHORIZED: Token expired');
+        }
+        throw new Error('UNAUTHORIZED: Invalid session cookie');
+      }
+    }
+
+    // 3. Isolated test identity fallback:
+    // Strictly limited to NODE_ENV=test for headless unit/integration suites.
+    // Development environment shortcuts via headers are disabled to eliminate any reverse-proxy spoofing risk.
+    if (!userId && process.env.NODE_ENV === 'test' && req.headers['x-user-id']) {
+      userId = req.headers['x-user-id'];
+    }
+
+    // 4. In production, development, or any non-test environment, unauthenticated requests are strictly rejected
+    if (!userId) {
+      throw new Error('UNAUTHORIZED: Missing or unauthenticated credentials');
+    }
+
+    // 5. Canonical database actor lookup and mapping
     const userRes = await database.query(
       `SELECT u.id, u.college_id, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
        FROM users u
@@ -95,6 +167,114 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
   // Health check
   app.get('/health', async () => ({ status: 'UP', service: 'DORMEX Hostel Allocation Engine' }));
+
+  // Authentication & Session Endpoints
+  app.post('/api/auth/login', async (req: any, reply) => {
+    try {
+      const { identifier, password, collegeIdOrEmail } = (req.body || {}) as any;
+      const cleanId = (identifier || collegeIdOrEmail || '').trim().toLowerCase();
+      const rawPassword = password || '';
+
+      if (!cleanId) {
+        return reply.code(400).send({ error: 'IDENTIFIER_REQUIRED: Institutional ID or email is required' });
+      }
+
+      const userRes = await database.query(
+        `SELECT u.id, u.college_id, u.email, u.full_name, u.password_hash, u.is_active,
+                r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
+         FROM users u
+         JOIN user_roles ur ON u.id = ur.user_id
+         JOIN roles r ON ur.role_id = r.id
+         LEFT JOIN student_profiles sp ON u.id = sp.user_id
+         WHERE LOWER(u.college_id) = $1 OR LOWER(u.email) = $1`,
+        [cleanId]
+      );
+
+      if (userRes.rows.length === 0) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid credentials' });
+      }
+
+      const user = userRes.rows[0];
+      if (!user.is_active) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Account is deactivated' });
+      }
+
+      const passwordValid = authService.verifyPassword(rawPassword, user.password_hash);
+      if (!passwordValid) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid credentials' });
+      }
+
+      // Generate signed JWT token
+      const token = app.jwt.sign(
+        {
+          sub: user.id,
+          role: user.role_name,
+          college_id: user.college_id,
+          student_profile_id: user.profile_id,
+        },
+        { expiresIn: '24h' }
+      );
+
+      reply.setCookie('token', token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+
+      return reply.send({
+        success: true,
+        token,
+        session: {
+          userId: user.id,
+          collegeId: user.college_id,
+          fullName: user.full_name,
+          role: user.role_name,
+          scopeType: user.scope_type,
+          scopeId: user.scope_id,
+          profileId: user.profile_id,
+        },
+      });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.get('/api/auth/me', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      return reply.send({
+        userId: actor.id,
+        collegeId: actor.college_id,
+        role: actor.role,
+        scopeType: actor.scope_type,
+        scopeId: actor.scope_id,
+        profileId: actor.student_profile_id,
+      });
+    } catch (err: any) {
+      return reply.code(401).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/forgot-password', async (req: any, reply) => {
+    try {
+      const { identifier } = (req.body || {}) as any;
+      const result = await authService.requestPasswordReset(identifier, req.ip);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req: any, reply) => {
+    try {
+      const { token, newPassword } = (req.body || {}) as any;
+      const result = await authService.resetPasswordWithToken(token, newPassword);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
 
   // Student Registry routes
   app.get('/api/students', async (req: any, reply) => {
@@ -675,12 +855,36 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   app.post('/api/students/:id/accept-terms', async (req: any, reply) => {
     try {
       const actor = await extractActor(req);
-      const { termsVersion } = req.body as any;
+      const body = (req.body || {}) as any;
+
+      if (!req.body || typeof req.body !== 'object') {
+        return reply.code(400).send({ error: 'INVALID_PAYLOAD: Request body is required' });
+      }
+
+      if (body.acknowledged !== undefined && body.acknowledged !== true) {
+        return reply.code(400).send({ error: 'ACKNOWLEDGEMENT_REQUIRED: Terms acknowledgement must be explicitly confirmed' });
+      }
+
+      const { termsVersion } = body;
+      if (!termsVersion || typeof termsVersion !== 'number' || termsVersion <= 0) {
+        return reply.code(400).send({ error: 'INVALID_TERMS_VERSION: Valid positive terms version number is required' });
+      }
+
       await studentRegistry.acceptTerms(req.params.id, termsVersion, actor, req.ip);
-      return reply.send({ success: true, message: 'Hostel Responsibility terms accepted successfully' });
+      return reply.send({
+        success: true,
+        message: 'Hostel Responsibility terms accepted successfully',
+        termsVersion,
+        studentId: req.params.id,
+      });
     } catch (err: any) {
-            const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
-      return reply.code(code).send({ error: err.message });
+      if (err.message?.startsWith('UNAUTHORIZED')) {
+        return reply.code(401).send({ error: err.message });
+      }
+      if (err.message?.startsWith('FORBIDDEN')) {
+        return reply.code(403).send({ error: err.message });
+      }
+      return reply.code(400).send({ error: err.message });
     }
   });
 

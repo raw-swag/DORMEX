@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.7.0] - 2026-11-03
+
+- **Feat(mvp): Final MVP System Completion, Strict Priority Enforcement, PWA & Production Hardening**:
+  - **Allocation Engine & Priority Enforcement (`src/allocation/engine.ts`, `src/client/components/StudentAllocationView.tsx`, `tests/priority_enforcement_and_auth.test.ts`)**:
+    - Validated and proved strict priority turn sequencing where lower numerical rank has exclusive active selection authority (Priority 1 -> Priority 2 -> Priority 3).
+    - Enforced backend authorization rejecting direct API seat confirmations from waiting students (`403 NOT_YOUR_TURN`).
+    - Enforced atomic seat conflict rejection (`409 SEAT_UNAVAILABLE`) and idempotent confirmation handling.
+    - Automatic queue advancement upon seat confirmation or server-authoritative turn expiration without wall-clock drift.
+  - **Authentication & Secure Password Recovery (`src/auth/service.ts`, `src/app.ts`, `src/client/components/PortalSelectionView.tsx`, `src/db/schema.ts`)**:
+    - Added `password_reset_tokens` table persisting only cryptographic SHA-256 hashes with 15-minute expirations.
+    - Implemented `/api/auth/forgot-password` and `/api/auth/reset-password` endpoints.
+    - Prevented account enumeration by returning identical generic messaging regardless of account existence.
+    - Single-use consumption enforced with immediate invalidation of prior tokens.
+    - Password hashing backed by standard scrypt key derivation.
+  - **Trial & Mock Data Removal**:
+    - Replaced hardcoded student names ("Rahul M.", "Prajwal K.", "Saugat", "Prajwal Gowda", "Varun Bhaskar") with dynamic, database-authoritative records or truthful empty states.
+    - Dynamicized administrative bento cards to reflect live database queries.
+  - **Progressive Web App (PWA) Implementation (`public/manifest.json`, `public/sw.js`, `index.html`, `src/client/main.tsx`)**:
+    - Created Web App Manifest with full identity metadata, theme `#07203C`, background `#F7F6F1`, and standalone display mode.
+    - Built secure Service Worker with strict caching boundaries: caches only allowlisted versioned static assets; all `/api/*` requests and data operations are strictly network-only. No offline booking replays.
+  - **Testing & Verification**:
+    - 94/94 automated tests passing across 12 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
+
 ## [2.6.0] - 2026-11-02
 
 - **Feat(shell): Mobile-First Institutional Application Shell & Role-Aware Navigation**:

@@ -326,6 +326,10 @@ export class StudentRegistryService {
   }
 
   async acceptTerms(studentProfileId: string, termsVersion: number, actor: AuthActor, ipAddress?: string): Promise<void> {
+    if (!can(actor, 'terms.accept')) {
+      throw new Error('FORBIDDEN: Insufficient permissions to accept hostel terms');
+    }
+
     if (actor.role === 'STUDENT' && actor.student_profile_id !== studentProfileId) {
       throw new Error('FORBIDDEN: Cannot accept terms on behalf of another student');
     }

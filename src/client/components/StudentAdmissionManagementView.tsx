@@ -310,7 +310,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Prajwal Gowda"
+                    placeholder="e.g. Admitted Student Full Name"
                     value={form.full_name}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                     className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"

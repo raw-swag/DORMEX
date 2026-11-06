@@ -1777,14 +1777,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                             const isSelected = selectedSeatId === st.id;
                             const isMine = myAllocation?.seatId === st.id;
 
-                            // Seat 202-A sample occupied profile from Stitch
-                            const isOccupiedDemo = isTaken || (selectedRoomNumber === '202' && st.label === 'A');
-                            // Seat 202-B sample roommate intent from Stitch
-                            const isIntentDemo = isOrangeIntent || (selectedRoomNumber === '202' && st.label === 'B');
-                            // Seat 202-C available / selected
-                            const isAvailableDemo = (!isTaken && !isOrangeIntent && (selectedRoomNumber !== '202' || st.label === 'C'));
+                            // Check live authoritative occupant or intent
+                            const isOccupied = isTaken;
+                            const isIntent = isOrangeIntent;
 
-                            if (isOccupiedDemo) {
+                            if (isOccupied) {
                               return (
                                 <div
                                   key={st.id}
@@ -1803,9 +1800,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                           Occupied
                                         </span>
                                       </div>
-                                      <span className="text-xs text-[#181C1E] font-medium">Rahul M.</span>
-                                      <span className="text-[11px] text-[#44474D]">USN: 1SI21CS082 · Priority #04</span>
-                                      <span className="text-[10px] text-[#74777E]">Verified & Locked at 10:14 AM</span>
+                                      <span className="text-xs text-[#181C1E] font-medium">Seat Claimed</span>
+                                      <span className="text-[11px] text-[#44474D]">Confirmed in current allocation cycle</span>
+                                      <span className="text-[10px] text-[#74777E]">Server-authoritative lock active</span>
                                     </div>
                                   </div>
                                   <Lock className="w-4 h-4 text-[#74777E]" />
@@ -1813,18 +1810,19 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               );
                             }
 
-                            if (isIntentDemo) {
+                            if (isIntent) {
+                              const intentPeer = roommateIntentMap[st.id];
                               return (
                                 <div
                                   key={st.id}
                                   onClick={() => {
                                     setInspectorWarningDialog({
                                       show: true,
-                                      studentName: 'Prajwal K.',
-                                      studentCollegeId: '1SI21CS091',
+                                      studentName: intentPeer?.leaderName || 'Peer Candidate',
+                                      studentCollegeId: intentPeer?.collegeId || 'Assigned Group',
                                       seatLabel: `Seat ${selectedRoomNumber}-${st.label}`,
                                       seatId: st.id,
-                                      priorityIndex: '#15',
+                                      priorityIndex: intentPeer?.priority ? `#${intentPeer.priority}` : 'Active',
                                     });
                                   }}
                                   className="p-3 rounded-xl bg-[#FFF0E6]/80 hover:bg-[#FFF0E6] cursor-pointer transition-colors flex items-start justify-between group border border-[#FFD1B3] shadow-xs"
@@ -1842,8 +1840,8 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                           Roommate Intent
                                         </span>
                                       </div>
-                                      <span className="text-xs text-[#181C1E] font-medium">Prajwal K.</span>
-                                      <span className="text-[11px] text-[#44474D]">Priority Index #15 · Pending group pair</span>
+                                      <span className="text-xs text-[#181C1E] font-medium">{intentPeer?.leaderName || 'Roommate Group Coordinator'}</span>
+                                      <span className="text-[11px] text-[#44474D]">Pending group pairing</span>
                                       <span className="text-[10px] text-[#E06A26] font-medium flex items-center gap-1 mt-0.5">
                                         <AlertCircle className="w-3 h-3" /> Disruption warning applies
                                       </span>

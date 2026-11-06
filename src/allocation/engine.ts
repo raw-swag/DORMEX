@@ -125,7 +125,7 @@ export class AllocationEngineService {
 
       // 3. Find matching allocation pool
       const poolRes = await client.query(
-        `SELECT id FROM allocation_pools WHERE cycle_id = $1 AND academic_year = $2 AND quota_category = $3 LIMIT 1`,
+        `SELECT id FROM allocation_pools WHERE cycle_id = $1 AND academic_year = $2 AND quota_category = $3 LIMIT 1 FOR UPDATE`,
         [cycleId, student.academic_year, student.quota_category]
       );
       if (poolRes.rows.length === 0) {
@@ -182,6 +182,9 @@ export class AllocationEngineService {
    */
   async advancePoolTurn(poolId: string): Promise<BookingSessionInfo | null> {
     return this.db.transaction(async (client) => {
+      // Per-pool transaction lock: serializes concurrent advancements for this pool
+      await client.query(`SELECT id FROM allocation_pools WHERE id = $1 FOR UPDATE`, [poolId]);
+
       // Check if an active turn already exists
       const activeRes = await client.query(
         `SELECT * FROM booking_sessions WHERE pool_id = $1 AND status = 'ACTIVE' LIMIT 1`,
@@ -222,9 +225,10 @@ export class AllocationEngineService {
       const nextStuRes = await client.query(
         `SELECT wre.student_id, wre.cycle_id, ac.turn_duration_seconds
          FROM waiting_room_entries wre
+         JOIN student_profiles sp ON wre.student_id = sp.id
          JOIN allocation_cycles ac ON wre.cycle_id = ac.id
          WHERE wre.pool_id = $1 AND wre.status = 'WAITING'
-         ORDER BY wre.priority_number ASC
+         ORDER BY COALESCE(sp.assigned_priority, wre.priority_number) ASC, wre.joined_at ASC, sp.college_id ASC, wre.id ASC
          LIMIT 1`,
         [poolId]
       );
