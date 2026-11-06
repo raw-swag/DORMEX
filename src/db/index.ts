@@ -20,8 +20,14 @@ class PostgresDatabaseService implements DatabaseService {
   private pool: Pool;
 
   constructor(connectionString?: string) {
-    const connStr = connectionString || process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/dormex';
-    const isSsl = process.env.PG_SSL === 'true';
+    const connStr = connectionString || process.env.DATABASE_URL;
+    if (!connStr) {
+      throw new Error('FATAL_DATABASE_CONFIG: DATABASE_URL must be provided for PostgreSQL connection');
+    }
+
+    // Auto-enable SSL for Neon or cloud PostgreSQL (sslmode=require, -pooler, or neon.tech) or if PG_SSL=true
+    const isNeonOrCloud = connStr.includes('neon.tech') || connStr.includes('sslmode=require') || connStr.includes('-pooler');
+    const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
     this.pool = new Pool({
       connectionString: connStr,
@@ -153,7 +159,12 @@ export function getDatabaseService(forceMemory: boolean = false): DatabaseServic
     return dbInstance;
   }
 
-  if (forceMemory || process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !process.env.DATABASE_URL && !forceMemory) {
+    throw new Error('FATAL_DATABASE_CONFIG: Production requires an externally supplied DATABASE_URL (Neon PostgreSQL)');
+  }
+
+  if (forceMemory || process.env.NODE_ENV === 'test' || (!process.env.DATABASE_URL && !isProduction)) {
     dbInstance = new MemoryDatabaseService();
   } else {
     dbInstance = new PostgresDatabaseService();
