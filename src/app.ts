@@ -166,8 +166,15 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     };
   };
 
-  // Health check & Readiness endpoint
-  app.get('/health', async (req, reply) => {
+  // Liveness probe (process is running and event loop is responding; does NOT depend on PostgreSQL)
+  app.get('/health', async () => ({
+    status: 'UP',
+    service: 'DORMEX Hostel Allocation Engine',
+    timestamp: new Date().toISOString(),
+  }));
+
+  // Readiness probe (verifies PostgreSQL database connection is alive and queryable)
+  app.get('/readyz', async (req, reply) => {
     let dbStatus = 'UNKNOWN';
     try {
       const dbCheck = await database.query('SELECT 1 as alive');
@@ -176,9 +183,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       dbStatus = 'DISCONNECTED';
     }
 
-    const isHealthy = dbStatus === 'CONNECTED';
-    return reply.code(isHealthy ? 200 : 503).send({
-      status: isHealthy ? 'UP' : 'DEGRADED',
+    const isReady = dbStatus === 'CONNECTED';
+    return reply.code(isReady ? 200 : 503).send({
+      status: isReady ? 'READY' : 'NOT_READY',
       database: dbStatus,
       environment: process.env.NODE_ENV || 'development',
       service: 'DORMEX Hostel Allocation Engine',

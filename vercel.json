@@ -10,6 +10,10 @@
       "destination": "https://dormex-api.onrender.com/health"
     },
     {
+      "source": "/readyz",
+      "destination": "https://dormex-api.onrender.com/readyz"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

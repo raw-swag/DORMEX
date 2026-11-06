@@ -29,12 +29,16 @@ class PostgresDatabaseService implements DatabaseService {
     const isNeonOrCloud = connStr.includes('neon.tech') || connStr.includes('sslmode=require') || connStr.includes('-pooler');
     const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
+    // Secure TLS configuration: verified certificate enforcement (rejectUnauthorized: true)
+    // Neon uses ISRG Root X1 (Let's Encrypt), which is part of Node's default CA trust store.
+    const sslConfig = isSsl ? { rejectUnauthorized: true } : undefined;
+
     this.pool = new Pool({
       connectionString: connStr,
       max: parseInt(process.env.PG_MAX_CONNECTIONS || '20', 10),
       idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT_MS || '30000', 10),
       connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '5000', 10),
-      ssl: isSsl ? { rejectUnauthorized: false } : undefined,
+      ssl: sslConfig,
     });
 
     this.pool.on('error', (err) => {
