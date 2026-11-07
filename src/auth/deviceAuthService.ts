@@ -45,9 +45,38 @@ export interface DemoSessionRecord {
 export class DeviceAuthService {
   private db: DatabaseService;
   // Ephemeral challenge storage with TTL
-  private challenges: Map<string, { challenge: string; slot_id?: 'SLOT_01' | 'SLOT_02'; expectedType: 'registration' | 'authentication'; expiresAt: number }> = new Map();
+  private challenges: Map<string, { challenge: string; slot_id?: 'SLOT_01' | 'SLOT_02'; expectedType: 'registration' | 'authentication'; adminUserId?: string; expiresAt: number }> = new Map();
   // Ephemeral demo sessions (in addition to token signing for high reliability & immediate revocation)
   private activeDemoSessions: Map<string, DemoSessionRecord> = new Map();
+  // Rate limiting map: tracks failed attempts per IP with cooldown
+  private rateLimits: Map<string, { attempts: number; blockedUntil: number }> = new Map();
+
+  public checkRateLimit(ip: string): void {
+    const record = this.rateLimits.get(ip);
+    if (record) {
+      if (record.blockedUntil > Date.now()) {
+        const remainingSec = Math.ceil((record.blockedUntil - Date.now()) / 1000);
+        throw new Error(`RATE_LIMIT_EXCEEDED: Too many attempts. Please retry in ${remainingSec} seconds.`);
+      }
+      if (Date.now() > record.blockedUntil && record.blockedUntil > 0) {
+        this.rateLimits.delete(ip);
+      }
+    }
+  }
+
+  public recordFailedAttempt(ip: string): void {
+    const record = this.rateLimits.get(ip) || { attempts: 0, blockedUntil: 0 };
+    record.attempts += 1;
+    if (record.attempts >= 5) {
+      record.blockedUntil = Date.now() + 60 * 1000; // Block for 60 seconds after 5 failed attempts
+    }
+    this.rateLimits.set(ip, record);
+  }
+
+  public recordSuccessfulAttempt(ip: string): void {
+    this.rateLimits.delete(ip);
+  }
+
 
   constructor(db: DatabaseService) {
     this.db = db;
@@ -268,7 +297,7 @@ export class DeviceAuthService {
     const { slot_id, challengeToken, response, expectedOrigin, hostname, adminUserId } = params;
 
     const storedChallenge = this.challenges.get(challengeToken);
-    if (!storedChallenge || storedChallenge.expectedType !== 'registration' || storedChallenge.slot_id !== slot_id) {
+    if (!storedChallenge || storedChallenge.expectedType !== 'registration' || storedChallenge.slot_id !== slot_id || storedChallenge.adminUserId !== adminUserId) {
       throw new Error('CHALLENGE_EXPIRED_OR_INVALID: Registration challenge is invalid or has expired. Please re-initiate enrollment.');
     }
     // Invalidate challenge immediately (single use, prevents replay)
