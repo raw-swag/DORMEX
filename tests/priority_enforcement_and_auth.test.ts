@@ -491,11 +491,11 @@ describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () 
       const fastifyApp = await buildApp(testDb);
       await fastifyApp.ready();
 
-      // First login verification
+      // First login verification with new demo password convention
       const login1 = await fastifyApp.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-029', password: 'password' },
+        payload: { identifier: 'DEMO-029', password: 'password29' },
       });
       expect(login1.statusCode).toBe(200);
 
@@ -506,16 +506,107 @@ describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () 
       const login2 = await fastifyApp.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-029', password: 'password' },
+        payload: { identifier: 'DEMO-029', password: 'password29' },
       });
       expect(login2.statusCode).toBe(200);
 
       const login3 = await fastifyApp.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-030', password: 'password' },
+        payload: { identifier: 'DEMO-030', password: 'password30' },
       });
       expect(login3.statusCode).toBe(200);
+      await fastifyApp.close();
+    });
+
+    it('authenticates representative student (DEMO-001 -> password1), admin (ADM001 -> admin123), and hostel office (OFF001 -> office123) demo accounts', async () => {
+      resetDatabaseInstance();
+      const testDb = getDatabaseService(true);
+      process.env.NODE_ENV = 'test';
+      process.env.SEED_DEMO_DATA = 'true';
+      const fastifyApp = await buildApp(testDb);
+      await fastifyApp.ready();
+
+      // 1. Student demo accounts: DEMO-001 -> password1, DEMO-002 -> password2, DEMO-029 -> password29
+      const student1Login = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-001', password: 'password1' },
+      });
+      expect(student1Login.statusCode).toBe(200);
+      const student1Data = student1Login.json();
+      expect(student1Data.session.role).toBe('STUDENT');
+      expect(student1Data.session.collegeId).toBe('DEMO-001');
+
+      const student2Login = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-002', password: 'password2' },
+      });
+      expect(student2Login.statusCode).toBe(200);
+
+      // Wrong password rejected
+      const studentWrongLogin = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'DEMO-001', password: 'wrongpassword' },
+      });
+      expect(studentWrongLogin.statusCode).toBe(401);
+
+      // 2. Admin demo account: ADM001 -> admin123 (CHIEF_WARDEN role, SYSTEM scope)
+      const adminLogin = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'ADM001', password: 'admin123' },
+      });
+      expect(adminLogin.statusCode).toBe(200);
+      const adminData = adminLogin.json();
+      expect(adminData.session.role).toBe('CHIEF_WARDEN');
+      expect(adminData.session.scopeType).toBe('SYSTEM');
+      expect(adminData.session.collegeId).toBe('ADM001');
+
+      // ADM001 is strictly forbidden from SUPER_ADMIN-only force allocation override
+      const forceOverrideRes = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/admin/allocations/force-override',
+        headers: { cookie: adminLogin.cookies.map((c: any) => `${c.name}=${c.value}`).join('; ') },
+        payload: {
+          cycleId: 'cyc_bvb_pilot_2026',
+          studentId: 'prof_demo_001',
+          seatId: 'st_rm_bvb_201_A',
+          reason: 'Unauthorized demo override attempt',
+        },
+      });
+      expect(forceOverrideRes.statusCode).toBe(403);
+      expect(forceOverrideRes.json().error).toContain('FORBIDDEN');
+
+      // Admin wrong password rejected
+      const adminWrongLogin = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'ADM001', password: 'wrongpassword' },
+      });
+      expect(adminWrongLogin.statusCode).toBe(401);
+
+      // 3. Hostel Office demo account: OFF001 -> office123
+      const officeLogin = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'OFF001', password: 'office123' },
+      });
+      expect(officeLogin.statusCode).toBe(200);
+      const officeData = officeLogin.json();
+      expect(officeData.session.role).toBe('HOSTEL_OFFICE');
+      expect(officeData.session.collegeId).toBe('OFF001');
+
+      // Office wrong password rejected
+      const officeWrongLogin = await fastifyApp.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { identifier: 'OFF001', password: 'wrongpassword' },
+      });
+      expect(officeWrongLogin.statusCode).toBe(401);
+
       await fastifyApp.close();
     });
   });

@@ -143,8 +143,8 @@ describe('DORMEX Notification & Announcement System Suite', () => {
   it('6. Emits certified allocation results notification upon cycle publication', async () => {
     const pubRes = await request(app)
       .put('/api/allocation-cycles/cyc_bvb_yr2_pilot/status')
-      .set('x-user-id', 'usr_admin')
-      .set('x-role', 'SUPER_ADMIN')
+      .set('x-user-id', 'usr_office')
+      .set('x-role', 'HOSTEL_OFFICE')
       .send({ status: 'PUBLISHED' });
 
     expect(pubRes.status).toBe(200);

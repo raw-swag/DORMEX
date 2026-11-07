@@ -106,8 +106,8 @@ export const DEV_USERS: Record<string, UserSession> = {
   superAdmin: {
     userId: 'usr_admin',
     collegeId: 'ADM001',
-    fullName: 'System Administrator (Super Admin)',
-    role: 'SUPER_ADMIN',
+    fullName: 'Chief Warden Administrator (ADM001)',
+    role: 'CHIEF_WARDEN',
     scopeType: 'SYSTEM',
     scopeId: null,
     profileId: null,

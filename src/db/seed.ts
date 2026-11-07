@@ -29,12 +29,23 @@ export async function seedDatabase(db: DatabaseService): Promise<void> {
   const defaultHash = isProd
     ? (process.env.INITIAL_ADMIN_HASH || null)
     : authService.hashPassword('password');
+
+  const adminHash = isProd
+    ? (process.env.INITIAL_ADMIN_HASH || null)
+    : authService.hashPassword('admin123');
+
+  const officeHash = isProd
+    ? (process.env.INITIAL_ADMIN_HASH || null)
+    : authService.hashPassword('office123');
+
   const staffUsers = [
-    ['usr_admin', 'ADM001', 'admin@college.edu', 'System Administrator', defaultHash, 'SUPER_ADMIN', 'SYSTEM', null],
-    ['usr_office', 'OFF001', 'office@college.edu', 'Hostel Office Staff', defaultHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
+    ['usr_admin', 'ADM001', 'admin@college.edu', 'Chief Warden Administrator', adminHash, 'CHIEF_WARDEN', 'SYSTEM', null],
+    ['usr_office', 'OFF001', 'office@college.edu', 'Hostel Office Staff', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
     ['usr_chief', 'CW001', 'chiefwarden@college.edu', 'Chief Warden Dr. Sharma', defaultHash, 'CHIEF_WARDEN', 'SYSTEM', null],
     ['usr_warden_bvb', 'WRD001', 'warden.bvb@college.edu', 'Prof. Rao (Warden - BVB Block)', defaultHash, 'WARDEN', 'BUILDING', 'bld_bvb'],
     ['usr_proctor_1', 'PRC001', 'proctor1@college.edu', 'Dr. Mehta (Proctor)', defaultHash, 'PROCTOR', 'SYSTEM', null],
+    // Institutional Super Admin fixture for verified testing without compromising ADM001's restricted demo role
+    ['usr_super_admin', 'SUPERADMIN', 'superadmin@college.edu', 'System Super Administrator', defaultHash, 'SUPER_ADMIN', 'SYSTEM', null],
   ];
 
   for (const [id, cid, email, name, hash, roleName, scopeType, scopeId] of staffUsers) {
@@ -42,11 +53,31 @@ export async function seedDatabase(db: DatabaseService): Promise<void> {
       // Skip default dev credentials in production when no production hash/credentials are configured
       continue;
     }
-    await db.query(
-      `INSERT INTO users (id, college_id, email, full_name, password_hash)
-       VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-      [id, cid, email, name, hash]
-    );
+    // Check if a user with this college_id already exists.
+    // If an existing user was already provisioned (e.g. by bootstrap-super-admin),
+    // preserve their existing password and full name, but update demo accounts if needed.
+    const preCheck = await db.query(`SELECT id, college_id FROM users WHERE college_id = $1`, [cid]);
+    if (preCheck.rows.length === 0) {
+      await db.query(
+        `INSERT INTO users (id, college_id, email, full_name, password_hash)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (college_id) DO NOTHING`,
+        [id, cid, email, name, hash]
+      );
+    } else if (preCheck.rows[0].id === id) {
+      // Default demo account (e.g. usr_admin, usr_office) -> update password hash
+      await db.query(
+        `UPDATE users SET password_hash = $1 WHERE id = $2`,
+        [hash, id]
+      );
+    }
+
+    // Check if user exists (by id or college_id) before inserting user_role to maintain relational integrity
+    const existingUser = await db.query(`SELECT id FROM users WHERE college_id = $1`, [cid]);
+    if (existingUser.rows.length === 0) {
+      continue;
+    }
+    const resolvedUserId = existingUser.rows[0].id;
 
     const roleRes = await db.query(`SELECT id FROM roles WHERE name = $1`, [roleName]);
     const roleId = roleRes.rows[0].id;
@@ -54,7 +85,7 @@ export async function seedDatabase(db: DatabaseService): Promise<void> {
     await db.query(
       `INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
        VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-      [`ur_${id}`, id, roleId, scopeType, scopeId]
+      [`ur_${resolvedUserId}`, resolvedUserId, roleId, scopeType, scopeId]
     );
   }
 
@@ -77,11 +108,15 @@ Preference submission and roommate group coordination do not guarantee a specifi
 5. **Room Change & Vacating Policy**:
 Students who wish to request a room change must apply within the official 48-hour post-allocation change window. Room moves are subject to verified availability and administrative approval.`;
 
+  // Resolve whether usr_admin actually exists in users table before setting published_by FK
+  const adminCheck = await db.query(`SELECT id FROM users WHERE id = 'usr_admin'`);
+  const publishedBy = adminCheck.rows.length > 0 ? 'usr_admin' : null;
+
   await db.query(
     `INSERT INTO terms_documents (id, version, title, content, content_hash, is_published, published_by)
      VALUES ($1, $2, $3, $4, $5, TRUE, $6)
      ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, is_published = TRUE`,
-    ['terms_v1', 1, 'Hostel Room Responsibility & Allocation Agreement (2026-27)', termsText, 'hash_terms_v1_pilot', isProd && !defaultHash ? null : 'usr_admin']
+    ['terms_v1', 1, 'Hostel Room Responsibility & Allocation Agreement (2026-27)', termsText, 'hash_terms_v1_pilot', publishedBy]
   );
 
   // 3. Exactly 30 Synthetic Demo Students (DEMO-001 through DEMO-030)
@@ -122,11 +157,16 @@ Students who wish to request a room change must apply within the official 48-hou
       const feeTimestamp = i <= 29 ? new Date(Date.UTC(2026, 7, 10, 9, i, 0)).toISOString() : null;
       const verifiedBy = i <= 28 ? 'usr_office' : null;
       const verifiedAt = i <= 28 ? new Date(Date.UTC(2026, 7, 10, 12, 0, 0)).toISOString() : null;
+      // Per demo credentials: DEMO-001 -> password1, DEMO-029 -> password29, matching numeric suffix
+      const studentPassword = `password${i}`;
+      const studentHash = authService.hashPassword(studentPassword);
 
       await db.query(
         `INSERT INTO users (id, college_id, email, full_name, password_hash)
-         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-        [userId, collegeId, email, fullName, defaultHash]
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE
+           SET password_hash = EXCLUDED.password_hash`,
+        [userId, collegeId, email, fullName, studentHash]
       );
 
       await db.query(

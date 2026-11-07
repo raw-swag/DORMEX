@@ -497,7 +497,7 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
         url: '/api/auth/login',
         payload: {
           identifier: 'DEMO-029',
-          password: 'password', // Verified against dev hash
+          password: 'password29', // Verified against dev hash
         },
       });
 
@@ -522,7 +522,7 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
         url: '/api/auth/login',
         payload: {
           identifier: 'DEMO-030',
-          password: 'password',
+          password: 'password30',
         },
       });
 
@@ -587,7 +587,7 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
       const loginRes = await app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-029', password: 'password' },
+        payload: { identifier: 'DEMO-029', password: 'password29' },
       });
       expect(loginRes.statusCode).toBe(200);
       const cookies = loginRes.cookies;
@@ -599,7 +599,7 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
       const credLoginRes = await app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { collegeIdOrEmail: 'demo.029@college.edu', password: 'password' },
+        payload: { collegeIdOrEmail: 'demo.029@college.edu', password: 'password29' },
       });
       expect(credLoginRes.statusCode).toBe(200);
       expect(credLoginRes.json().session.userId).toBe('usr_demo_029');
@@ -657,7 +657,7 @@ describe('DORMEX Step 5 Agreement Acceptance & Authentication Security Suite', (
       const freshLogin = await app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-029', password: 'password' },
+        payload: { identifier: 'DEMO-029', password: 'password29' },
       });
       expect(freshLogin.statusCode).toBe(200);
       const freshCookie = freshLogin.cookies.find((c: any) => c.name === 'token')!.value;

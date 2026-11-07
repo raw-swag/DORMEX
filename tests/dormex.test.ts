@@ -204,10 +204,23 @@ describe('DORMEX Comprehensive Verification Suite', () => {
 
   describe('3. Super Admin Forceful Allocation Override with Mandatory Audit', () => {
     it('requires Super Admin role and reason, writing before/after state to audit trail', async () => {
-      const adminActor: AuthActor = {
+      // Ensure usr_super_admin user exists in DB for foreign key / audit integrity
+      await db.query(`
+        INSERT INTO users (id, college_id, email, full_name, password_hash)
+        VALUES ('usr_super_admin', 'SUPERADMIN', 'superadmin@college.edu', 'System Super Admin', 'hash')
+        ON CONFLICT (id) DO NOTHING
+      `);
+
+      const superAdminActor: AuthActor = {
+        id: 'usr_super_admin',
+        college_id: 'SUPERADMIN',
+        role: 'SUPER_ADMIN',
+        scope_type: 'SYSTEM',
+      };
+      const chiefWardenActor: AuthActor = {
         id: 'usr_admin',
         college_id: 'ADM001',
-        role: 'SUPER_ADMIN',
+        role: 'CHIEF_WARDEN',
         scope_type: 'SYSTEM',
       };
       const officeActor: AuthActor = {
@@ -228,6 +241,17 @@ describe('DORMEX Comprehensive Verification Suite', () => {
         )
       ).rejects.toThrow('FORBIDDEN');
 
+      // Chief Warden (ADM001) is strictly forbidden from forceful override
+      await expect(
+        engine.forceOverrideAllocation(
+          'cyc_fall_2026',
+          'prof_stu_1',
+          'st_rm_aryabhata_101_B',
+          'Chief Warden override attempt',
+          chiefWardenActor
+        )
+      ).rejects.toThrow('FORBIDDEN');
+
       // Super Admin with empty reason is rejected
       await expect(
         engine.forceOverrideAllocation(
@@ -235,7 +259,7 @@ describe('DORMEX Comprehensive Verification Suite', () => {
           'prof_stu_1',
           'st_rm_aryabhata_101_B',
           '',
-          adminActor
+          superAdminActor
         )
       ).rejects.toThrow('REASON_REQUIRED');
 
@@ -245,7 +269,7 @@ describe('DORMEX Comprehensive Verification Suite', () => {
         'prof_stu_1',
         'st_rm_aryabhata_101_B',
         'Emergency medical accommodation',
-        adminActor
+        superAdminActor
       );
       expect(res.allocationId).toBeDefined();
 
@@ -253,7 +277,7 @@ describe('DORMEX Comprehensive Verification Suite', () => {
         `SELECT * FROM audit_logs WHERE action = 'FORCE_ALLOCATION_OVERRIDE'`
       );
       expect(auditCheck.rows.length).toBe(1);
-      expect(auditCheck.rows[0].actor_id).toBe('usr_admin');
+      expect(auditCheck.rows[0].actor_id).toBe('usr_super_admin');
       expect(auditCheck.rows[0].reason).toBe('Emergency medical accommodation');
     });
   });

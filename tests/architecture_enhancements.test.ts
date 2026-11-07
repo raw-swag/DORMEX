@@ -150,11 +150,11 @@ describe('DORMEX Architecture & PostgreSQL Enhancements Suite', () => {
     expect(checkPub.rows[0].status).toBe('PUBLISHED');
     expect(checkPub.rows[0].results_published_at).not.toBeNull();
 
-    // 2. Lock cycle
+    // 2. Lock cycle as Hostel Office staff
     const lockRes = await app.inject({
       method: 'PUT',
       url: '/api/allocation-cycles/cyc_bvb_pilot_2026/status',
-      headers: { 'x-user-id': 'usr_admin' },
+      headers: { 'x-user-id': 'usr_office' },
       payload: { status: 'LOCKED' },
     });
     expect(lockRes.statusCode).toBe(200);

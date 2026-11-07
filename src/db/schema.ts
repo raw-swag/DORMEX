@@ -483,8 +483,9 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
     try {
       await db.query(statement);
     } catch (err: any) {
-      // Ignore existing index / table warnings if idempotent
-      if (!err.message?.includes('already exists')) {
+      // Ignore existing index / table warnings or pg-mem re-run limitations if idempotent
+      const msg = err.message || '';
+      if (!msg.includes('already exists') && !msg.includes('Not supported')) {
         throw err;
       }
     }

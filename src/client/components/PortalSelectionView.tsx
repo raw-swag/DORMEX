@@ -276,7 +276,7 @@ export const PortalSelectionView: React.FC = () => {
 
                   {selectedPortal === 'ADMIN' && (
                     <>
-                      <option value="superAdmin">System Administrator (Super Admin · ADM001)</option>
+                      <option value="superAdmin">Chief Warden Administrator (ADM001)</option>
                       <option value="chiefWarden">Dr. Sharma (Chief Warden · CW001)</option>
                       <option value="wardenBvb">Prof. Rao (Warden - BVB Block · WRD001)</option>
                     </>

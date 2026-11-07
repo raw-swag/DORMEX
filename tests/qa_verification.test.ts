@@ -16,10 +16,10 @@ describe('Regression & QA Workflow Suite (Admin Override, Occupancy Export, Role
   }, 30000);
 
   it('Regression: Super Admin force-override route matches frontend contract and relocates student with audit log', async () => {
-    // Attempt force-override as Super Admin (usr_admin)
+    // Attempt force-override as Super Admin (usr_super_admin)
     const res = await request(app)
       .post('/api/admin/allocations/force-override')
-      .set('x-user-id', 'usr_admin')
+      .set('x-user-id', 'usr_super_admin')
       .send({
         cycleId: 'cyc_fall_2026',
         studentId: 'prof_stu_1',

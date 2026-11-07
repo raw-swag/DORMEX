@@ -2,6 +2,7 @@ import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { newDb, IMemoryDb } from 'pg-mem';
 
 export interface DatabaseService {
+  isInMemory?: boolean;
   query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
   getClient(): Promise<{
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
@@ -17,6 +18,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 class PostgresDatabaseService implements DatabaseService {
+  public isInMemory = false;
   private pool: Pool;
 
   constructor(connectionString?: string) {
@@ -91,8 +93,10 @@ class PostgresDatabaseService implements DatabaseService {
 }
 
 class MemoryDatabaseService implements DatabaseService {
+  public isInMemory = true;
   private db: IMemoryDb;
   private adapter: any;
+  private txMutex: Promise<void> = Promise.resolve();
 
   constructor() {
     this.db = newDb({
@@ -105,6 +109,11 @@ class MemoryDatabaseService implements DatabaseService {
       implementation: () => crypto.randomUUID(),
     });
     this.db.public.registerFunction({
+      name: 'current_database',
+      returns: (this.db.public as any).getType('text'),
+      implementation: () => process.env.TEST_DB_NAME || 'dormex_staging',
+    });
+    this.db.public.registerFunction({
       name: 'regexp_like',
       args: [(this.db.public as any).getType('text'), (this.db.public as any).getType('text')],
       returns: (this.db.public as any).getType('bool'),
@@ -114,6 +123,23 @@ class MemoryDatabaseService implements DatabaseService {
           return new RegExp(pattern, 'i').test(val);
         } catch {
           return false;
+        }
+      },
+    });
+
+    // In pg-mem, information_schema.columns hardcodes is_nullable to 'NO'.
+    // Provide a helper to accurately check column nullability from table metadata.
+    this.db.public.registerFunction({
+      name: '__pgmem_is_column_nullable',
+      args: [(this.db.public as any).getType('text'), (this.db.public as any).getType('text')],
+      returns: (this.db.public as any).getType('bool'),
+      implementation: (tblName: string, colName: string) => {
+        try {
+          const tbl = (this.db.public as any).getTable(tblName);
+          const colRef = tbl?.columnMgr?.get(colName);
+          return colRef ? !colRef.notNull : true;
+        } catch {
+          return true;
         }
       },
     });
@@ -137,7 +163,20 @@ class MemoryDatabaseService implements DatabaseService {
   async transaction<T>(fn: (client: {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
   }) => Promise<T>): Promise<T> {
+    // Chain transaction executions to emulate PostgreSQL serial/atomic transaction locks
+    let releaseLock: () => void = () => {};
+    const currentLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const previousLock = this.txMutex;
+    this.txMutex = currentLock;
+
+    await previousLock;
     const client = await this.adapter.connect();
+    let backupState: any = null;
+    try {
+      backupState = this.db.backup();
+    } catch {}
     try {
       await client.query('BEGIN');
       const result = await fn(client);
@@ -145,9 +184,15 @@ class MemoryDatabaseService implements DatabaseService {
       return result;
     } catch (err) {
       await client.query('ROLLBACK');
+      if (backupState) {
+        try {
+          backupState.restore();
+        } catch {}
+      }
       throw err;
     } finally {
       client.release();
+      releaseLock();
     }
   }
 

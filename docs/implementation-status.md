@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-10-18
+Last Updated: 2026-11-07
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,19 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 28: Staging Presentation Gate, Hosted Demo Seeding & Relational Schema Manifest**:
+  - **Deliverables Completed**:
+    - Server-side presentation gate with hash-only password verification (`scrypt`), signed HttpOnly session cookie, and fail-closed staging enforcement (`src/app.ts`).
+    - Sliding-window IP rate limiting (10 requests / 15 minutes) for presentation verification endpoint.
+    - Idempotent staging demo seeder script (`scripts/seed-hosted-demo.ts`) with 6-point safety check and non-destructive account provisioning.
+    - Decoupled institutional first SUPER_ADMIN bootstrap script with PostgreSQL advisory locking (`scripts/bootstrap-super-admin.ts`).
+    - Demo account credential alignment (`DEMO-001..030` -> `password1..30`, `ADM001` -> `CHIEF_WARDEN` / `admin123`, `OFF001` -> `HOSTEL_OFFICE` / `office123`).
+    - 33-table / 289-column relational schema manifest reconciling `SCHEMA_SQL` and live Neon staging catalog (`src/db/schema_manifest.ts`).
+    - PWA prompt visit-scoped dismissal in memory (resets on revisit/reload without storage persistence).
+  - **Verification Metrics**:
+    - 190/190 automated tests passing across 18 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client and server builds (`npm run build:client`, `npm run build:server`).
 - [x] **Phase 27: Final MVP System Completion, Strict Priority Enforcement, PWA & Production Hardening**:
   - **Deliverables Completed**:
     - Comprehensive audit of all 6 institutional roles (`STUDENT`, `PROCTOR`, `WARDEN`, `CHIEF_WARDEN`, `HOSTEL_OFFICE`, `SUPER_ADMIN`).

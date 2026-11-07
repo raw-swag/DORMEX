@@ -12,6 +12,8 @@
     "start": "node dist/server.js",
     "start:dev": "tsx src/server.ts",
     "migrate": "tsx src/db/migrate.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-super-admin.ts",
+    "seed:hosted-demo": "tsx scripts/seed-hosted-demo.ts",
     "dev": "node scripts/dev.js",
     "dev:client": "vite",
     "test": "vitest run",

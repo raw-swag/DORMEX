@@ -24,17 +24,24 @@ interface PWAInstallContextType {
 
 const PWAInstallContext = createContext<PWAInstallContextType | undefined>(undefined);
 
-const DISMISSAL_STORAGE_KEY = 'dormex_pwa_dismissed_until';
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
 export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  // Session/visit-scoped in-memory dismissal: survives state updates on the current page,
+  // but resets on full page reload or revisit without using localStorage, sessionStorage, cookies or IndexedDB.
+  const [isDismissedForSession, setIsDismissedForSession] = useState(false);
 
   useEffect(() => {
+    // Clean up any legacy persistent dismissal keys from localStorage
+    try {
+      localStorage.removeItem('dormex_pwa_dismissed_until');
+    } catch {
+      // Ignore storage errors if disabled/sandboxed
+    }
+
     // 1. Device and browser capability detection
     const userAgent = window.navigator.userAgent || '';
     const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
@@ -60,15 +67,13 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const promptEvent = e as BeforeInstallPromptEvent;
       setDeferredPrompt(promptEvent);
 
-      // Check user dismissal cooldown
-      const dismissedUntil = localStorage.getItem(DISMISSAL_STORAGE_KEY);
-      const isDismissed = dismissedUntil && Date.now() < parseInt(dismissedUntil, 10);
-
-      // Only present mobile prompt if on mobile device, not standalone, and not dismissed
-      if (isMobileDevice && !isDismissed) {
+      // Only present mobile prompt if on mobile device, not standalone, and not dismissed for this page visit
+      if (isMobileDevice && !isDismissedForSession) {
         // Wait 3 seconds so user can see interface before prompting
         const timer = setTimeout(() => {
-          setShowPrompt(true);
+          if (!isDismissedForSession) {
+            setShowPrompt(true);
+          }
         }, 3000);
         return () => clearTimeout(timer);
       }
@@ -79,42 +84,42 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsInstalled(true);
       setDeferredPrompt(null);
       setShowPrompt(false);
-      localStorage.removeItem(DISMISSAL_STORAGE_KEY);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // 5. iOS Safari auto-guide if mobile, not standalone, not dismissed
-    if (isIOSDevice && !isStandalone) {
-      const dismissedUntil = localStorage.getItem(DISMISSAL_STORAGE_KEY);
-      const isDismissed = dismissedUntil && Date.now() < parseInt(dismissedUntil, 10);
-      if (!isDismissed) {
-        const timer = setTimeout(() => {
+    // 5. iOS Safari auto-guide if mobile, not standalone, not dismissed for this page visit
+    if (isIOSDevice && !isStandalone && !isDismissedForSession) {
+      const timer = setTimeout(() => {
+        if (!isDismissedForSession) {
           setShowPrompt(true);
-        }, 3500);
-        return () => clearTimeout(timer);
-      }
+        }
+      }, 3500);
+      return () => clearTimeout(timer);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [isDismissedForSession]);
 
   const openInstallPrompt = useCallback(() => {
-    setShowPrompt(true);
-  }, []);
+    if (!isInstalled) {
+      setShowPrompt(true);
+    }
+  }, [isInstalled]);
 
   const closePrompt = useCallback(() => {
     setShowPrompt(false);
+    setIsDismissedForSession(true);
   }, []);
 
   const dismissPrompt = useCallback(() => {
     setShowPrompt(false);
-    // Configurable 7-day cooldown persisted cleanly without any sensitive data
-    localStorage.setItem(DISMISSAL_STORAGE_KEY, (Date.now() + SEVEN_DAYS_MS).toString());
+    // Dismiss strictly for this page visit only — never persisted across reloads or revisits
+    setIsDismissedForSession(true);
   }, []);
 
   const triggerNativeInstall = useCallback(async (): Promise<boolean> => {

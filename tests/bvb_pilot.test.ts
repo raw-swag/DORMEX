@@ -19,7 +19,7 @@ describe('DORMEX BVB Block Floor 2 (30 Students) Pilot Suite', () => {
     it('seeds exactly 30 synthetic demo students with identifiers DEMO-001 through DEMO-030', async () => {
       const res = await request(app)
         .get('/api/students')
-        .set('x-user-id', 'usr_admin');
+        .set('x-user-id', 'usr_office');
 
       expect(res.status).toBe(200);
       const demoStudents = res.body.filter((s: any) => s.college_id.startsWith('DEMO-'));
@@ -78,10 +78,10 @@ describe('DORMEX BVB Block Floor 2 (30 Students) Pilot Suite', () => {
 
       expect(studentForbidden.status).toBe(403);
 
-      // Staff (Super Admin) updates eligibility of DEMO-029 from PENDING to ELIGIBLE
+      // Staff (Hostel Office) updates eligibility of DEMO-029 from PENDING to ELIGIBLE
       const staffUpdate = await request(app)
         .put('/api/students/prof_demo_029/eligibility')
-        .set('x-user-id', 'usr_admin')
+        .set('x-user-id', 'usr_office')
         .send({ status: 'ELIGIBLE' });
 
       expect(staffUpdate.status).toBe(200);
@@ -89,7 +89,7 @@ describe('DORMEX BVB Block Floor 2 (30 Students) Pilot Suite', () => {
       // Verify update in registry
       const checkRes = await request(app)
         .get('/api/students/prof_demo_029')
-        .set('x-user-id', 'usr_admin');
+        .set('x-user-id', 'usr_office');
       expect(checkRes.status).toBe(200);
       expect(checkRes.body.eligibility_status).toBe('ELIGIBLE');
     });

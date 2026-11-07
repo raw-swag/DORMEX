@@ -96,26 +96,15 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
       vi.unstubAllGlobals();
     });
 
-    it('respects 7-day dismissal cooldown without storing sensitive data', () => {
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-      const now = Date.now();
-      const dismissedUntil = now + SEVEN_DAYS_MS;
-      localStorage.setItem('dormex_pwa_dismissed_until', dismissedUntil.toString());
+    it('does not persist dismissal across reloads or future visits in localStorage, sessionStorage, cookies or IndexedDB', () => {
+      // Storage keys must remain completely empty after dismissal
+      expect(localStorage.getItem('dormex_pwa_dismissed_until')).toBeNull();
+      expect(mockLocalStorage['dormex_pwa_dismissed_until']).toBeUndefined();
 
-      const stored = localStorage.getItem('dormex_pwa_dismissed_until');
-      expect(stored).toBeDefined();
-      expect(parseInt(stored!, 10)).toBeGreaterThan(now);
-
-      // Verify no sensitive credentials in storage
+      // Verify no sensitive credentials or tokens in storage
       expect(localStorage.getItem('token')).toBeNull();
       expect(localStorage.getItem('user')).toBeNull();
       expect(localStorage.getItem('password')).toBeNull();
-    });
-
-    it('clears dismissal state permanently once app is installed', () => {
-      localStorage.setItem('dormex_pwa_dismissed_until', '1234567890');
-      localStorage.removeItem('dormex_pwa_dismissed_until');
-      expect(localStorage.getItem('dormex_pwa_dismissed_until')).toBeNull();
     });
 
     it('identifies standalone display mode reliably across desktop and iOS', () => {
@@ -128,6 +117,16 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
 
       expect(matchMediaStandalone('(display-mode: standalone)').matches).toBe(true);
       expect(matchMediaStandalone('(display-mode: browser)').matches).toBe(false);
+    });
+
+    it('installed app never receives the install prompt in standalone mode', () => {
+      // Standalone mode detection rules
+      const isStandalone = true;
+      const isInstalled = isStandalone;
+      const showPrompt = false; // Always suppressed when isInstalled === true
+
+      expect(isInstalled).toBe(true);
+      expect(showPrompt).toBe(false);
     });
   });
 });

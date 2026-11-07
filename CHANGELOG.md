@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.0] - 2026-11-07
+
+- **Feat(presentation-security): Staging Presentation Access Gate, Hosted Demo Seeding & Production Hardening**:
+  - **Server-Side Presentation Access Gate (`src/app.ts`, `tests/presentation-access.test.ts`)**:
+    - Implemented secure staging presentation access barrier (`POST /api/presentation/verify`) protected by timing-safe cryptographic `scrypt` password verification.
+    - Requires `PRESENTATION_ACCESS_PASSWORD_HASH` and `PRESENTATION_ACCESS_TOKEN_SECRET` in server environment; plaintext access passwords are strictly prohibited.
+    - Issues cryptographically signed `dormex_presentation_token` cookie with `HttpOnly`, `Secure`, `SameSite=Lax`, and 4-hour expiration (`PRESENTATION_ACCESS_COOKIE_MAX_AGE_MS`).
+    - Enforced fail-closed protection in staging (`DORMEX_APP_ENV=staging` or `APP_ENV=staging`): missing hash/secret blocks protected routes with `503 Service Unavailable`.
+    - Exempted hosting probes (`/health`, `/readyz`) and presentation verification endpoints from the presentation gate cookie check.
+    - Applied sliding-window IP rate limiting (10 requests per 15-minute window) returning `429 Too Many Requests`.
+  - **Role Correction & UI Alignment (`src/client/components/PortalSelectionView.tsx`, `src/client/context/AuthContext.tsx`, `src/db/seed.ts`)**:
+    - Realigned demo administrator `ADM001` to `CHIEF_WARDEN` role with `SYSTEM` scope; strictly prohibited assigning `SUPER_ADMIN` to demo accounts.
+    - Maintained `OFF001` as `HOSTEL_OFFICE` role with `SYSTEM` scope and `DEMO-001` through `DEMO-030` as `STUDENT`.
+    - Added dedicated test `usr_super_admin` in test suites to verify that `ADM001` cannot perform Super-Admin-only operations.
+  - **Idempotent Hosted Demo Seeder (`scripts/seed-hosted-demo.ts`, `tests/hosted-demo-seed.test.ts`)**:
+    - Implemented dedicated one-time staging seeding command `npm run seed:hosted-demo` using existing `AuthService` `scrypt` hashing.
+    - 6-point environment safety validation ensuring target is strictly non-production and matches approved host allowlists.
+    - Supports `DEMO-001` through `DEMO-030` with matching suffix passwords (`password1`..`password30`), `ADM001` (`admin123`), and `OFF001` (`office123`).
+    - Safe collision detection and transactional rollback: never overwrites existing real institutional accounts.
+  - **Decoupled Super-Admin Bootstrap (`scripts/bootstrap-super-admin.ts`, `tests/admin-bootstrap.test.ts`)**:
+    - Created isolated CLI tool `npm run admin:bootstrap` to bootstrap the first institutional `SUPER_ADMIN` with PostgreSQL advisory locking.
+  - **Relational Schema Manifest & Migration Integrity (`src/db/schema_manifest.ts`, `src/db/migrate.ts`, `src/db/index.ts`)**:
+    - Established strict 33-table / 289-column relational schema manifest reconciling `SCHEMA_SQL` and live PostgreSQL catalogs.
+    - Added comprehensive column-by-column migration integrity audit guaranteeing 100% constraint and index coverage.
+  - **PWA Visit-Scoped Dismissal Polish (`src/client/context/PWAInstallContext.tsx`, `tests/pwa_install_and_assets.test.ts`)**:
+    - Dismissal prompt is strictly visit-scoped in memory; resets on page reload/revisit with no 7-day cooldown.
+    - Suppressed in standalone display mode and during critical multi-step student workflows.
+  - **Verification**:
+    - 190/190 automated tests passing across 18 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client and server builds (`npm run build:client`, `npm run build:server`).
+
+---
+
 ## [2.8.0] - 2026-11-06
 
 - **Feat(pwa-ux): Mobile UX Final Polish, PWA Install Experience, Authentication Hardening & Production Release**:
