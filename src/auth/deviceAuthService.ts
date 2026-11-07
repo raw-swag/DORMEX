@@ -271,6 +271,7 @@ export class DeviceAuthService {
       challenge: options.challenge,
       slot_id,
       expectedType: 'registration',
+      adminUserId,
       expiresAt: Date.now() + 5 * 60 * 1000, // 5 min TTL
     });
 

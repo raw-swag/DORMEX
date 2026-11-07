@@ -443,6 +443,16 @@ CREATE TABLE IF NOT EXISTS device_registration_slots (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+    token TEXT PRIMARY KEY,
+    challenge TEXT NOT NULL,
+    slot_id TEXT,
+    expected_type TEXT NOT NULL,
+    admin_user_id TEXT,
+    expires_at BIGINT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_device_slots_active_cred 
     ON device_registration_slots (credential_id) 
     WHERE credential_id IS NOT NULL AND is_revoked = FALSE;
