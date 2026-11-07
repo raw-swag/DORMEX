@@ -24,10 +24,6 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "@types/pg": "^8.23.1",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
     "@types/supertest": "^7.2.1",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.2",
@@ -35,7 +31,6 @@
     "supertest": "^7.3.1",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },
@@ -56,6 +51,11 @@
     "react-konva": "^19.3.0",
     "tailwindcss-merge": "^0.0.1-security",
     "zod": "^4.6.6",
-    "zoid": "^9.0.86"
+    "zoid": "^9.0.86",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
   }
 }
