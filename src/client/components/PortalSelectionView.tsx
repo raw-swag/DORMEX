@@ -270,52 +270,54 @@ export const PortalSelectionView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quick Preset Selector for Fast Local Pilot Evaluation */}
-              <div className="pt-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold text-[#627084]">
-                    Quick Pilot Preset Directory:
-                  </span>
-                  <span className="text-[10px] text-[#016A62] font-mono">Auto-populates ID</span>
+              {/* Quick Preset Selector: STRICTLY GATED to verified hardware-bound demo sessions only */}
+              {demoSessionInfo && (
+                <div className="pt-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-[#627084]">
+                      Authorized Demo Presets ({demoSessionInfo.slot_id}):
+                    </span>
+                    <span className="text-[10px] text-[#016A62] font-mono">Hardware Unlocked</span>
+                  </div>
+                  <select
+                    value={selectedUserKey}
+                    onChange={(e) => {
+                      const key = e.target.value;
+                      setSelectedUserKey(key);
+                      const user = DEV_USERS[key];
+                      if (user) {
+                        setAuthIdInput(user.collegeId);
+                      }
+                    }}
+                    className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
+                  >
+                    {selectedPortal === 'STUDENT' && (
+                      <optgroup label="Seeded Demo Students (Pilot Participants)">
+                        <option value="demo1">Aarav Sharma (DEMO-001, Verified Fee, Priority #1)</option>
+                        <option value="demo2">Diya Patel (DEMO-002, Verified Fee, Priority #2)</option>
+                        <option value="demo3">Rohan Verma (DEMO-003, Verified Fee, Priority #3)</option>
+                        <option value="demo10">Arjun Menon (DEMO-010, Verified Fee, Priority #10)</option>
+                        <option value="demo29">Prisha Pandey (DEMO-029, Fee Submitted - Pending Review)</option>
+                        <option value="demo30">Nikhil Saxena (DEMO-030, Unpaid / Fee Pending)</option>
+                      </optgroup>
+                    )}
+
+                    {selectedPortal === 'ADMIN' && (
+                      <>
+                        <option value="superAdmin">Chief Warden Administrator (ADM001)</option>
+                        <option value="chiefWarden">Dr. Sharma (Chief Warden · CW001)</option>
+                        <option value="wardenBvb">Prof. Rao (Warden - BVB Block · WRD001)</option>
+                      </>
+                    )}
+
+                    {selectedPortal === 'HOSTEL_OFFICE' && (
+                      <>
+                        <option value="hostelOffice">Hostel Office Staff (Admissions & Verification · OFF001)</option>
+                      </>
+                    )}
+                  </select>
                 </div>
-                <select
-                  value={selectedUserKey}
-                  onChange={(e) => {
-                    const key = e.target.value;
-                    setSelectedUserKey(key);
-                    const user = DEV_USERS[key];
-                    if (user) {
-                      setAuthIdInput(user.collegeId);
-                    }
-                  }}
-                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
-                >
-                  {selectedPortal === 'STUDENT' && (
-                    <optgroup label="Seeded Demo Students (Pilot Participants)">
-                      <option value="demo1">Aarav Sharma (DEMO-001, Verified Fee, Priority #1)</option>
-                      <option value="demo2">Diya Patel (DEMO-002, Verified Fee, Priority #2)</option>
-                      <option value="demo3">Rohan Verma (DEMO-003, Verified Fee, Priority #3)</option>
-                      <option value="demo10">Arjun Menon (DEMO-010, Verified Fee, Priority #10)</option>
-                      <option value="demo29">Prisha Pandey (DEMO-029, Fee Submitted - Pending Review)</option>
-                      <option value="demo30">Nikhil Saxena (DEMO-030, Unpaid / Fee Pending)</option>
-                    </optgroup>
-                  )}
-
-                  {selectedPortal === 'ADMIN' && (
-                    <>
-                      <option value="superAdmin">Chief Warden Administrator (ADM001)</option>
-                      <option value="chiefWarden">Dr. Sharma (Chief Warden · CW001)</option>
-                      <option value="wardenBvb">Prof. Rao (Warden - BVB Block · WRD001)</option>
-                    </>
-                  )}
-
-                  {selectedPortal === 'HOSTEL_OFFICE' && (
-                    <>
-                      <option value="hostelOffice">Hostel Office Staff (Admissions & Verification · OFF001)</option>
-                    </>
-                  )}
-                </select>
-              </div>
+              )}
 
 
             {/* Dedicated Hardware-Bound WebAuthn Demo Entry Point */}

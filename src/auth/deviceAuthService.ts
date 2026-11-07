@@ -66,12 +66,39 @@ export class DeviceAuthService {
   /**
    * Determine RP ID from request host / domain
    */
+  public getRpIdFromReq(req: any): string {
+    // 1. Prefer client's origin or referer (e.g. https://dormex-sit.vercel.app)
+    const originHeader = req.headers['origin'] || req.headers['Origin'] || req.headers['referer'] || req.headers['Referer'];
+    if (originHeader && typeof originHeader === 'string') {
+      try {
+        const u = new URL(originHeader);
+        const host = u.hostname.toLowerCase();
+        if (host === 'localhost' || host === '127.0.0.1') return 'localhost';
+        return host;
+      } catch {
+        // ignore malformed
+      }
+    }
+
+    // 2. Check X-Forwarded-Host from Vercel / Cloudflare reverse proxy
+    const xForwardedHost = req.headers['x-forwarded-host'];
+    if (xForwardedHost && typeof xForwardedHost === 'string') {
+      const cleanFwd = xForwardedHost.split(',')[0].trim().split(':')[0].toLowerCase();
+      if (cleanFwd === 'localhost' || cleanFwd === '127.0.0.1') return 'localhost';
+      return cleanFwd;
+    }
+
+    // 3. Fallback to direct request hostname
+    const host = (req.hostname || req.headers['host'] || 'localhost').split(':')[0].toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return 'localhost';
+    return host;
+  }
+
   public getRpId(hostname: string): string {
     const cleanHost = hostname.split(':')[0].toLowerCase();
     if (cleanHost === 'localhost' || cleanHost === '127.0.0.1') {
       return 'localhost';
     }
-    // If Render host e.g. dormex-api-s4qq.onrender.com or vercel host dormex.vercel.app
     return cleanHost;
   }
 
@@ -87,6 +114,12 @@ export class DeviceAuthService {
       } catch {
         // ignore malformed
       }
+    }
+    const xForwardedHost = req.headers['x-forwarded-host'];
+    const xForwardedProto = req.headers['x-forwarded-proto'] || 'https';
+    if (xForwardedHost && typeof xForwardedHost === 'string') {
+      const cleanFwd = xForwardedHost.split(',')[0].trim();
+      return `${xForwardedProto}://${cleanFwd}`;
     }
     const host = req.headers['host'] || 'localhost:3000';
     const proto = req.headers['x-forwarded-proto'] || 'http';
