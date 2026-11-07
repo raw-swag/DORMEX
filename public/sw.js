@@ -1,12 +1,6 @@
 // DORMEX Progressive Web App Service Worker
-// STRICT SECURITY COMPLIANCE (Section 8):
-// - Caches ONLY an explicit allowlist of non-sensitive static assets and application shell.
-// - NEVER caches API requests (/api/*).
-// - NEVER caches user profiles, allocation state, sessions, credentials, tokens, complaints, or occupancy.
-// - Never confirms seats or replays allocations offline.
-// - Only approved DORMEX caches ('dormex-static-') are cleaned up upon activation.
-
-const CACHE_NAME = 'dormex-static-v1.1.0';
+// Cache version bumped to bust any stale index.html or orphaned bundle hashes
+const CACHE_NAME = 'dormex-static-v2.0.0';
 
 // Explicit Allowlist of Static Application Shell Assets
 const STATIC_ALLOWLIST = [
@@ -44,13 +38,13 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: purge stale dormex cache generations only
+// Activate: purge all stale caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key.startsWith('dormex-static-') && key !== CACHE_NAME) {
+          if (key !== CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -59,34 +53,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: strict network-only for all dynamic and API endpoints
+// Fetch: Network-first for navigation & index.html, strict bypass for APIs
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Mandatory Security Rule: All API calls and mutations are STRICTLY network-only
+  // 1. All API calls, authentication, or non-GET requests bypass Service Worker completely
   if (url.pathname.startsWith('/api') || event.request.method !== 'GET') {
-    return; // Pass directly to standard network fetch without touching cache
+    return;
   }
 
-  // 2. Only same-origin requests are eligible for caching
+  // 2. Only same-origin requests
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // 3. For hashed build assets in /assets/ (e.g. index-[hash].js, index-[hash].css), cache-first with network fallback
-  const isHashedAsset = url.pathname.startsWith('/assets/') && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
-
-  if (!ALLOWED_SET.has(url.pathname) && !isHashedAsset) {
-    // Navigational fallback for client routing
-    if (event.request.mode === 'navigate') {
-      event.respondWith(
-        fetch(event.request).catch(() => caches.match('/index.html'))
-      );
-    }
+  // 3. Navigation requests (HTML document) MUST ALWAYS be Network-First to avoid serving stale bundle hashes
+  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
     return;
   }
 
-  // 4. Safe static asset caching (Cache first, falling back to network)
+  // 4. For static assets in /assets/
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -103,10 +100,6 @@ self.addEventListener('fetch', (event) => {
         });
 
         return networkResponse;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
       });
     })
   );
