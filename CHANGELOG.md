@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.12.0] - 2026-11-07
+
+- **Security(audit): Complete Repository Security Audit, Secret Scan & Dependency Hardening**:
+  - **Comprehensive Secret Scan & Verification**:
+    - Scanned all tracked files, historical git commits, and compiled frontend production bundles for secrets, credentials, and API tokens. Zero hardcoded credentials or database strings detected.
+    - Verified strict client-server boundary: compiled frontend bundle (dist/client/assets/*.js) contains 0 references to DATABASE_URL, JWT_SECRET, COOKIE_SECRET, or database credentials.
+  - **Dependency Hardening & Clutter Reduction (package.json, package-lock.json)**:
+    - Resolved 6 transitive vulnerabilities via npm audit fix, achieving 0 vulnerabilities across all dependencies.
+    - Pruned dead/obsolete dependencies: uninstalled zoid, tailwindcss-merge, and clsx.
+    - Maintained @types/node, @types/pg, @types/react, @types/react-dom, and typescript under production dependencies to ensure deterministic compilation on Render (NODE_ENV=production).
+  - **Live Cloud Deployment & Database Synchronization**:
+    - Migrated all 33 relational PostgreSQL tables and seeded initial BVB Block inventory into live Render Managed Database (dormex_db).
+    - Deployed backend service to Render (dormex-api-s4qq.onrender.com); verified live GET /health (status: UP) and GET /readyz (status: READY, database: CONNECTED).
+    - Configured Vercel Edge Rewrites in vercel.json to reverse-proxy /api/*, /health, and /readyz to Render backend with same-origin cookie compatibility.
+  - **Security Documentation Suite (docs/)**:
+    - Authored docs/SECURITY_AUDIT.md, docs/REPOSITORY_INVENTORY.md, docs/ENVIRONMENT_VARIABLES.md, and docs/SECURITY_REMEDIATION.md.
+  - **Test Suite Verification**:
+    - All 20 test suites and 206 automated tests passing cleanly (100% pass rate).
+    - TypeScript typecheck passing with 0 errors (npm run typecheck).
+    - Client and server production builds completing cleanly.
+
+---
+
 ## [2.11.0] - 2026-11-07
 
 - **Docs(audit): Complete Codebase Audit, PostgreSQL Reliability & Deployment Hardening**:

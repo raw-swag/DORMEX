@@ -39,7 +39,10 @@
     "@fastify/cors": "^11.3.1",
     "@fastify/jwt": "^10.2.4",
     "@fastify/static": "^10.1.6",
-    "clsx": "^2.1.1",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "dotenv": "^18.0.7",
     "fastify": "^5.12.5",
     "konva": "^10.7.1",
@@ -49,13 +52,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-konva": "^19.3.0",
-    "tailwindcss-merge": "^0.0.1-security",
-    "zod": "^4.6.6",
-    "zoid": "^9.0.86",
-    "@types/node": "^26.6.5",
-    "@types/pg": "^8.23.1",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "zod": "^4.6.6"
   }
 }
