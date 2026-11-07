@@ -32,7 +32,8 @@ import {
   FileText,
   X,
   Search,
-  Filter
+  Filter,
+  Loader2
 } from 'lucide-react';
 import { AdminBroadcastNoticeModal } from './AdminBroadcastNoticeModal.js';
 
@@ -60,8 +61,10 @@ export const AdminDashboard: React.FC = () => {
   const [showNoticeModal, setShowNoticeModal] = useState(false);
 
   // Stitch Admin Allocation Control States
-  const [turnTimerSecs, setTurnTimerSecs] = useState<number>(222); // 03:42 default
-  const [isCycleRunning, setIsCycleRunning] = useState<boolean>(true);
+  const [turnTimerSecs, setTurnTimerSecs] = useState<number>(120);
+  const [activeCycleTelemetry, setActiveCycleTelemetry] = useState<any | null>(null);
+  const [cycleControlAction, setCycleControlAction] = useState<'START' | 'STOP' | 'RESUME' | null>(null);
+  const [cycleActionSubmitting, setCycleActionSubmitting] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState<boolean>(false);
   const [auditDrawerStudent, setAuditDrawerStudent] = useState<any | null>(null);
   
@@ -86,16 +89,66 @@ export const AdminDashboard: React.FC = () => {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('bld_bvb');
   const [selectedFloorId, setSelectedFloorId] = useState<string>('flr_bvb_2');
 
-  const isSuperAdminOrOffice = ['HOSTEL_OFFICE', 'SUPER_ADMIN'].includes(session?.role || '');
+  const isSuperAdminOrOffice = ['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(session?.role || '');
+
+  const primaryCycle = cycles.find((c) => c.id === 'cyc_bvb_pilot_2026') || cycles[0];
+  const activeCycleStatus = activeCycleTelemetry?.cycleStatus || primaryCycle?.status || 'READY';
+  const isCycleActive = activeCycleStatus === 'ACTIVE';
 
   // Live timer countdown
   useEffect(() => {
-    if (!isCycleRunning) return;
+    if (!isCycleActive) return;
     const interval = setInterval(() => {
       setTurnTimerSecs((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [isCycleRunning]);
+  }, [isCycleActive]);
+
+  const fetchActiveTurnTelemetry = async (cycleId: string) => {
+    if (!cycleId) return;
+    try {
+      const res = await apiFetch(`/api/allocation-cycles/${cycleId}/active-turn`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveCycleTelemetry(data);
+        if (data.session && typeof data.session.remainingSeconds === 'number') {
+          setTurnTimerSecs(data.session.remainingSeconds);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch active turn telemetry', e);
+    }
+  };
+
+  const handleCycleLifecycle = async (action: 'START' | 'STOP' | 'RESUME') => {
+    const cycleId = primaryCycle?.id || 'cyc_bvb_pilot_2026';
+    setCycleActionSubmitting(true);
+    setActionMsg(null);
+    try {
+      let endpoint = '';
+      if (action === 'START') endpoint = `/api/allocation-cycles/${cycleId}/start`;
+      else if (action === 'STOP') endpoint = `/api/allocation-cycles/${cycleId}/stop`;
+      else if (action === 'RESUME') endpoint = `/api/allocation-cycles/${cycleId}/resume`;
+
+      const res = await apiFetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to ${action.toLowerCase()} allocation cycle`);
+      }
+
+      setActionMsg({
+        type: 'success',
+        text: data.message || `Allocation cycle ${action.toLowerCase()}ed successfully.`,
+      });
+      setCycleControlAction(null);
+      await loadData();
+      await fetchActiveTurnTelemetry(cycleId);
+    } catch (err: any) {
+      setActionMsg({ type: 'error', text: err.message });
+    } finally {
+      setCycleActionSubmitting(false);
+    }
+  };
 
   const formatTimer = (totalSeconds: number) => {
     const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -178,6 +231,12 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const cycleId = primaryCycle?.id || 'cyc_bvb_pilot_2026';
+    fetchActiveTurnTelemetry(cycleId);
+    const interval = setInterval(() => {
+      fetchActiveTurnTelemetry(cycleId);
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleUpdateCycleStatus = async (cycleId: string, status: string) => {
@@ -375,9 +434,25 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-1 rounded bg-[#E5E9EB] flex items-center gap-2 text-[#181C1E] text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#016A62]"></span>
-              <span>Cycle Active — Phase 1 Priority Run</span>
+            <div className={`px-3 py-1 rounded flex items-center gap-2 text-xs font-semibold ${
+              activeCycleStatus === 'ACTIVE'
+                ? 'bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2]'
+                : (activeCycleStatus === 'PAUSED'
+                  ? 'bg-[#FAF4E6] text-[#9C7A2E] border border-[#D4B779]'
+                  : 'bg-[#E5E9EB] text-[#44474D] border border-[#DFE3E5]')
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                activeCycleStatus === 'ACTIVE'
+                  ? 'bg-[#016A62] animate-pulse'
+                  : (activeCycleStatus === 'PAUSED' ? 'bg-[#D49E34]' : 'bg-[#74777E]')
+              }`}></span>
+              <span>
+                {activeCycleStatus === 'ACTIVE'
+                  ? 'Cycle Status: RUNNING (ACTIVE)'
+                  : (activeCycleStatus === 'PAUSED'
+                    ? 'Cycle Status: STOPPED (PAUSED)'
+                    : `Cycle Status: NOT STARTED (${activeCycleStatus})`)}
+              </span>
             </div>
             <button
               onClick={() => openAuditDrawer()}
@@ -609,19 +684,33 @@ export const AdminDashboard: React.FC = () => {
                   </span>
                   <div>
                     <h2 className="text-sm font-bold text-[#07203C]">Live Turn Engine</h2>
-                    <p className="text-[11px] text-[#44474D]">Executing sequential priority allotment slots</p>
+                    <p className="text-[11px] text-[#44474D]">Server-Authoritative Sequential Allotment</p>
                   </div>
                 </div>
-                <div className="px-3 py-1 rounded bg-[#9DEFE3]/40 text-[#0D6F66] text-xs font-bold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#016A62] animate-ping"></span>
-                  <span>Turn 14 of 24</span>
+                <div className={`px-3 py-1 rounded text-xs font-bold flex items-center gap-2 ${
+                  isCycleActive
+                    ? 'bg-[#9DEFE3]/40 text-[#0D6F66]'
+                    : (activeCycleStatus === 'PAUSED' ? 'bg-[#FAF4E6] text-[#9C7A2E]' : 'bg-[#E5E9EB] text-[#44474D]')
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    isCycleActive ? 'bg-[#016A62] animate-ping' : (activeCycleStatus === 'PAUSED' ? 'bg-[#D49E34]' : 'bg-[#74777E]')
+                  }`}></span>
+                  <span>
+                    {isCycleActive
+                      ? `Turn Active · ${activeCycleTelemetry?.totalWaiting ?? 0} in Queue`
+                      : (activeCycleStatus === 'PAUSED' ? 'Engine Stopped (Paused)' : 'Allocation Not Started')}
+                  </span>
                 </div>
               </div>
 
               {/* Active Turn Live Card */}
               {(() => {
-                const activeStu = allStudents.find((s) => s.assigned_priority === 1 || s.live_priority === 1) || allStudents[0];
-                const activeInitials = activeStu?.full_name ? activeStu.full_name.slice(0, 2).toUpperCase() : 'CU';
+                const candidate = activeCycleTelemetry?.candidate;
+                const hasTurn = Boolean(activeCycleTelemetry?.hasActiveTurn && candidate);
+                const activeInitials = candidate?.fullName
+                  ? candidate.fullName.slice(0, 2).toUpperCase()
+                  : '—';
+
                 return (
                   <div className="p-4 rounded-xl bg-[#F0F4F6] border border-[#DFE3E5] flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3 w-full md:w-auto">
@@ -630,16 +719,24 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-[#07203C]">{activeStu?.full_name || 'Active Candidate'}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#203653] text-white text-[10px] font-mono">
-                            USN: {activeStu?.college_id || 'ID Pending'}
+                          <span className="text-sm font-bold text-[#07203C]">
+                            {hasTurn ? candidate?.fullName : (isCycleActive ? 'Awaiting Next in Queue' : 'No Active Candidate Turn')}
                           </span>
+                          {hasTurn && candidate?.collegeId && (
+                            <span className="px-1.5 py-0.5 rounded bg-[#203653] text-white text-[10px] font-mono">
+                              USN: {candidate.collegeId}
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-[#44474D]">
-                          {activeStu?.department || 'Department Registered'} · Priority #{activeStu?.assigned_priority || 1}
+                          {hasTurn
+                            ? `${candidate?.department || 'Department Registered'} · Priority #${candidate?.priorityNumber || 1}`
+                            : (isCycleActive ? 'Waiting for queue check' : 'Cycle must be explicitly started by Admin')}
                         </span>
                         <span className="text-xs text-[#016A62] font-semibold mt-0.5">
-                          {activeStu?.allocated_seat_id ? `Confirmed Allocation: ${activeStu.allocated_seat_id}` : 'Queue turn slot active'}
+                          {isCycleActive
+                            ? (hasTurn ? 'Authoritative selection turn in progress' : 'Standby')
+                            : (activeCycleStatus === 'PAUSED' ? 'Turn clock frozen by Admin Stop' : 'Allocation queue dormant')}
                         </span>
                       </div>
                     </div>
@@ -647,15 +744,15 @@ export const AdminDashboard: React.FC = () => {
                     {/* Timer Block */}
                     <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white rounded-lg border border-[#DFE3E5] shadow-xs">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
-                        Turn Window Remaining
+                        {activeCycleStatus === 'PAUSED' ? 'Turn Timer (Frozen)' : 'Turn Window Remaining'}
                       </span>
                       <div className="text-2xl text-[#07203C] font-mono font-bold tracking-tight">
-                        {formatTimer(turnTimerSecs)}
+                        {hasTurn ? formatTimer(turnTimerSecs) : '--:--'}
                       </div>
                       <div className="w-32 bg-[#E5E9EB] h-1.5 rounded-full overflow-hidden mt-1.5">
                         <div
-                          className="bg-[#016A62] h-full transition-all duration-1000"
-                          style={{ width: `${Math.max(0, Math.min(100, (turnTimerSecs / 300) * 100))}%` }}
+                          className={`h-full transition-all duration-1000 ${activeCycleStatus === 'PAUSED' ? 'bg-[#D49E34]' : 'bg-[#016A62]'}`}
+                          style={{ width: `${hasTurn ? Math.max(0, Math.min(100, (turnTimerSecs / 120) * 100)) : 0}%` }}
                         />
                       </div>
                     </div>
@@ -665,31 +762,47 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Controls Button Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                <button
-                  onClick={() => setIsCycleRunning(!isCycleRunning)}
-                  className={`px-3 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs ${
-                    isCycleRunning
-                      ? 'bg-[#E5E9EB] text-[#181C1E] hover:bg-[#DFE3E5]'
-                      : 'bg-[#BA1A1A] text-white hover:bg-[#93000A]'
-                  }`}
-                >
-                  {isCycleRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{isCycleRunning ? 'Pause Cycle' : 'Resume Cycle'}</span>
-                </button>
+                {activeCycleStatus === 'ACTIVE' ? (
+                  <button
+                    onClick={() => setCycleControlAction('STOP')}
+                    className="px-3 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs bg-[#FAF4E6] text-[#9C7A2E] hover:bg-[#F3E7C4] border border-[#D4B779]"
+                  >
+                    <Pause className="w-3.5 h-3.5" />
+                    <span>Stop Allocation</span>
+                  </button>
+                ) : activeCycleStatus === 'PAUSED' ? (
+                  <button
+                    onClick={() => setCycleControlAction('RESUME')}
+                    className="px-3 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs bg-[#016A62] text-white hover:bg-[#005049]"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Resume Allocation</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setCycleControlAction('START')}
+                    className="px-3 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs bg-[#016A62] text-white hover:bg-[#005049]"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Start Allocation</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setTurnTimerSecs((prev) => prev + 120);
                     setActionMsg({ type: 'success', text: '+2:00 Minutes successfully added to current active student turn.' });
                   }}
-                  className="px-3 py-2 rounded bg-[#E5E9EB] text-[#181C1E] text-xs font-bold hover:bg-[#DFE3E5] transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                  disabled={!isCycleActive}
+                  className={`px-3 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs ${
+                    isCycleActive ? 'bg-[#E5E9EB] text-[#181C1E] hover:bg-[#DFE3E5]' : 'bg-[#F0F4F6] text-[#A0A4A8] cursor-not-allowed'
+                  }`}
                 >
                   <PlusCircle className="w-3.5 h-3.5 text-[#016A62]" />
                   <span>+2 Min Extension</span>
                 </button>
                 <button
                   onClick={() => {
-                    setIsCycleRunning(false);
-                    alert('CRITICAL EMERGENCY HALT TRIGGERED: All active student sockets in BVB Block Floor 2 frozen. Database write operations suspended pending Warden Master override key.');
+                    alert('CRITICAL EMERGENCY HALT: Sockets frozen. Database write operations suspended pending Warden Master override key.');
                   }}
                   className="px-3 py-2 rounded bg-[#FFDAD6] text-[#93000A] text-xs font-bold hover:bg-[#BA1A1A] hover:text-white transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                 >
@@ -698,9 +811,9 @@ export const AdminDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setPublishModalOpen(true)}
-                  className="px-3 py-2 rounded bg-[#016A62] text-white text-xs font-bold hover:bg-[#005049] transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                  className="px-3 py-2 rounded bg-[#07203C] text-white text-xs font-bold hover:bg-[#203653] transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                 >
-                  <Globe className="w-3.5 h-3.5" />
+                  <Globe className="w-3.5 h-3.5 text-[#84D5CA]" />
                   <span>Publish Allotment</span>
                 </button>
               </div>
@@ -1500,6 +1613,81 @@ export const AdminDashboard: React.FC = () => {
                 className="px-4 py-2 bg-[#07203C] hover:bg-[#203653] text-white text-xs font-bold rounded-lg shadow-sm"
               >
                 Close Simulation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CYCLE LIFECYCLE CONFIRMATION MODAL */}
+      {cycleControlAction && (
+        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#DFE3E5] shadow-2xl animate-fadeIn">
+            <div className="flex items-center gap-3 border-b border-[#DFE3E5] pb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                cycleControlAction === 'START'
+                  ? 'bg-[#9DEFE3]/50 text-[#016A62]'
+                  : (cycleControlAction === 'STOP' ? 'bg-[#FAF4E6] text-[#9C7A2E]' : 'bg-[#9DEFE3]/50 text-[#016A62]')
+              }`}>
+                {cycleControlAction === 'STOP' ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#07203C]">
+                  {cycleControlAction === 'START' && 'Start Allocation Cycle'}
+                  {cycleControlAction === 'STOP' && 'Stop / Pause Allocation Cycle'}
+                  {cycleControlAction === 'RESUME' && 'Resume Allocation Cycle'}
+                </h3>
+                <div className="text-[11px] text-[#44474D]">
+                  Authoritative administrator lifecycle control
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-[#44474D] space-y-2 leading-relaxed">
+              {cycleControlAction === 'START' && (
+                <p>
+                  You are about to start the live allocation engine for{' '}
+                  <strong className="text-[#07203C]">{primaryCycle?.name || 'BVB Pilot Cycle'}</strong>.
+                  This will verify inventory disjointness, activate the queue, and begin sequential turns.
+                </p>
+              )}
+              {cycleControlAction === 'STOP' && (
+                <p>
+                  Pausing will immediately <strong>freeze the turn countdown timer</strong> and halt automatic queue advancement.
+                  The current candidate's remaining seconds will be saved authoritatively in PostgreSQL.
+                </p>
+              )}
+              {cycleControlAction === 'RESUME' && (
+                <p>
+                  Resuming will continue the allocation cycle from the active turn with its preserved remaining seconds.
+                  Students waiting in line will retain their exact queue order.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DFE3E5]">
+              <button
+                type="button"
+                disabled={cycleActionSubmitting}
+                onClick={() => setCycleControlAction(null)}
+                className="px-4 py-2 bg-[#F0F4F6] hover:bg-[#E5E9EB] text-[#44474D] text-xs font-bold rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={cycleActionSubmitting}
+                onClick={() => handleCycleLifecycle(cycleControlAction)}
+                className={`px-4 py-2 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 ${
+                  cycleControlAction === 'STOP'
+                    ? 'bg-[#9C7A2E] hover:bg-[#836422]'
+                    : 'bg-[#016A62] hover:bg-[#005049]'
+                }`}
+              >
+                {cycleActionSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>
+                  Confirm {cycleControlAction === 'START' ? 'Start' : (cycleControlAction === 'STOP' ? 'Stop' : 'Resume')}
+                </span>
               </button>
             </div>
           </div>

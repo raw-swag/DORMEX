@@ -182,14 +182,25 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
   // Poll waiting room, session state & roommate intent
   const refreshStatus = async () => {
     try {
+      // Re-fetch cycle status to reflect Admin Start / Stop
+      const cycRes = await apiFetch('/api/allocation-cycles');
+      if (cycRes.ok) {
+        const cycList = await cycRes.json();
+        setAvailableCycles(cycList);
+      }
+
       if (waitingEntry?.poolId) {
-        const advRes = await apiFetch(`/api/allocation-pools/${waitingEntry.poolId}/advance`, {
-          method: 'POST',
-        });
+        const advRes = await apiFetch(`/api/allocation-pools/${waitingEntry.poolId}/active-turn`);
         if (advRes.ok) {
           const advData = await advRes.json();
           if (advData.session && advData.session.studentId === session?.profileId) {
             setActiveSession(advData.session);
+          } else if (!advData.session && activeSession) {
+            // Cycle paused or expired
+            const currCyc = availableCycles.find((c: any) => c.id === cycleId);
+            if (currCyc?.status !== 'PAUSED') {
+              setActiveSession(null);
+            }
           }
         }
       }
@@ -215,6 +226,16 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       setTimeLeft(null);
       return;
     }
+    const currentCycle = availableCycles.find((c: any) => c.id === cycleId);
+    if (currentCycle?.status === 'PAUSED') {
+      // Freeze countdown display while paused
+      const now = Date.now();
+      const exp = new Date(activeSession.expiresAt).getTime();
+      const diff = Math.max(0, Math.floor((exp - now) / 1000));
+      setTimeLeft(diff);
+      return;
+    }
+
     const tick = () => {
       const now = Date.now();
       const exp = new Date(activeSession.expiresAt).getTime();
@@ -228,7 +249,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
     tick();
     const tInterval = setInterval(tick, 1000);
     return () => clearInterval(tInterval);
-  }, [activeSession?.expiresAt]);
+  }, [activeSession?.expiresAt, availableCycles, cycleId]);
 
   // Load cycles and buildings on mount
   useEffect(() => {
@@ -292,9 +313,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       if (!res.ok) throw new Error(data.error || 'Failed to join');
       setWaitingEntry(data);
 
-      const advRes = await apiFetch(`/api/allocation-pools/${data.poolId}/advance`, {
-        method: 'POST',
-      });
+      const advRes = await apiFetch(`/api/allocation-pools/${data.poolId}/active-turn`);
       if (advRes.ok) {
         const advData = await advRes.json();
         if (advData.session && advData.session.studentId === session?.profileId) {
@@ -585,11 +604,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       // 1. Authoritative check on active session
       let currentSession = activeSession;
       if (!currentSession || currentSession.studentId !== session.profileId) {
-        // Try advance or check active turn
+        // Query active turn telemetry
         if (waitingEntry?.poolId) {
-          const advRes = await apiFetch(`/api/allocation-pools/${waitingEntry.poolId}/advance`, {
-            method: 'POST',
-          });
+          const advRes = await apiFetch(`/api/allocation-pools/${waitingEntry.poolId}/active-turn`);
           if (advRes.ok) {
             const advData = await advRes.json();
             if (advData.session && advData.session.studentId === session.profileId) {
@@ -1037,39 +1054,63 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       {activeSubTab === 'allocation_map' && (
         <div className="space-y-6">
           {/* Top Priority Status Ribbon from Stitch */}
-          <div className="px-5 py-3 bg-[#07203C] text-white rounded-xl shadow-xs border border-[#17283B] flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#2C8279] text-white text-xs font-bold shrink-0">
-                ✓
-              </span>
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#84d5ca]">
-                    Live Allocation Active
-                  </span>
-                  <span className="text-slate-400 text-xs">/</span>
-                  <span className="text-xs font-bold text-white">
-                    Turn #{myProfile?.assigned_priority || '1'} Allocation Window
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-300 truncate">
-                  Eligible Candidate: <span className="font-bold text-white">{session?.fullName}</span> (USN: <span className="font-mono">{session?.collegeId}</span> · Priority #{myProfile?.assigned_priority || '1'}) · Active BVB-F2 Window
-                </div>
-              </div>
-            </div>
+          {(() => {
+            const activeCycle = availableCycles.find((c: any) => c.id === cycleId);
+            const cycleStatus = activeCycle?.status || 'READY';
+            const isPaused = cycleStatus === 'PAUSED';
+            const isNotStarted = !['ACTIVE', 'PAUSED'].includes(cycleStatus);
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-[#112947] px-3 py-1.5 rounded-lg border border-[#203653]">
-                <Clock className="w-3.5 h-3.5 text-[#84d5ca] animate-pulse" />
-                <span className="text-xs font-semibold text-white">
-                  Selection Window: <strong className="font-mono text-[#D4B779]">{timeLeft !== null ? `${Math.floor(timeLeft / 60)}m ${String(timeLeft % 60).padStart(2, '0')}s` : 'Active'}</strong>
-                </span>
+            return (
+              <div className="px-5 py-3 bg-[#07203C] text-white rounded-xl shadow-xs border border-[#17283B] flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-xs font-bold shrink-0 ${
+                    cycleStatus === 'ACTIVE' ? 'bg-[#2C8279]' : (isPaused ? 'bg-[#D49E34]' : 'bg-[#627084]')
+                  }`}>
+                    {cycleStatus === 'ACTIVE' ? '✓' : (isPaused ? '❚❚' : '⏳')}
+                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] uppercase font-bold tracking-wider ${
+                        cycleStatus === 'ACTIVE' ? 'text-[#84d5ca]' : (isPaused ? 'text-[#F3E7C4]' : 'text-slate-300')
+                      }`}>
+                        {cycleStatus === 'ACTIVE'
+                          ? 'Live Allocation Active'
+                          : (isPaused ? 'Allocation Temporarily Paused by Admin' : `Allocation Not Started (${cycleStatus})`)}
+                      </span>
+                      <span className="text-slate-400 text-xs">/</span>
+                      <span className="text-xs font-bold text-white">
+                        Turn #{myProfile?.assigned_priority || '1'} Priority Slot
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-300 truncate">
+                      Eligible Candidate: <span className="font-bold text-white">{session?.fullName}</span> (USN: <span className="font-mono">{session?.collegeId}</span> · Priority #{myProfile?.assigned_priority || '1'})
+                      {isPaused && ' · Engine paused; turn countdown frozen'}
+                      {isNotStarted && ' · Engine dormant; awaiting Administrator Start'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 bg-[#112947] px-3 py-1.5 rounded-lg border border-[#203653]">
+                    <Clock className={`w-3.5 h-3.5 ${cycleStatus === 'ACTIVE' ? 'text-[#84d5ca] animate-pulse' : 'text-slate-400'}`} />
+                    <span className="text-xs font-semibold text-white">
+                      Selection Window:{' '}
+                      <strong className="font-mono text-[#D4B779]">
+                        {isPaused
+                          ? (timeLeft !== null ? `${Math.floor(timeLeft / 60)}m ${String(timeLeft % 60).padStart(2, '0')}s (Frozen)` : 'Paused')
+                          : (isNotStarted
+                            ? 'Not Started'
+                            : (timeLeft !== null ? `${Math.floor(timeLeft / 60)}m ${String(timeLeft % 60).padStart(2, '0')}s` : 'Active'))}
+                      </strong>
+                    </span>
+                  </div>
+                  <span className="hidden sm:inline-block px-2.5 py-1 rounded bg-[#203653]/60 text-[10px] font-mono text-slate-300 border border-[#263345]">
+                    Node: SIT-BVB-F2-P30
+                  </span>
+                </div>
               </div>
-              <span className="hidden sm:inline-block px-2.5 py-1 rounded bg-[#203653]/60 text-[10px] font-mono text-slate-300 border border-[#263345]">
-                Node: SIT-BVB-F2-P30
-              </span>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Focused Allocation Status Card with High Contrast */}
           <div className="bg-[#203653] text-white rounded-xl p-4 sm:p-6 shadow-sm border border-[#17283B] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
@@ -1112,17 +1153,30 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             <div className="bg-[#07203C] p-3.5 sm:p-4 rounded-xl border border-[#263345] w-full md:w-auto md:min-w-[260px] flex flex-col items-start gap-2.5 sm:gap-3">
               <div className="text-[11px] font-medium text-slate-300 flex items-center justify-between w-full">
                 <span>Turn Status:</span>
-                {activeSession ? (
-                  <span className="text-[#84d5ca] font-bold uppercase text-[10px] tracking-wider flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#84d5ca] animate-ping" /> Active Window
-                  </span>
-                ) : waitingEntry ? (
-                  <span className="text-[#D4B779] font-semibold text-[10px] uppercase">In Queue</span>
-                ) : myAllocation ? (
-                  <span className="text-[#84d5ca] font-semibold text-[10px] uppercase">Allocated</span>
-                ) : (
-                  <span className="text-slate-400 text-[10px] uppercase">Ready</span>
-                )}
+                {(() => {
+                  const activeCycle = availableCycles.find((c: any) => c.id === cycleId);
+                  const cycleStatus = activeCycle?.status || 'READY';
+                  if (activeSession) {
+                    return (
+                      <span className="text-[#84d5ca] font-bold uppercase text-[10px] tracking-wider flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-[#84d5ca] animate-ping" /> Active Window
+                      </span>
+                    );
+                  }
+                  if (cycleStatus === 'PAUSED') {
+                    return <span className="text-[#D4B779] font-semibold text-[10px] uppercase">Engine Paused</span>;
+                  }
+                  if (cycleStatus !== 'ACTIVE') {
+                    return <span className="text-slate-400 font-semibold text-[10px] uppercase">Not Started</span>;
+                  }
+                  if (waitingEntry) {
+                    return <span className="text-[#D4B779] font-semibold text-[10px] uppercase">In Queue</span>;
+                  }
+                  if (myAllocation) {
+                    return <span className="text-[#84d5ca] font-semibold text-[10px] uppercase">Allocated</span>;
+                  }
+                  return <span className="text-slate-400 text-[10px] uppercase">Ready</span>;
+                })()}
               </div>
 
               {activeSession && !myAllocation && (

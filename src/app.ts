@@ -546,8 +546,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   app.put('/api/allocation-cycles/:id/status', async (req: any, reply) => {
     try {
       const actor = await extractActor(req);
-      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN'].includes(actor.role)) {
-        return reply.code(403).send({ error: 'FORBIDDEN: Only Hostel Office or Super Admin can manage allocation cycle status' });
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to manage allocation cycle status' });
       }
       const { status, waitingRoomThreshold } = req.body as any;
       if (status) {
@@ -587,6 +587,79 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         await database.query(`UPDATE allocation_cycles SET waiting_room_threshold = $1 WHERE id = $2`, [waitingRoomThreshold, req.params.id]);
       }
       return reply.send({ success: true, message: `Cycle updated to ${status} successfully` });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  // Explicit Admin Allocation Lifecycle Controls: START
+  app.post('/api/allocation-cycles/:id/start', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const result = await allocationEngine.startCycle(req.params.id, actor);
+      // Initialize first turn for active pools
+      const poolsRes = await database.query(
+        `SELECT id FROM allocation_pools WHERE cycle_id = $1 AND is_active = TRUE`,
+        [req.params.id]
+      );
+      for (const pool of poolsRes.rows) {
+        await allocationEngine.advancePoolTurn(pool.id).catch(() => {});
+      }
+      return reply.send(result);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Explicit Admin Allocation Lifecycle Controls: STOP (Pause)
+  app.post('/api/allocation-cycles/:id/stop', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const result = await allocationEngine.stopCycle(req.params.id, actor);
+      return reply.send(result);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Explicit Admin Allocation Lifecycle Controls: RESUME
+  app.post('/api/allocation-cycles/:id/resume', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const result = await allocationEngine.resumeCycle(req.params.id, actor);
+      return reply.send(result);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Authoritative Cycle Active Turn telemetry endpoint
+  app.get('/api/allocation-cycles/:id/active-turn', async (req: any, reply) => {
+    try {
+      const turnInfo = await allocationEngine.getActiveTurn(req.params.id);
+      return reply.send(turnInfo);
+    } catch (err: any) {
+      const code = err.message?.startsWith('NOT_FOUND') ? 404 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Authoritative Student Active Turn Poll endpoint (read-only telemetry, does not advance turn)
+  app.get('/api/allocation-pools/:id/active-turn', async (req: any, reply) => {
+    try {
+      const poolRes = await database.query(
+        `SELECT cycle_id FROM allocation_pools WHERE id = $1`,
+        [req.params.id]
+      );
+      if (poolRes.rows.length === 0) {
+        return reply.code(404).send({ error: 'Allocation pool not found' });
+      }
+      const cycleId = poolRes.rows[0].cycle_id;
+      const turnInfo = await allocationEngine.getActiveTurn(cycleId);
+      return reply.send({ session: turnInfo.session, cycleStatus: turnInfo.cycleStatus });
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
@@ -728,7 +801,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   app.get('/api/admin/audit-logs', async (req: any, reply) => {
     try {
       const actor = await extractActor(req);
-      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN'].includes(actor.role)) {
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
         return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to inspect administrative audit logs' });
       }
       const res = await database.query(

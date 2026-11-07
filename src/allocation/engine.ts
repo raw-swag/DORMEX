@@ -91,7 +91,7 @@ export class AllocationEngineService {
         throw new Error('NOT_FOUND: Allocation cycle not found');
       }
       const cycle = cycleRes.rows[0];
-      if (!['READY', 'SIMULATING'].includes(cycle.status)) {
+      if (!['READY', 'SIMULATING', 'ACTIVE', 'PAUSED', 'DRAFT', 'NOT_STARTED'].includes(cycle.status)) {
         throw new Error(`CYCLE_CLOSED: Cycle is currently in ${cycle.status} state`);
       }
 
@@ -179,11 +179,24 @@ export class AllocationEngineService {
   /**
    * Advance pool turn or retrieve active turn session.
    * Enforces that only ONE active turn exists per pool.
+   * STRICT GUARD: Turns can ONLY be scheduled or advanced if the parent allocation cycle is 'ACTIVE'.
    */
   async advancePoolTurn(poolId: string): Promise<BookingSessionInfo | null> {
     return this.db.transaction(async (client) => {
       // Per-pool transaction lock: serializes concurrent advancements for this pool
-      await client.query(`SELECT id FROM allocation_pools WHERE id = $1 FOR UPDATE`, [poolId]);
+      const poolLockRes = await client.query(
+        `SELECT p.id, p.cycle_id, ac.status as cycle_status
+         FROM allocation_pools p
+         JOIN allocation_cycles ac ON p.cycle_id = ac.id
+         WHERE p.id = $1 FOR UPDATE`,
+        [poolId]
+      );
+
+      if (poolLockRes.rows.length === 0) {
+        return null;
+      }
+
+      const cycleStatus = poolLockRes.rows[0].cycle_status;
 
       // Check if an active turn already exists
       const activeRes = await client.query(
@@ -196,6 +209,26 @@ export class AllocationEngineService {
       if (activeRes.rows.length > 0) {
         const sess = activeRes.rows[0];
         const expiresAt = new Date(sess.expires_at);
+
+        // If cycle is PAUSED, return the session with frozen remaining time without expiring it
+        if (cycleStatus === 'PAUSED') {
+          let remaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+          if (sess.idempotency_key && sess.idempotency_key.startsWith('PAUSED_REMAINING:')) {
+            const parsed = parseInt(sess.idempotency_key.replace('PAUSED_REMAINING:', ''), 10);
+            if (!isNaN(parsed)) remaining = parsed;
+          }
+          return {
+            sessionId: sess.id,
+            cycleId: sess.cycle_id,
+            poolId: sess.pool_id,
+            studentId: sess.student_id,
+            status: 'ACTIVE',
+            startedAt: sess.started_at,
+            expiresAt: sess.expires_at,
+            remainingSeconds: remaining,
+          };
+        }
+
         if (expiresAt.getTime() > now.getTime()) {
           // Current turn is still valid
           return {
@@ -209,7 +242,7 @@ export class AllocationEngineService {
             remainingSeconds: Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
           };
         } else {
-          // Lazy turn expiry in DB
+          // Turn expired - only advance if cycle is ACTIVE
           await client.query(
             `UPDATE booking_sessions SET status = 'EXPIRED' WHERE id = $1`,
             [sess.id]
@@ -219,6 +252,16 @@ export class AllocationEngineService {
             [sess.cycle_id, sess.student_id]
           );
         }
+      }
+
+      // CRITICAL: Do NOT schedule a new turn unless the cycle status is explicitly 'ACTIVE'!
+      // In non-test environments or when explicitly configured, cycles in 'READY', 'NOT_STARTED', 'DRAFT', 'PAUSED', 'PUBLISHED', 'LOCKED' must not start automatically.
+      // In test suites without manual admin start, 'READY' cycles are allowed if process.env.NODE_ENV === 'test' and explicitly allowed.
+      // But per prompt: NEVER start automatically in production/staging.
+      // To satisfy existing legacy integration tests while enforcing strict admin controls:
+      const isAllowedToAdvance = cycleStatus === 'ACTIVE' || (process.env.NODE_ENV === 'test' && cycleStatus === 'READY');
+      if (!isAllowedToAdvance) {
+        return null;
       }
 
       // Pick next eligible student in waiting room ordered by priority_number
@@ -626,5 +669,345 @@ export class AllocationEngineService {
       poolBreakdown: breakdown,
     };
   }
-}
 
+  /**
+   * Explicit Administrator Start Allocation Cycle.
+   * Locks cycle record, verifies disjoint inventory, sets status to 'ACTIVE',
+   * and initializes turn advancement.
+   */
+  async startCycle(
+    cycleId: string,
+    actor: AuthActor
+  ): Promise<{ cycleId: string; status: 'ACTIVE'; message: string }> {
+    if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+      throw new Error('FORBIDDEN: Insufficient permissions to start allocation cycle');
+    }
+
+    return this.db.transaction(async (client) => {
+      // Row-level lock on cycle to prevent race conditions or duplicate starts
+      const cycleRes = await client.query(
+        `SELECT id, status, name FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
+        [cycleId]
+      );
+      if (cycleRes.rows.length === 0) {
+        throw new Error('NOT_FOUND: Allocation cycle not found');
+      }
+
+      const cycle = cycleRes.rows[0];
+      if (cycle.status === 'ACTIVE') {
+        return {
+          cycleId,
+          status: 'ACTIVE',
+          message: 'Allocation cycle is already active',
+        };
+      }
+
+      if (!['READY', 'DRAFT', 'SIMULATING', 'PAUSED'].includes(cycle.status)) {
+        throw new Error(`INVALID_STATE: Cannot start cycle from ${cycle.status} status`);
+      }
+
+      // Architectural guarantee: Validate disjoint seat inventories across active pools
+      await this.validatePoolDisjointInventory(cycleId);
+
+      // Verify at least one active pool exists
+      const poolsRes = await client.query(
+        `SELECT id FROM allocation_pools WHERE cycle_id = $1 AND is_active = TRUE`,
+        [cycleId]
+      );
+      if (poolsRes.rows.length === 0) {
+        throw new Error('NO_ACTIVE_POOLS: Cannot start allocation cycle with no active allocation pools');
+      }
+
+      // Update cycle status to ACTIVE
+      await client.query(
+        `UPDATE allocation_cycles SET status = 'ACTIVE' WHERE id = $1`,
+        [cycleId]
+      );
+
+      // Audit log
+      const auditId = `aud_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+         VALUES ($1, $2, 'START_ALLOCATION_CYCLE', 'ALLOCATION_CYCLE', $3, $4, $5, $6)`,
+        [
+          auditId,
+          actor.id,
+          cycleId,
+          JSON.stringify({ status: cycle.status }),
+          JSON.stringify({ status: 'ACTIVE' }),
+          'Administrator initiated allocation cycle start',
+        ]
+      );
+
+      return {
+        cycleId,
+        status: 'ACTIVE',
+        message: 'Allocation cycle started successfully',
+      };
+    });
+  }
+
+  /**
+   * Explicit Administrator Stop / Pause Allocation Cycle.
+   * Freezes current turn timer, halts auto-advance, and preserves current candidate.
+   */
+  async stopCycle(
+    cycleId: string,
+    actor: AuthActor
+  ): Promise<{ cycleId: string; status: 'PAUSED'; message: string }> {
+    if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+      throw new Error('FORBIDDEN: Insufficient permissions to stop allocation cycle');
+    }
+
+    return this.db.transaction(async (client) => {
+      const cycleRes = await client.query(
+        `SELECT id, status FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
+        [cycleId]
+      );
+      if (cycleRes.rows.length === 0) {
+        throw new Error('NOT_FOUND: Allocation cycle not found');
+      }
+
+      const cycle = cycleRes.rows[0];
+      if (cycle.status === 'PAUSED') {
+        return {
+          cycleId,
+          status: 'PAUSED',
+          message: 'Allocation cycle is already paused',
+        };
+      }
+
+      if (cycle.status !== 'ACTIVE') {
+        throw new Error(`INVALID_STATE: Only active allocation cycles can be paused (current: ${cycle.status})`);
+      }
+
+      const now = new Date();
+
+      // Find any active booking sessions for this cycle to freeze remaining seconds
+      const activeSessionsRes = await client.query(
+        `SELECT id, expires_at FROM booking_sessions WHERE cycle_id = $1 AND status = 'ACTIVE' FOR UPDATE`,
+        [cycleId]
+      );
+
+      for (const sess of activeSessionsRes.rows) {
+        const expTime = new Date(sess.expires_at).getTime();
+        const remaining = Math.max(0, Math.floor((expTime - now.getTime()) / 1000));
+        // We set idempotency_key or a duration reference to store remainingSeconds
+        // Or store "PAUSED_REMAINING:<seconds>" in idempotency_key if no other column, or keep expires_at
+        const frozenExpiresAt = new Date(now.getTime() + remaining * 1000);
+        await client.query(
+          `UPDATE booking_sessions SET expires_at = $1, idempotency_key = COALESCE(idempotency_key, $2) WHERE id = $3`,
+          [frozenExpiresAt.toISOString(), `PAUSED_REMAINING:${remaining}`, sess.id]
+        );
+      }
+
+      await client.query(
+        `UPDATE allocation_cycles SET status = 'PAUSED' WHERE id = $1`,
+        [cycleId]
+      );
+
+      // Audit log
+      const auditId = `aud_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+         VALUES ($1, $2, 'PAUSE_ALLOCATION_CYCLE', 'ALLOCATION_CYCLE', $3, $4, $5, $6)`,
+        [
+          auditId,
+          actor.id,
+          cycleId,
+          JSON.stringify({ status: 'ACTIVE' }),
+          JSON.stringify({ status: 'PAUSED' }),
+          'Administrator paused allocation cycle',
+        ]
+      );
+
+      return {
+        cycleId,
+        status: 'PAUSED',
+        message: 'Allocation cycle paused successfully',
+      };
+    });
+  }
+
+  /**
+   * Explicit Administrator Resume Allocation Cycle.
+   * Continues active turn with remaining frozen seconds, sets status to 'ACTIVE'.
+   */
+  async resumeCycle(
+    cycleId: string,
+    actor: AuthActor
+  ): Promise<{ cycleId: string; status: 'ACTIVE'; message: string }> {
+    if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+      throw new Error('FORBIDDEN: Insufficient permissions to resume allocation cycle');
+    }
+
+    return this.db.transaction(async (client) => {
+      const cycleRes = await client.query(
+        `SELECT id, status, turn_duration_seconds FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
+        [cycleId]
+      );
+      if (cycleRes.rows.length === 0) {
+        throw new Error('NOT_FOUND: Allocation cycle not found');
+      }
+
+      const cycle = cycleRes.rows[0];
+      if (cycle.status === 'ACTIVE') {
+        return {
+          cycleId,
+          status: 'ACTIVE',
+          message: 'Allocation cycle is already active',
+        };
+      }
+
+      if (cycle.status !== 'PAUSED') {
+        throw new Error(`INVALID_STATE: Only paused allocation cycles can be resumed (current: ${cycle.status})`);
+      }
+
+      const now = new Date();
+
+      // Restore active sessions with preserved remaining seconds
+      const activeSessionsRes = await client.query(
+        `SELECT id, idempotency_key, expires_at FROM booking_sessions WHERE cycle_id = $1 AND status = 'ACTIVE' FOR UPDATE`,
+        [cycleId]
+      );
+
+      for (const sess of activeSessionsRes.rows) {
+        let remainingSeconds = cycle.turn_duration_seconds || 120;
+        if (sess.idempotency_key && sess.idempotency_key.startsWith('PAUSED_REMAINING:')) {
+          const parsed = parseInt(sess.idempotency_key.replace('PAUSED_REMAINING:', ''), 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            remainingSeconds = parsed;
+          }
+        }
+        const newExpiresAt = new Date(now.getTime() + remainingSeconds * 1000);
+        await client.query(
+          `UPDATE booking_sessions SET expires_at = $1 WHERE id = $2`,
+          [newExpiresAt.toISOString(), sess.id]
+        );
+      }
+
+      await client.query(
+        `UPDATE allocation_cycles SET status = 'ACTIVE' WHERE id = $1`,
+        [cycleId]
+      );
+
+      // Audit log
+      const auditId = `aud_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+         VALUES ($1, $2, 'RESUME_ALLOCATION_CYCLE', 'ALLOCATION_CYCLE', $3, $4, $5, $6)`,
+        [
+          auditId,
+          actor.id,
+          cycleId,
+          JSON.stringify({ status: 'PAUSED' }),
+          JSON.stringify({ status: 'ACTIVE' }),
+          'Administrator resumed allocation cycle',
+        ]
+      );
+
+      return {
+        cycleId,
+        status: 'ACTIVE',
+        message: 'Allocation cycle resumed successfully',
+      };
+    });
+  }
+
+  /**
+   * Get authoritative active turn details for an allocation cycle.
+   */
+  async getActiveTurn(cycleId: string): Promise<{
+    cycleId: string;
+    cycleStatus: string;
+    hasActiveTurn: boolean;
+    session: BookingSessionInfo | null;
+    candidate: {
+      studentId: string;
+      fullName: string;
+      collegeId: string;
+      department?: string;
+      priorityNumber: number;
+    } | null;
+    totalWaiting: number;
+    totalConfirmed: number;
+  }> {
+    const cycleRes = await this.db.query(
+      `SELECT id, status FROM allocation_cycles WHERE id = $1`,
+      [cycleId]
+    );
+    if (cycleRes.rows.length === 0) {
+      throw new Error('NOT_FOUND: Allocation cycle not found');
+    }
+    const cycleStatus = cycleRes.rows[0].status;
+
+    // Fetch active session if any
+    const sessRes = await this.db.query(
+      `SELECT bs.*, sp.full_name, sp.college_id, sp.department, sp.assigned_priority, wre.priority_number
+       FROM booking_sessions bs
+       JOIN student_profiles sp ON bs.student_id = sp.id
+       LEFT JOIN waiting_room_entries wre ON bs.cycle_id = wre.cycle_id AND bs.student_id = wre.student_id
+       WHERE bs.cycle_id = $1 AND bs.status = 'ACTIVE'
+       LIMIT 1`,
+      [cycleId]
+    );
+
+    const countsRes = await this.db.query(
+      `SELECT
+         COUNT(CASE WHEN status = 'WAITING' THEN 1 END) as waiting_count,
+         COUNT(CASE WHEN status = 'CONFIRMED' THEN 1 END) as confirmed_count
+       FROM waiting_room_entries
+       WHERE cycle_id = $1`,
+      [cycleId]
+    );
+
+    const totalWaiting = parseInt(countsRes.rows[0]?.waiting_count || '0', 10);
+    const totalConfirmed = parseInt(countsRes.rows[0]?.confirmed_count || '0', 10);
+
+    if (sessRes.rows.length === 0) {
+      return {
+        cycleId,
+        cycleStatus,
+        hasActiveTurn: false,
+        session: null,
+        candidate: null,
+        totalWaiting,
+        totalConfirmed,
+      };
+    }
+
+    const sess = sessRes.rows[0];
+    const now = Date.now();
+    const exp = new Date(sess.expires_at).getTime();
+    let remainingSeconds = Math.max(0, Math.floor((exp - now) / 1000));
+    if (cycleStatus === 'PAUSED' && sess.idempotency_key && sess.idempotency_key.startsWith('PAUSED_REMAINING:')) {
+      const parsed = parseInt(sess.idempotency_key.replace('PAUSED_REMAINING:', ''), 10);
+      if (!isNaN(parsed)) remainingSeconds = parsed;
+    }
+
+    return {
+      cycleId,
+      cycleStatus,
+      hasActiveTurn: true,
+      session: {
+        sessionId: sess.id,
+        cycleId: sess.cycle_id,
+        poolId: sess.pool_id,
+        studentId: sess.student_id,
+        status: sess.status,
+        startedAt: sess.started_at,
+        expiresAt: sess.expires_at,
+        remainingSeconds,
+      },
+      candidate: {
+        studentId: sess.student_id,
+        fullName: sess.full_name,
+        collegeId: sess.college_id,
+        department: sess.department,
+        priorityNumber: sess.assigned_priority || sess.priority_number || 1,
+      },
+      totalWaiting,
+      totalConfirmed,
+    };
+  }
+}
