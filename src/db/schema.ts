@@ -424,7 +424,7 @@ CREATE INDEX IF NOT EXISTS idx_reset_token_hash ON password_reset_tokens (token_
 
 -- Exactly Two Predefined Registration Slots for Hardware-Bound Demo Devices
 CREATE TABLE IF NOT EXISTS device_registration_slots (
-    slot_id TEXT PRIMARY KEY CHECK (slot_id IN ('SLOT_01', 'SLOT_02')),
+    slot_id TEXT PRIMARY KEY CHECK (slot_id IN ('SLOT_01', 'SLOT_02', 'SLOT_03')),
     device_label TEXT NOT NULL,
     platform TEXT NOT NULL CHECK (platform IN ('WINDOWS', 'ANDROID')),
     credential_id TEXT UNIQUE,
@@ -523,7 +523,8 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
       INSERT INTO device_registration_slots (slot_id, device_label, platform)
       VALUES 
         ('SLOT_01', 'Windows Laptop (Chrome/Edge)', 'WINDOWS'),
-        ('SLOT_02', 'Android Phone (Chrome/Edge)', 'ANDROID')
+        ('SLOT_02', 'Android Phone (Chrome/Edge)', 'ANDROID'),
+        ('SLOT_03', 'Windows Laptop 2 (Chrome/Edge)', 'WINDOWS')
       ON CONFLICT (slot_id) DO NOTHING;
     `);
   } catch (err) {

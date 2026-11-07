@@ -205,7 +205,7 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
             label: 'Two-Device Demo Auth',
             shortLabel: 'Devices',
             icon: Fingerprint,
-            badge: '2 Slots',
+            badge: '3 Slots',
           },
           {
             id: 'admin_overview',
@@ -251,7 +251,7 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
             label: 'Two-Device Demo Auth',
             shortLabel: 'Devices',
             icon: Fingerprint,
-            badge: '2 Slots',
+            badge: '3 Slots',
           },
         ],
       };

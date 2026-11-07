@@ -33,13 +33,13 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
   });
 
   describe('1. Two Predefined Slots & Database Constraints', () => {
-    it('initializes exactly two predefined registration slots (SLOT_01 and SLOT_02)', async () => {
+    it('initializes exactly three predefined registration slots (SLOT_01, SLOT_02, and SLOT_03)', async () => {
       const res = await request(app.server)
         .get('/api/admin/devices/slots')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.slots).toHaveLength(2);
+      expect(res.body.slots).toHaveLength(3);
 
       const slot1 = res.body.slots.find((s: any) => s.slot_id === 'SLOT_01');
       const slot2 = res.body.slots.find((s: any) => s.slot_id === 'SLOT_02');
@@ -66,7 +66,7 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
 
     it('rejects registration options generation for an invalid third slot ID', async () => {
       const res = await request(app.server)
-        .post('/api/admin/devices/slots/SLOT_03/register-options')
+        .post('/api/admin/devices/slots/SLOT_04/register-options')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
       expect(res.status).toBe(400);
@@ -158,7 +158,7 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
       })).rejects.toThrow('SLOT_OCCUPIED');
     });
 
-    it('enforces maximum two active devices limit', async () => {
+    it('enforces maximum three active devices limit', async () => {
       const deviceAuthService = new (await import('../src/auth/deviceAuthService.js')).DeviceAuthService(db);
 
       // Fill SLOT_01 and SLOT_02

@@ -1255,7 +1255,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     if (!session) {
       return reply.code(403).send({
         authorized: false,
-        error: 'FORBIDDEN: Demo entry point is restricted to authorized hardware-bound devices (SLOT_01 or SLOT_02).',
+        error: 'FORBIDDEN: Demo entry point is restricted to authorized hardware-bound devices (SLOT_01, SLOT_02, or SLOT_03).',
       });
     }
 
@@ -1376,7 +1376,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
       }
 
-      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
       const hostname = req.hostname || 'localhost';
 
       const regOptions = await deviceAuthService.generateRegistrationOptionsForSlot({
@@ -1399,7 +1399,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
       }
 
-      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
       const { challengeToken, response } = req.body || {};
       if (!challengeToken || !response) {
         return reply.code(400).send({ error: 'CHALLENGE_AND_RESPONSE_REQUIRED' });
@@ -1431,7 +1431,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
       }
 
-      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
       const { reason } = req.body || {};
 
       const result = await deviceAuthService.revokeDeviceSlot({
@@ -1454,7 +1454,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
       }
 
-      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
 
       const result = await deviceAuthService.resetDeviceSlotForReplacement({
         slot_id,

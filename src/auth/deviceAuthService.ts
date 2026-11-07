@@ -14,7 +14,7 @@ import type {
 } from '@simplewebauthn/server';
 
 export interface DeviceSlotInfo {
-  slot_id: 'SLOT_01' | 'SLOT_02';
+  slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
   device_label: string;
   platform: 'WINDOWS' | 'ANDROID';
   credential_id: string | null;
@@ -34,7 +34,7 @@ export interface DeviceSlotInfo {
 
 export interface DemoSessionRecord {
   token: string;
-  slot_id: 'SLOT_01' | 'SLOT_02';
+  slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
   device_label: string;
   platform: 'WINDOWS' | 'ANDROID';
   user_verified: boolean;
@@ -45,7 +45,7 @@ export interface DemoSessionRecord {
 export class DeviceAuthService {
   private db: DatabaseService;
   // Ephemeral challenge storage with TTL
-  private challenges: Map<string, { challenge: string; slot_id?: 'SLOT_01' | 'SLOT_02'; expectedType: 'registration' | 'authentication'; adminUserId?: string; expiresAt: number }> = new Map();
+  private challenges: Map<string, { challenge: string; slot_id?: 'SLOT_01' | 'SLOT_02' | 'SLOT_03'; expectedType: 'registration' | 'authentication'; adminUserId?: string; expiresAt: number }> = new Map();
   // Ephemeral demo sessions (in addition to token signing for high reliability & immediate revocation)
   private activeDemoSessions: Map<string, DemoSessionRecord> = new Map();
   // Rate limiting map: tracks failed attempts per IP with cooldown
@@ -204,13 +204,13 @@ export class DeviceAuthService {
    * Generate WebAuthn registration options for a designated slot (SLOT_01 or SLOT_02)
    */
   public async generateRegistrationOptionsForSlot(params: {
-    slot_id: 'SLOT_01' | 'SLOT_02';
+    slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
     adminUserId: string;
     hostname: string;
   }) {
     const { slot_id, adminUserId, hostname } = params;
-    if (slot_id !== 'SLOT_01' && slot_id !== 'SLOT_02') {
-      throw new Error('INVALID_SLOT: Only SLOT_01 and SLOT_02 are supported.');
+    if (slot_id !== 'SLOT_01' && slot_id !== 'SLOT_02' && slot_id !== 'SLOT_03') {
+      throw new Error('INVALID_SLOT: Only SLOT_01, SLOT_02, and SLOT_03 are supported.');
     }
 
     // Verify slot state
@@ -287,7 +287,7 @@ export class DeviceAuthService {
    * Verify WebAuthn registration response and commit device credential to database
    */
   public async verifyAndSaveRegistration(params: {
-    slot_id: 'SLOT_01' | 'SLOT_02';
+    slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
     challengeToken: string;
     response: RegistrationResponseJSON;
     expectedOrigin: string;
@@ -501,7 +501,7 @@ export class DeviceAuthService {
     response: AuthenticationResponseJSON;
     expectedOrigin: string;
     hostname: string;
-  }): Promise<{ success: boolean; sessionToken: string; slot_id: 'SLOT_01' | 'SLOT_02'; device_label: string; expires_at: string }> {
+  }): Promise<{ success: boolean; sessionToken: string; slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03'; device_label: string; expires_at: string }> {
     const { challengeToken, response, expectedOrigin, hostname } = params;
 
     const storedChallenge = this.challenges.get(challengeToken);
@@ -654,7 +654,7 @@ export class DeviceAuthService {
    * Revoke a registered device slot
    */
   public async revokeDeviceSlot(params: {
-    slot_id: 'SLOT_01' | 'SLOT_02';
+    slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
     adminUserId: string;
     reason?: string;
   }): Promise<{ success: boolean; slot_id: string }> {
@@ -710,7 +710,7 @@ export class DeviceAuthService {
    * Clear registration on a revoked slot to permit replacement enrollment
    */
   public async resetDeviceSlotForReplacement(params: {
-    slot_id: 'SLOT_01' | 'SLOT_02';
+    slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
     adminUserId: string;
   }): Promise<{ success: boolean; slot_id: string }> {
     const { slot_id, adminUserId } = params;

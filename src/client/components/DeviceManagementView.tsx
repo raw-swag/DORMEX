@@ -16,7 +16,7 @@ import { apiJson } from '../api/apiJson.js';
 import { startRegistration } from '@simplewebauthn/browser';
 
 interface DeviceSlot {
-  slot_id: 'SLOT_01' | 'SLOT_02';
+  slot_id: 'SLOT_01' | 'SLOT_02' | 'SLOT_03';
   device_label: string;
   platform: 'WINDOWS' | 'ANDROID';
   credential_id: string | null;
@@ -56,7 +56,7 @@ export const DeviceManagementView: React.FC = () => {
     fetchSlots();
   }, []);
 
-  const handleEnrollDevice = async (slotId: 'SLOT_01' | 'SLOT_02') => {
+  const handleEnrollDevice = async (slotId: 'SLOT_01' | 'SLOT_02' | 'SLOT_03') => {
     try {
       setActionLoading(`enroll_${slotId}`);
       setNotification(null);
@@ -106,7 +106,7 @@ export const DeviceManagementView: React.FC = () => {
     }
   };
 
-  const handleRevokeDevice = async (slotId: 'SLOT_01' | 'SLOT_02') => {
+  const handleRevokeDevice = async (slotId: 'SLOT_01' | 'SLOT_02' | 'SLOT_03') => {
     if (!window.confirm(`Are you sure you want to revoke ${slotId}? Any active demo sessions from this device will be immediately invalidated.`)) {
       return;
     }
@@ -129,7 +129,7 @@ export const DeviceManagementView: React.FC = () => {
     }
   };
 
-  const handleResetSlot = async (slotId: 'SLOT_01' | 'SLOT_02') => {
+  const handleResetSlot = async (slotId: 'SLOT_01' | 'SLOT_02' | 'SLOT_03') => {
     if (!window.confirm(`Reset ${slotId} to allow enrolling a replacement device?`)) {
       return;
     }
@@ -159,7 +159,7 @@ export const DeviceManagementView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#1E7B54]" />
-              <h1 className="text-lg font-bold text-[#203653]">Hardware-Bound Two-Device Demo Authentication</h1>
+              <h1 className="text-lg font-bold text-[#203653]">Hardware-Bound Three-Device Demo Authentication</h1>
             </div>
             <p className="text-xs text-[#627084] mt-1">
               Enforce strict, hardware-bound WebAuthn Level 3 platform authenticators for exactly two dedicated presentation devices.
@@ -167,7 +167,7 @@ export const DeviceManagementView: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 bg-[#E7F2ED] text-[#1E7B54] text-xs font-semibold rounded-lg border border-[#A8D5C2]">
-              Strict Limit: 2 Active Devices
+              Strict Limit: 3 Active Devices (2 Windows, 1 Android)
             </span>
           </div>
         </div>
@@ -216,7 +216,7 @@ export const DeviceManagementView: React.FC = () => {
           <div className="w-8 h-8 border-3 border-[#2C8279] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {slots.map((slot) => {
             const isWindows = slot.platform === 'WINDOWS';
             const Icon = isWindows ? Laptop : Smartphone;

@@ -103,6 +103,7 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
           <ul className="list-disc pl-4 space-y-0.5 text-[#4E6178]">
             <li><strong>SLOT_01:</strong> Windows Laptop (Chrome / Edge with Windows Hello)</li>
             <li><strong>SLOT_02:</strong> Android Phone (Chrome / Edge with Biometric/PIN)</li>
+            <li><strong>SLOT_03:</strong> Windows Laptop 2 (Chrome / Edge with Windows Hello)</li>
           </ul>
         </div>
 
