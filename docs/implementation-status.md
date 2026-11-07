@@ -22,6 +22,17 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 34: 18 Database-Backed Demo Accounts & Grouped Dynamic Presentation**:
+  - **Deliverables Completed**:
+    - Expanded canonical demo account directory to exactly 18 accounts: 10 Students (`DEMO-001`..`DEMO-010`), 5 Hostel Office staff (`OFF001`..`OFF005`), and 3 Administrative staff (`ADM001`..`ADM003`).
+    - Enforced that none of the demo accounts possess `SUPER_ADMIN` privileges by default. Root administration is reserved exclusively for the secret-gated bootstrapped super administrator.
+    - Idempotently seeded all 18 accounts across both `src/db/seed.ts` and `scripts/seed-hosted-demo.ts` with collision protection and `scrypt` password hashing.
+    - Dynamically partitioned accounts into `<optgroup>` categories in `PortalSelectionView.tsx` without hardcoded records or credentials in client code.
+    - Verified strict server-authoritative anti-caching (`private, no-cache, no-store, must-revalidate`) across all `/api/*` endpoints and Service Worker bypass.
+  - **Verification Metrics**:
+    - 228/228 automated tests passing across 22 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`) and server build (`npm run build:server`).
 - [x] **Phase 33: Dynamic Three-Demo Accounts Architecture & Strict Hardware Gating**:
   - **Deliverables Completed**:
     - Gated dynamic account directory `GET /api/demo/accounts` behind hardware-enrolled WebAuthn demo session verification (`SLOT_01`, `SLOT_02`, `SLOT_03`).

@@ -62,15 +62,35 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     await app.register(fastifyStatic, {
       root: clientDist,
       prefix: '/',
+      setHeaders: (res, pathName) => {
+        // Immutable long-lived caching for Vite content-hashed assets
+        if (pathName.includes('/assets/')) {
+          res.header('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (pathName.endsWith('.html') || pathName.endsWith('sw.js') || pathName.endsWith('manifest.json')) {
+          // Sensitive entry points must always revalidate
+          res.header('Cache-Control', 'public, max-age=0, must-revalidate');
+        }
+      },
     });
 
     app.setNotFoundHandler(async (req, reply) => {
       if (req.url.startsWith('/api')) {
         return reply.code(404).send({ error: 'Endpoint not found' });
       }
+      reply.header('Cache-Control', 'public, max-age=0, must-revalidate');
       return reply.sendFile('index.html');
     });
   }
+
+  // Global Security & Anti-Caching Hooks:
+  // Strictly prevent shared proxy, CDN, or browser caching of private and authenticated API endpoints
+  app.addHook('onSend', async (req, reply) => {
+    if (req.url.startsWith('/api')) {
+      reply.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      reply.header('Pragma', 'no-cache');
+      reply.header('Expires', '0');
+    }
+  });
 
   const allocationEngine = new AllocationEngineService(database);
   const floorPlanService = new FloorPlanService(database);

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.15.0] - 2026-11-08
+
+- **Feat(demo): 18 Database-Backed Demo Accounts & Grouped Dynamic Presentation**:
+  - **18 Canonical Accounts Inventory**:
+    - Expanded demo accounts to 10 Students (`DEMO-001`..`DEMO-010`), 5 Hostel Office staff (`OFF001`..`OFF005`), and 3 Administrative staff (`ADM001`..`ADM003`).
+    - Enforced that none of the demo accounts possess default `SUPER_ADMIN` privileges. Root administrative operations remain isolated behind the secret-gated super admin bootstrap.
+    - Idempotently seeded all 18 accounts across both `src/db/seed.ts` and `scripts/seed-hosted-demo.ts` with collision protection and `scrypt` password hashing.
+  - **Dynamic Backend Retrieval & Revalidation**:
+    - `GET /api/demo/accounts` validates account status (`users.is_active = TRUE`) before serving and aborts with descriptive error (`DEMO_ACCOUNTS_MISSING`) if any account is missing or deleted.
+    - Hardware-gated strictly to authorized sessions (`SLOT_01`, `SLOT_02`, `SLOT_03`); unauthorized devices receive HTTP 403 Forbidden.
+  - **Frontend Grouped Optgroup Presentation**:
+    - Dynamically partitions accounts into Student, Hostel Office, and Administrative groups without hardcoded records or credentials in client code.
+  - **Security & Caching Hardening**:
+    - Fastify global `onSend` hook sets `Cache-Control: private, no-cache, no-store, must-revalidate` across all `/api/*` responses.
+    - Service Worker (`sw.js`) explicitly bypasses all `/api/*` routes, preventing credential or session caching in CacheStorage.
+    - `deviceAuthService` strictly validates incoming origins and RP IDs against pre-approved allowlists (`APPROVED_ORIGINS`, `APPROVED_RP_IDS`).
+  - **Automated Verification**:
+    - 22/22 test suites passed (228/228 tests passing, 100% pass rate).
+    - Added comprehensive 18-account dynamic suite in `tests/demo_accounts_dynamic.test.ts`.
+
+---
+
 ## [2.14.0] - 2026-11-07
 
 - **Feat(demo): Dynamic Database-Driven Demo Accounts & Strict Device Gating**:

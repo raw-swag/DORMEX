@@ -43,6 +43,22 @@ export interface DemoSessionRecord {
 }
 
 export class DeviceAuthService {
+  public static readonly APPROVED_ORIGINS = [
+    'https://dormex-sit.vercel.app',
+    'https://dormex-api-s4qq.onrender.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ];
+
+  public static readonly APPROVED_RP_IDS = [
+    'dormex-sit.vercel.app',
+    'dormex-api-s4qq.onrender.com',
+    'localhost',
+    '127.0.0.1',
+  ];
+
   private db: DatabaseService;
   // Ephemeral challenge storage with TTL
   private challenges: Map<string, { challenge: string; slot_id?: 'SLOT_01' | 'SLOT_02' | 'SLOT_03'; expectedType: 'registration' | 'authentication'; adminUserId?: string; expiresAt: number }> = new Map();
@@ -387,8 +403,8 @@ export class DeviceAuthService {
         [slot_id]
       );
 
-      if ((activeRes.rows[0]?.count || 0) >= 2) {
-        throw new Error('MAX_TWO_DEVICES_EXCEEDED: Cannot register more than two active devices.');
+      if ((activeRes.rows[0]?.count || 0) >= 3) {
+        throw new Error('MAX_THREE_DEVICES_EXCEEDED: Cannot register more than three active devices.');
       }
 
       // Check if credential ID already registered anywhere
@@ -687,7 +703,15 @@ export class DeviceAuthService {
     }>;
     error?: string;
   }> {
-    const targetCollegeIds = ['DEMO-001', 'ADM001', 'OFF001'];
+    // Exactly 18 canonical database-backed demo accounts:
+    // 10 Students (DEMO-001..DEMO-010), 5 Hostel Office (OFF001..OFF005), 3 Admin (ADM001..ADM003)
+    const targetCollegeIds = [
+      'DEMO-001', 'DEMO-002', 'DEMO-003', 'DEMO-004', 'DEMO-005',
+      'DEMO-006', 'DEMO-007', 'DEMO-008', 'DEMO-009', 'DEMO-010',
+      'OFF001', 'OFF002', 'OFF003', 'OFF004', 'OFF005',
+      'ADM001', 'ADM002', 'ADM003'
+    ];
+    const placeholders = targetCollegeIds.map((_, i) => '$' + (i + 1)).join(', ');
     const query = `
       SELECT 
         u.id as user_id,
@@ -706,20 +730,22 @@ export class DeviceAuthService {
       JOIN user_roles ur ON u.id = ur.user_id
       JOIN roles r ON ur.role_id = r.id
       LEFT JOIN student_profiles sp ON u.id = sp.user_id
-      WHERE u.college_id IN ($1, $2, $3)
-      ORDER BY CASE u.college_id 
-        WHEN 'DEMO-001' THEN 1 
-        WHEN 'ADM001' THEN 2 
-        WHEN 'OFF001' THEN 3 
-        ELSE 4 
-      END
+      WHERE u.college_id IN (${placeholders})
+      ORDER BY 
+        CASE 
+          WHEN u.college_id LIKE 'DEMO-%' THEN 1
+          WHEN u.college_id LIKE 'OFF%' THEN 2
+          WHEN u.college_id LIKE 'ADM%' THEN 3
+          ELSE 4
+        END,
+        u.college_id ASC
     `;
     const res = await this.db.query(query, targetCollegeIds);
     const rows = res.rows;
     const foundIds = new Set(rows.map((r: any) => r.college_id));
     const missing = targetCollegeIds.filter((cid) => !foundIds.has(cid));
     if (missing.length > 0) {
-      throw new Error(`DEMO_ACCOUNTS_MISSING: Expected 3 demo accounts but missing: ${missing.join(', ')}`);
+      throw new Error(`DEMO_ACCOUNTS_MISSING: Expected 18 demo accounts but missing: ${missing.join(', ')}`);
     }
 
     const activeRows = rows.filter((r: any) => r.is_active);
@@ -732,12 +758,12 @@ export class DeviceAuthService {
       }
 
       let label = r.full_name;
-      if (r.college_id === 'DEMO-001') {
+      if (r.college_id.startsWith('DEMO-')) {
         label = `${r.full_name} (${r.college_id}, Priority #${r.assigned_priority || 1})`;
-      } else if (r.college_id === 'ADM001') {
-        label = `${r.full_name} (${r.role_name})`;
-      } else if (r.college_id === 'OFF001') {
-        label = `${r.full_name} (Admissions & Verification · ${r.college_id})`;
+      } else if (r.college_id.startsWith('ADM')) {
+        label = `${r.full_name} (${r.role_name} · ${r.college_id})`;
+      } else if (r.college_id.startsWith('OFF')) {
+        label = `${r.full_name} (Admissions & Office · ${r.college_id})`;
       }
 
       return {
@@ -757,7 +783,6 @@ export class DeviceAuthService {
         label,
       };
     });
-
     return { accounts };
   }
 
