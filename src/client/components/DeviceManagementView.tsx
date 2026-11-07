@@ -73,7 +73,7 @@ export const DeviceManagementView: React.FC = () => {
       // 2. Invoke WebAuthn ceremony via browser API
       let attResp;
       try {
-        attResp = await startRegistration({ optionsJSON: optionsRes.options });
+        const cleanOpts = { ...optionsRes.options, rp: { ...optionsRes.options.rp, id: window.location.hostname } }; attResp = await startRegistration({ optionsJSON: cleanOpts });
       } catch (userErr: any) {
         if (userErr.name === 'NotAllowedError') {
           throw new Error('Registration was canceled or user verification timed out.');

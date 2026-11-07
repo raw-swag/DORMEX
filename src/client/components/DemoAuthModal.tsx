@@ -45,7 +45,7 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
       // 2. Invoke browser WebAuthn platform authenticator
       let asseResp;
       try {
-        asseResp = await startAuthentication({ optionsJSON: optionsRes.options });
+        const cleanOpts = { ...optionsRes.options, rpId: window.location.hostname }; asseResp = await startAuthentication({ optionsJSON: cleanOpts });
       } catch (err: any) {
         if (err.name === 'NotAllowedError') {
           throw new Error('Verification was canceled or timed out.');
