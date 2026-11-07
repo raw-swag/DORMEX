@@ -18,6 +18,7 @@ import { NotificationService } from './notifications/service.js';
 import { StudentAdmissionService } from './student/admissionService.js';
 import { MessMenuService } from './operations/messMenuService.js';
 import { AuthService } from './auth/service.js';
+import { DeviceAuthService } from './auth/deviceAuthService.js';
 import { AuthActor } from './auth/policy.js';
 
 export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
@@ -80,6 +81,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const admissionService = new StudentAdmissionService(database);
   const messMenuService = new MessMenuService(database);
   const authService = new AuthService(database);
+  const deviceAuthService = new DeviceAuthService(database);
 
   // Helper auth extractor (enforces cryptographically signed JWT tokens, with test/dev compatibility)
   const extractActor = async (req: any): Promise<AuthActor> => {
@@ -1230,6 +1232,238 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send(menus);
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
+    }
+  });
+
+
+  // =========================================================================
+  // WebAuthn Two-Device Demo Authentication & Administration Endpoints
+  // =========================================================================
+
+  // Helper to extract demo session
+  const extractDemoSession = async (req: any) => {
+    const demoCookie = req.cookies?.demo_session;
+    const authHeader = req.headers['x-demo-session'];
+    const token = demoCookie || (typeof authHeader === 'string' ? authHeader : undefined);
+    return await deviceAuthService.validateDemoSession(token);
+  };
+
+  // UI Authorization probe: GET /api/demo/access
+  // Returns demo availability only after successful WebAuthn authentication on registered device
+  app.get('/api/demo/access', async (req: any, reply) => {
+    const session = await extractDemoSession(req);
+    if (!session) {
+      return reply.code(403).send({
+        authorized: false,
+        error: 'FORBIDDEN: Demo entry point is restricted to authorized hardware-bound devices (SLOT_01 or SLOT_02).',
+      });
+    }
+
+    return reply.send({
+      authorized: true,
+      slot_id: session.slot_id,
+      device_label: session.device_label,
+      platform: session.platform,
+      user_verified: session.user_verified,
+      expires_at: session.expires_at,
+    });
+  });
+
+  // Protected Demo API sample / data: returns 403 unless valid device-bound session
+  app.get('/api/demo/overview', async (req: any, reply) => {
+    const session = await extractDemoSession(req);
+    if (!session) {
+      return reply.code(403).send({
+        error: 'FORBIDDEN: Demo access requires device-bound platform authentication.',
+      });
+    }
+
+    return reply.send({
+      status: 'DEMO_ACTIVE',
+      device: {
+        slot_id: session.slot_id,
+        device_label: session.device_label,
+        platform: session.platform,
+        user_verified: session.user_verified,
+      },
+      message: 'Welcome to DORMEX Interactive Demo Session.',
+      expires_at: session.expires_at,
+    });
+  });
+
+  // Generate WebAuthn Authentication Challenge: POST /api/demo/auth/options
+  app.post('/api/demo/auth/options', async (req: any, reply) => {
+    try {
+      const hostname = req.hostname || 'localhost';
+      const optionsResult = await deviceAuthService.generateAuthenticationOptionsForDemo(hostname);
+      return reply.send(optionsResult);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to generate authentication options' });
+    }
+  });
+
+  // Verify WebAuthn Assertion & Issue Short-Lived Demo Session: POST /api/demo/auth/verify
+  app.post('/api/demo/auth/verify', async (req: any, reply) => {
+    try {
+      const { challengeToken, response } = req.body || {};
+      if (!challengeToken || !response) {
+        return reply.code(400).send({ error: 'CHALLENGE_AND_RESPONSE_REQUIRED' });
+      }
+
+      const expectedOrigin = deviceAuthService.getExpectedOrigin(req);
+      const hostname = req.hostname || 'localhost';
+
+      const authResult = await deviceAuthService.verifyAndAuthenticateDemo({
+        challengeToken,
+        response,
+        expectedOrigin,
+        hostname,
+      });
+
+      // Set secure HttpOnly demo session cookie (15 minutes)
+      reply.setCookie('demo_session', authResult.sessionToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60, // 15 minutes
+      });
+
+      return reply.send({
+        success: true,
+        sessionToken: authResult.sessionToken,
+        slot_id: authResult.slot_id,
+        device_label: authResult.device_label,
+        expires_at: authResult.expires_at,
+      });
+    } catch (err: any) {
+      return reply.code(401).send({ error: err.message || 'WebAuthn assertion verification failed' });
+    }
+  });
+
+  // Terminate Demo Session: POST /api/demo/auth/logout
+  app.post('/api/demo/auth/logout', async (req: any, reply) => {
+    const token = req.cookies?.demo_session;
+    deviceAuthService.invalidateDemoSession(token);
+    reply.clearCookie('demo_session', { path: '/' });
+    return reply.send({ success: true, message: 'Demo session terminated' });
+  });
+
+  // =========================================================================
+  // Device Administration Endpoints (Restricted to SUPER_ADMIN)
+  // =========================================================================
+
+  // List all predefined device slots: GET /api/admin/devices/slots
+  app.get('/api/admin/devices/slots', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
+      }
+
+      const slots = await deviceAuthService.getDeviceSlots();
+      return reply.send({ slots });
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('UNAUTHORIZED') ? 401 : 403).send({ error: err.message });
+    }
+  });
+
+  // Generate WebAuthn Registration Options for a Slot: POST /api/admin/devices/slots/:id/register-options
+  app.post('/api/admin/devices/slots/:id/register-options', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
+      }
+
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const hostname = req.hostname || 'localhost';
+
+      const regOptions = await deviceAuthService.generateRegistrationOptionsForSlot({
+        slot_id,
+        adminUserId: actor.id,
+        hostname,
+      });
+
+      return reply.send(regOptions);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to generate registration options' });
+    }
+  });
+
+  // Verify and Commit Device Registration: POST /api/admin/devices/slots/:id/register-verify
+  app.post('/api/admin/devices/slots/:id/register-verify', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
+      }
+
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const { challengeToken, response } = req.body || {};
+      if (!challengeToken || !response) {
+        return reply.code(400).send({ error: 'CHALLENGE_AND_RESPONSE_REQUIRED' });
+      }
+
+      const expectedOrigin = deviceAuthService.getExpectedOrigin(req);
+      const hostname = req.hostname || 'localhost';
+
+      const result = await deviceAuthService.verifyAndSaveRegistration({
+        slot_id,
+        challengeToken,
+        response,
+        expectedOrigin,
+        hostname,
+        adminUserId: actor.id,
+      });
+
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Registration verification failed' });
+    }
+  });
+
+  // Revoke Device Registration: POST /api/admin/devices/slots/:id/revoke
+  app.post('/api/admin/devices/slots/:id/revoke', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
+      }
+
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+      const { reason } = req.body || {};
+
+      const result = await deviceAuthService.revokeDeviceSlot({
+        slot_id,
+        adminUserId: actor.id,
+        reason,
+      });
+
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Revocation failed' });
+    }
+  });
+
+  // Reset Revoked Slot for Replacement: POST /api/admin/devices/slots/:id/reset
+  app.post('/api/admin/devices/slots/:id/reset', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Requires SUPER_ADMIN privileges' });
+      }
+
+      const slot_id = req.params.id as 'SLOT_01' | 'SLOT_02';
+
+      const result = await deviceAuthService.resetDeviceSlotForReplacement({
+        slot_id,
+        adminUserId: actor.id,
+      });
+
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Reset failed' });
     }
   });
 

@@ -11,6 +11,7 @@ import { ComplaintsView } from './components/ComplaintsView.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
 import { StudentAdmissionManagementView } from './components/StudentAdmissionManagementView.js';
 import { MessMenuView } from './components/MessMenuView.js';
+import { DeviceManagementView } from './components/DeviceManagementView.js';
 
 const AppContent: React.FC = () => {
   const { session, isAuthenticated, isLoading } = useAuth();
@@ -54,6 +55,7 @@ const AppContent: React.FC = () => {
         {currentTab === 'admin_complaints' && <ComplaintsView />}
         {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
         {currentTab === 'office_mess_menu' && <MessMenuView />}
+        {currentTab === 'admin_devices' && <DeviceManagementView />}
       </AppLayout>
       <PWAInstallPrompt />
     </>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth, DEV_USERS, apiFetch } from '../context/AuthContext.js';
+import { apiJson } from '../api/apiJson.js';
 import { 
   GraduationCap, 
   ShieldCheck, 
@@ -15,8 +16,10 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
-  X
+  X,
+  Fingerprint
 } from 'lucide-react';
+import { DemoAuthModal } from './DemoAuthModal.js';
 import { DormexLogo } from './DormexLogo.js';
 
 export const PortalSelectionView: React.FC = () => {
@@ -28,6 +31,24 @@ export const PortalSelectionView: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+
+  useEffect(() => {
+    // Probe server-authoritative endpoint: GET /api/demo/access
+    apiJson<{ authorized: boolean; slot_id?: string; device_label?: string; expires_at?: string }>('/api/demo/access')
+      .then((res) => {
+        if (res.authorized && res.slot_id) {
+          setDemoSessionInfo({
+            slot_id: res.slot_id,
+            device_label: res.device_label || 'Authorized Device',
+            expires_at: res.expires_at || '',
+          });
+        }
+      })
+      .catch(() => {
+        // Normal device: demo entry point remains unauthenticated
+      });
+  }, []);
+
   // Forgot Password Modal State (Phase Five)
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState('');
@@ -38,6 +59,10 @@ export const PortalSelectionView: React.FC = () => {
   const [resetTokenInput, setResetTokenInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  // WebAuthn Two-Device Demo Authentication State
+  const [showDemoAuthModal, setShowDemoAuthModal] = useState<boolean>(false);
+  const [demoSessionInfo, setDemoSessionInfo] = useState<{ slot_id: string; device_label: string; expires_at: string } | null>(null);
+
 
   const handlePortalSelect = (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
     setSelectedPortal(portal);
@@ -290,6 +315,47 @@ export const PortalSelectionView: React.FC = () => {
                 </select>
               </div>
 
+
+            {/* Dedicated Hardware-Bound WebAuthn Demo Entry Point */}
+            <div className="pt-4 border-t border-[#E2E6E8] mt-4">
+              {demoSessionInfo ? (
+                <div className="p-3 bg-[#E7F2ED] border border-[#A8D5C2] rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#1E7B54]" />
+                    <div>
+                      <p className="text-xs font-bold text-[#1E7B54]">
+                        Hardware-Bound Demo Active ({demoSessionInfo.slot_id})
+                      </p>
+                      <p className="text-[11px] text-[#2C8279]">
+                        Device: {demoSessionInfo.device_label}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Switch to quick demo student login
+                      handlePortalSelect('STUDENT');
+                      setAuthIdInput('DEMO-001');
+                      setPasswordInput('password1');
+                    }}
+                    className="py-1 px-2.5 bg-[#1E7B54] text-white text-xs font-bold rounded-lg hover:bg-[#165c3f] transition-all"
+                  >
+                    Enter Workspace
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDemoAuthModal(true)}
+                  className="w-full py-2.5 px-3 bg-[#F0F5F8] hover:bg-[#E5EFF5] border border-[#D0DFE8] text-[#203653] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Fingerprint className="w-4 h-4 text-[#1E7B54]" />
+                  <span>Two-Device Hardware Demo Auth (Windows Hello / Android)</span>
+                </button>
+              )}
+            </div>
+
               <div className="pt-3 space-y-3">
                 <button
                   type="submit"
@@ -319,6 +385,25 @@ export const PortalSelectionView: React.FC = () => {
             </form>
           </div>
       </main>
+
+      {/* Hardware-Bound WebAuthn Demo Modal */}
+      {showDemoAuthModal && (
+        <DemoAuthModal
+          onSuccess={(info) => {
+            setShowDemoAuthModal(false);
+            setDemoSessionInfo({
+              slot_id: info.slot_id,
+              device_label: info.device_label,
+              expires_at: info.expires_at,
+            });
+            // Automatically prefill DEMO-001 for seamless walkthrough
+            handlePortalSelect('STUDENT');
+            setAuthIdInput('DEMO-001');
+            setPasswordInput('password1');
+          }}
+          onCancel={() => setShowDemoAuthModal(false)}
+        />
+      )}
 
       {/* Forgot Password / Recovery Modal (Phase Five) */}
       {showForgotModal && (

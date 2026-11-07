@@ -422,10 +422,36 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_reset_token_hash ON password_reset_tokens (token_hash);
 
+-- Exactly Two Predefined Registration Slots for Hardware-Bound Demo Devices
+CREATE TABLE IF NOT EXISTS device_registration_slots (
+    slot_id TEXT PRIMARY KEY CHECK (slot_id IN ('SLOT_01', 'SLOT_02')),
+    device_label TEXT NOT NULL,
+    platform TEXT NOT NULL CHECK (platform IN ('WINDOWS', 'ANDROID')),
+    credential_id TEXT UNIQUE,
+    public_key TEXT,
+    counter BIGINT NOT NULL DEFAULT 0,
+    aaguid TEXT,
+    backup_eligible BOOLEAN DEFAULT FALSE,
+    backup_state BOOLEAN DEFAULT FALSE,
+    transports TEXT,
+    registered_at TIMESTAMP WITH TIME ZONE,
+    last_authenticated_at TIMESTAMP WITH TIME ZONE,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    registered_by TEXT REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_device_slots_active_cred 
+    ON device_registration_slots (credential_id) 
+    WHERE credential_id IS NOT NULL AND is_revoked = FALSE;
+
 
 `;
 
 export async function runMigrations(db: DatabaseService): Promise<void> {
+
   // Step 1: Migration fix for admission priority index - drop legacy global unique index if present
   try {
     await db.query(`DROP INDEX IF EXISTS uq_admissions_official_priority`);
@@ -489,5 +515,18 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
         throw err;
       }
     }
+  }
+
+  // Ensure exactly two predefined slots exist in device_registration_slots
+  try {
+    await db.query(`
+      INSERT INTO device_registration_slots (slot_id, device_label, platform)
+      VALUES 
+        ('SLOT_01', 'Windows Laptop (Chrome/Edge)', 'WINDOWS'),
+        ('SLOT_02', 'Android Phone (Chrome/Edge)', 'ANDROID')
+      ON CONFLICT (slot_id) DO NOTHING;
+    `);
+  } catch (err) {
+    // Ignore if table not yet created
   }
 }

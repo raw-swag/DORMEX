@@ -9,7 +9,8 @@ import {
   Utensils, 
   UserCheck, 
   ShieldCheck, 
-  FileText, 
+  FileText,
+  Fingerprint, 
   Sliders, 
   Calendar,
   Home,
@@ -237,6 +238,13 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
             label: 'Mess Menu Scheduling',
             shortLabel: 'Mess Menu',
             icon: Utensils,
+          },
+          {
+            id: 'admin_devices',
+            label: 'Two-Device Demo Auth',
+            shortLabel: 'Devices',
+            icon: Fingerprint,
+            badge: '2 Slots',
           },
         ],
       };

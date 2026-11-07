@@ -32,7 +32,9 @@ export type PermissionAction =
   | 'complaint.view_private'
   | 'room_change.request'
   | 'room_change.review'
-  | 'audit.view';
+  | 'audit.view'
+  | 'demo.access'
+  | 'device.manage';
 
 export interface AuthActor {
   id: string;
@@ -106,6 +108,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'audit.view',
   ],
   SUPER_ADMIN: [
+    'device.manage',
+    'demo.access',
     'student.view_self',
     'student.manage',
     'student.edit_priority',

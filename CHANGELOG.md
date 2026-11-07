@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.13.0] - 2026-11-07
+
+- **Feat(auth): Exact Two-Device Web Authentication Level 3 Implementation**:
+  - **Hardware-Bound Platform Authenticators (@simplewebauthn/server & @simplewebauthn/browser)**:
+    - Implemented production-grade WebAuthn Level 3 authentication using platform authenticators (Windows Hello TPM / PIN on Chrome/Edge, and Android Keystore / Screen Lock on Chrome/Edge).
+    - Cryptographic signature verification, attestation parsing, counter tracking, and origin/RP-ID validation handled entirely by SimpleWebAuthn without manual crypto routines.
+  - **Strict Two-Device & Single-Device Invariants (device_registration_slots)**:
+    - Predefined exactly two slots (SLOT_01 and SLOT_02) enforced via database CHECK constraints, partial unique index (idx_device_slots_active_cred), and transactional SELECT ... FOR UPDATE checks.
+    - Enforced single-device hardware-bound policy: multi-device synced passkeys (Google Password Manager / iCloud sync) are strictly rejected based on the immutable backup eligibility (BE) flag.
+  - **UI Authorization & Protected Demo Endpoints**:
+    - Server-authoritative probe GET /api/demo/access returns 403 unless valid device-bound session is authenticated.
+    - Secure, short-lived (15-minute) demo sessions issued via HttpOnly SameSite=lax cookies with instant invalidation upon administrative device revocation.
+  - **Device Administration Interface (DeviceManagementView.tsx & DemoAuthModal.tsx)**:
+    - Super Admin management console with two slots for enrollment, approval, status monitoring, revocation, and replacement resetting.
+  - **Testing & Database Migrations**:
+    - Added comprehensive integration suite tests/device_auth_webauthn.test.ts (15 tests passing, 221 total passing across 21 test suites).
+    - Migrated Render Managed PostgreSQL database with device_registration_slots table and predefined slots.
+
+---
+
 ## [2.12.0] - 2026-11-07
 
 - **Security(audit): Complete Repository Security Audit, Secret Scan & Dependency Hardening**:
