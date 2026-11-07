@@ -31,6 +31,10 @@ export const PortalSelectionView: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // WebAuthn Two-Device Demo Authentication State
+  const [showDemoAuthModal, setShowDemoAuthModal] = useState<boolean>(false);
+  const [demoSessionInfo, setDemoSessionInfo] = useState<{ slot_id: string; device_label: string; expires_at: string } | null>(null);
+
 
   useEffect(() => {
     // Probe server-authoritative endpoint: GET /api/demo/access
@@ -59,9 +63,7 @@ export const PortalSelectionView: React.FC = () => {
   const [resetTokenInput, setResetTokenInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
-  // WebAuthn Two-Device Demo Authentication State
-  const [showDemoAuthModal, setShowDemoAuthModal] = useState<boolean>(false);
-  const [demoSessionInfo, setDemoSessionInfo] = useState<{ slot_id: string; device_label: string; expires_at: string } | null>(null);
+
 
 
   const handlePortalSelect = (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
