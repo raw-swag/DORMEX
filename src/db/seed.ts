@@ -40,7 +40,13 @@ export async function seedDatabase(db: DatabaseService): Promise<void> {
 
   const staffUsers = [
     ['usr_admin', 'ADM001', 'admin@college.edu', 'Chief Warden Administrator', adminHash, 'CHIEF_WARDEN', 'SYSTEM', null],
+    ['usr_admin_2', 'ADM002', 'admin2@college.edu', 'Deputy Chief Warden', adminHash, 'CHIEF_WARDEN', 'SYSTEM', null],
+    ['usr_admin_3', 'ADM003', 'admin3@college.edu', 'Senior Hostel Warden', adminHash, 'WARDEN', 'SYSTEM', null],
     ['usr_office', 'OFF001', 'office@college.edu', 'Hostel Office Staff', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
+    ['usr_office_2', 'OFF002', 'office2@college.edu', 'Hostel Office Accounts Officer', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
+    ['usr_office_3', 'OFF003', 'office3@college.edu', 'Hostel Office Admissions Desk', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
+    ['usr_office_4', 'OFF004', 'office4@college.edu', 'Hostel Office Welfare Coordinator', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
+    ['usr_office_5', 'OFF005', 'office5@college.edu', 'Hostel Office Facilities Desk', officeHash, 'HOSTEL_OFFICE', 'SYSTEM', null],
     ['usr_chief', 'CW001', 'chiefwarden@college.edu', 'Chief Warden Dr. Sharma', defaultHash, 'CHIEF_WARDEN', 'SYSTEM', null],
     ['usr_warden_bvb', 'WRD001', 'warden.bvb@college.edu', 'Prof. Rao (Warden - BVB Block)', defaultHash, 'WARDEN', 'BUILDING', 'bld_bvb'],
     ['usr_proctor_1', 'PRC001', 'proctor1@college.edu', 'Dr. Mehta (Proctor)', defaultHash, 'PROCTOR', 'SYSTEM', null],

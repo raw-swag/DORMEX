@@ -135,7 +135,7 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
       });
 
       expect(result.success).toBe(true);
-      expect(result.seededStaffCount).toBe(2);
+      expect(result.seededStaffCount).toBe(8);
       expect(result.seededStudentsCount).toBe(30);
 
       // Verify users in database

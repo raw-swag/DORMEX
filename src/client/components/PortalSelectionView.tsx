@@ -321,11 +321,27 @@ export const PortalSelectionView: React.FC = () => {
                       className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
                     >
                       <option value="" disabled>-- Select Authorized Demo Account --</option>
-                      {demoAccounts.map((acc) => (
-                        <option key={acc.userId} value={acc.collegeId}>
-                          {acc.label}
-                        </option>
-                      ))}
+                      <optgroup label="Students (10 Accounts)">
+                        {demoAccounts.filter((a) => a.portal === 'STUDENT').map((acc) => (
+                          <option key={acc.userId} value={acc.collegeId}>
+                            {acc.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Hostel Office (5 Accounts)">
+                        {demoAccounts.filter((a) => a.portal === 'HOSTEL_OFFICE').map((acc) => (
+                          <option key={acc.userId} value={acc.collegeId}>
+                            {acc.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Administrative Staff (3 Accounts)">
+                        {demoAccounts.filter((a) => a.portal === 'ADMIN').map((acc) => (
+                          <option key={acc.userId} value={acc.collegeId}>
+                            {acc.label}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
                   )}
                 </div>

@@ -161,7 +161,7 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
     it('enforces maximum three active devices limit', async () => {
       const deviceAuthService = new (await import('../src/auth/deviceAuthService.js')).DeviceAuthService(db);
 
-      // Fill SLOT_01 and SLOT_02
+      // Fill SLOT_01, SLOT_02, and SLOT_03
       await db.query(`
         UPDATE device_registration_slots
         SET credential_id = 'cred_windows_hello_tpm_01',
@@ -182,13 +182,29 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
         WHERE slot_id = 'SLOT_02'
       `);
 
-      // Both slots are active
-      const slots = await deviceAuthService.getDeviceSlots();
-      expect(slots.filter((s: any) => s.is_active)).toHaveLength(2);
+      await db.query(`
+        UPDATE device_registration_slots
+        SET credential_id = 'cred_windows_laptop2_03',
+            public_key = '${Buffer.from('key3').toString('base64')}',
+            counter = 1,
+            backup_eligible = FALSE,
+            is_revoked = FALSE
+        WHERE slot_id = 'SLOT_03'
+      `);
 
-      // Generating registration on either occupied slot is refused
+      // All three slots are active
+      const slots = await deviceAuthService.getDeviceSlots();
+      expect(slots.filter((s: any) => s.is_active)).toHaveLength(3);
+
+      // Generating registration on any occupied slot is refused
       await expect(deviceAuthService.generateRegistrationOptionsForSlot({
         slot_id: 'SLOT_01',
+        adminUserId: 'usr_admin_001',
+        hostname: 'localhost',
+      })).rejects.toThrow('SLOT_OCCUPIED');
+
+      await expect(deviceAuthService.generateRegistrationOptionsForSlot({
+        slot_id: 'SLOT_03',
         adminUserId: 'usr_admin_001',
         hostname: 'localhost',
       })).rejects.toThrow('SLOT_OCCUPIED');
@@ -323,7 +339,10 @@ describe('DORMEX WebAuthn Two-Device Demo Authentication & Administration Suite'
 
   describe('5. Authentication Options & Replay Attack Defense', () => {
     it('generates authentication options with allowCredentials matching registered devices', async () => {
-      // Register both slots
+      // Clear all slot credentials first to ensure exact test state
+      await db.query(`UPDATE device_registration_slots SET credential_id = NULL, public_key = NULL, is_revoked = FALSE`);
+
+      // Register SLOT_01 and SLOT_02
       await db.query(`
         UPDATE device_registration_slots
         SET credential_id = 'cred_win_111',
