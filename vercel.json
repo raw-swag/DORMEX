@@ -3,15 +3,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://dormex-api.onrender.com/api/$1"
+      "destination": "https://dormex-api-s4qq.onrender.com/api/$1"
     },
     {
       "source": "/health",
-      "destination": "https://dormex-api.onrender.com/health"
+      "destination": "https://dormex-api-s4qq.onrender.com/health"
     },
     {
       "source": "/readyz",
-      "destination": "https://dormex-api.onrender.com/readyz"
+      "destination": "https://dormex-api-s4qq.onrender.com/readyz"
     },
     {
       "source": "/(.*)",
