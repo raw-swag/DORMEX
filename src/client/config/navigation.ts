@@ -201,6 +201,13 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
       return {
         primaryTabs: [
           {
+            id: 'admin_devices',
+            label: 'Two-Device Demo Auth',
+            shortLabel: 'Devices',
+            icon: Fingerprint,
+            badge: '2 Slots',
+          },
+          {
             id: 'admin_overview',
             label: 'System Allocation Console',
             shortLabel: 'Console',
