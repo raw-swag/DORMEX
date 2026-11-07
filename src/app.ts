@@ -82,6 +82,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const messMenuService = new MessMenuService(database);
   const authService = new AuthService(database);
   const deviceAuthService = new DeviceAuthService(database);
+  (app as any).deviceAuthService = deviceAuthService;
 
   // Helper auth extractor (enforces cryptographically signed JWT tokens, with test/dev compatibility)
   const extractActor = async (req: any): Promise<AuthActor> => {
@@ -1267,6 +1268,29 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       user_verified: session.user_verified,
       expires_at: session.expires_at,
     });
+  });
+
+  // Dynamic Demo Accounts Endpoint: GET /api/demo/accounts
+  // Restricted to authorized hardware-bound demo devices only
+  app.get('/api/demo/accounts', async (req: any, reply) => {
+    const session = await extractDemoSession(req);
+    if (!session) {
+      return reply.code(403).send({
+        error: 'FORBIDDEN: Demo account directory is restricted to authorized hardware-bound devices.',
+      });
+    }
+    try {
+      const { accounts } = await deviceAuthService.getAuthorizedDemoAccounts();
+      return reply.send({
+        success: true,
+        slot_id: session.slot_id,
+        accounts,
+      });
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('DEMO_ACCOUNTS_MISSING') ? 500 : 400).send({
+        error: err.message || 'Failed to retrieve demo accounts',
+      });
+    }
   });
 
   // Protected Demo API sample / data: returns 403 unless valid device-bound session

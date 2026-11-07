@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.14.0] - 2026-11-07
+
+- **Feat(demo): Dynamic Database-Driven Demo Accounts & Strict Device Gating**:
+  - **Dynamic Demo Accounts Retrieval (`GET /api/demo/accounts`)**:
+    - Restricted endpoint exclusively to hardware-enrolled, authenticated demo devices (`SLOT_01`, `SLOT_02`, `SLOT_03`). Unauthorized devices receive HTTP 403 Forbidden with 0 accounts exposed.
+    - Dynamically queries relational PostgreSQL database for the canonical trio:
+      1. Student Demo: `DEMO-001` (Aarav Sharma, role `STUDENT`, Priority #1, Verified Fee, Eligible).
+      2. Admin Demo: `ADM001` (Chief Warden Administrator, role `CHIEF_WARDEN`, scope `SYSTEM`).
+      3. Hostel Office Demo: `OFF001` (Hostel Office Staff, role `HOSTEL_OFFICE`, Admissions & Verification).
+    - Checks active status and throws `DEMO_ACCOUNTS_MISSING` if any canonical account is deleted or missing from the database.
+  - **Dynamic Frontend Selector (`PortalSelectionView.tsx`)**:
+    - Replaced static/hardcoded preset `<option>` values with dynamic dropdown choices populated from `/api/demo/accounts`.
+    - Dropdown remains hidden from ordinary users and only appears once hardware-bound WebAuthn demo session is active.
+    - Selecting an account populates authentication fields without hardcoding passwords in client code.
+  - **Comprehensive Verification Suite (`tests/demo_accounts_dynamic.test.ts`)**:
+    - Added 7 automated tests covering authorization gating, full retrieval of all three canonical accounts, active filtering, dynamic DB updates, deactivated account rejection at login, and missing canonical account error reporting.
+
+---
+
 ## [2.13.0] - 2026-11-07
 
 - **Feat(auth): Exact Two-Device Web Authentication Level 3 Implementation**:

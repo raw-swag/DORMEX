@@ -34,7 +34,17 @@ export const PortalSelectionView: React.FC = () => {
   // WebAuthn Two-Device Demo Authentication State
   const [showDemoAuthModal, setShowDemoAuthModal] = useState<boolean>(false);
   const [demoSessionInfo, setDemoSessionInfo] = useState<{ slot_id: string; device_label: string; expires_at: string } | null>(null);
-
+  const [demoAccounts, setDemoAccounts] = useState<Array<{
+    userId: string;
+    collegeId: string;
+    fullName: string;
+    email: string;
+    role: string;
+    portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE';
+    assignedPriority: number | null;
+    label: string;
+  }>>([]);
+  const [demoAccountsError, setDemoAccountsError] = useState<string | null>(null);
 
   useEffect(() => {
     // Probe server-authoritative endpoint: GET /api/demo/access
@@ -46,6 +56,16 @@ export const PortalSelectionView: React.FC = () => {
             device_label: res.device_label || 'Authorized Device',
             expires_at: res.expires_at || '',
           });
+          // Fetch dynamic demo accounts exclusively for authorized devices
+          apiJson<{ success: boolean; accounts: any[]; error?: string }>('/api/demo/accounts')
+            .then((accRes) => {
+              if (accRes.success && accRes.accounts) {
+                setDemoAccounts(accRes.accounts);
+              }
+            })
+            .catch((err) => {
+              setDemoAccountsError(err.message || 'Failed to load demo accounts');
+            });
         }
       })
       .catch(() => {
@@ -270,52 +290,44 @@ export const PortalSelectionView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quick Preset Selector: STRICTLY GATED to verified hardware-bound demo sessions only */}
+              {/* Dynamic Database Demo Account Selector: STRICTLY GATED to verified hardware-bound demo sessions only */}
               {demoSessionInfo && (
                 <div className="pt-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-semibold text-[#627084]">
-                      Authorized Demo Presets ({demoSessionInfo.slot_id}):
+                      Authorized Demo Accounts ({demoSessionInfo.slot_id}):
                     </span>
                     <span className="text-[10px] text-[#016A62] font-mono">Hardware Unlocked</span>
                   </div>
-                  <select
-                    value={selectedUserKey}
-                    onChange={(e) => {
-                      const key = e.target.value;
-                      setSelectedUserKey(key);
-                      const user = DEV_USERS[key];
-                      if (user) {
-                        setAuthIdInput(user.collegeId);
-                      }
-                    }}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
-                  >
-                    {selectedPortal === 'STUDENT' && (
-                      <optgroup label="Seeded Demo Students (Pilot Participants)">
-                        <option value="demo1">Aarav Sharma (DEMO-001, Verified Fee, Priority #1)</option>
-                        <option value="demo2">Diya Patel (DEMO-002, Verified Fee, Priority #2)</option>
-                        <option value="demo3">Rohan Verma (DEMO-003, Verified Fee, Priority #3)</option>
-                        <option value="demo10">Arjun Menon (DEMO-010, Verified Fee, Priority #10)</option>
-                        <option value="demo29">Prisha Pandey (DEMO-029, Fee Submitted - Pending Review)</option>
-                        <option value="demo30">Nikhil Saxena (DEMO-030, Unpaid / Fee Pending)</option>
-                      </optgroup>
-                    )}
-
-                    {selectedPortal === 'ADMIN' && (
-                      <>
-                        <option value="superAdmin">Chief Warden Administrator (ADM001)</option>
-                        <option value="chiefWarden">Dr. Sharma (Chief Warden · CW001)</option>
-                        <option value="wardenBvb">Prof. Rao (Warden - BVB Block · WRD001)</option>
-                      </>
-                    )}
-
-                    {selectedPortal === 'HOSTEL_OFFICE' && (
-                      <>
-                        <option value="hostelOffice">Hostel Office Staff (Admissions & Verification · OFF001)</option>
-                      </>
-                    )}
-                  </select>
+                  {demoAccountsError ? (
+                    <div className="p-2 text-xs text-[#C93B3B] bg-[#FDE8E8] border border-[#F8B4B4] rounded-lg">
+                      {demoAccountsError}
+                    </div>
+                  ) : demoAccounts.length === 0 ? (
+                    <div className="p-2 text-xs text-[#627084] bg-white border border-[#E2E6E8] rounded-lg">
+                      Loading authorized demo accounts...
+                    </div>
+                  ) : (
+                    <select
+                      value={authIdInput}
+                      onChange={(e) => {
+                        const collegeId = e.target.value;
+                        setAuthIdInput(collegeId);
+                        const matched = demoAccounts.find((a) => a.collegeId === collegeId);
+                        if (matched && matched.portal !== selectedPortal) {
+                          setSelectedPortal(matched.portal);
+                        }
+                      }}
+                      className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
+                    >
+                      <option value="" disabled>-- Select Authorized Demo Account --</option>
+                      {demoAccounts.map((acc) => (
+                        <option key={acc.userId} value={acc.collegeId}>
+                          {acc.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 

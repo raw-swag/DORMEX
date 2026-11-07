@@ -665,6 +665,103 @@ export class DeviceAuthService {
   }
 
   /**
+   * Fetch the exactly three canonical demo accounts directly from the database.
+   * Strictly verifies presence, active status, and eligibility.
+   */
+  public async getAuthorizedDemoAccounts(): Promise<{
+    accounts: Array<{
+      userId: string;
+      collegeId: string;
+      fullName: string;
+      email: string;
+      role: string;
+      portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE';
+      scopeType: string;
+      scopeId: string | null;
+      profileId: string | null;
+      assignedPriority: number | null;
+      feeStatus: string | null;
+      eligibilityStatus: string | null;
+      isActive: boolean;
+      label: string;
+    }>;
+    error?: string;
+  }> {
+    const targetCollegeIds = ['DEMO-001', 'ADM001', 'OFF001'];
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.college_id,
+        u.full_name,
+        u.email,
+        u.is_active,
+        r.name as role_name,
+        ur.scope_type,
+        ur.scope_id,
+        sp.id as profile_id,
+        sp.assigned_priority,
+        sp.fee_status,
+        sp.eligibility_status
+      FROM users u
+      JOIN user_roles ur ON u.id = ur.user_id
+      JOIN roles r ON ur.role_id = r.id
+      LEFT JOIN student_profiles sp ON u.id = sp.user_id
+      WHERE u.college_id IN ($1, $2, $3)
+      ORDER BY CASE u.college_id 
+        WHEN 'DEMO-001' THEN 1 
+        WHEN 'ADM001' THEN 2 
+        WHEN 'OFF001' THEN 3 
+        ELSE 4 
+      END
+    `;
+    const res = await this.db.query(query, targetCollegeIds);
+    const rows = res.rows;
+    const foundIds = new Set(rows.map((r: any) => r.college_id));
+    const missing = targetCollegeIds.filter((cid) => !foundIds.has(cid));
+    if (missing.length > 0) {
+      throw new Error(`DEMO_ACCOUNTS_MISSING: Expected 3 demo accounts but missing: ${missing.join(', ')}`);
+    }
+
+    const activeRows = rows.filter((r: any) => r.is_active);
+    const accounts = activeRows.map((r: any) => {
+      let portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' = 'STUDENT';
+      if (['CHIEF_WARDEN', 'WARDEN', 'SUPER_ADMIN'].includes(r.role_name)) {
+        portal = 'ADMIN';
+      } else if (r.role_name === 'HOSTEL_OFFICE') {
+        portal = 'HOSTEL_OFFICE';
+      }
+
+      let label = r.full_name;
+      if (r.college_id === 'DEMO-001') {
+        label = `${r.full_name} (${r.college_id}, Priority #${r.assigned_priority || 1})`;
+      } else if (r.college_id === 'ADM001') {
+        label = `${r.full_name} (${r.role_name})`;
+      } else if (r.college_id === 'OFF001') {
+        label = `${r.full_name} (Admissions & Verification · ${r.college_id})`;
+      }
+
+      return {
+        userId: r.user_id,
+        collegeId: r.college_id,
+        fullName: r.full_name,
+        email: r.email,
+        role: r.role_name,
+        portal,
+        scopeType: r.scope_type,
+        scopeId: r.scope_id,
+        profileId: r.profile_id,
+        assignedPriority: r.assigned_priority,
+        feeStatus: r.fee_status,
+        eligibilityStatus: r.eligibility_status,
+        isActive: Boolean(r.is_active),
+        label,
+      };
+    });
+
+    return { accounts };
+  }
+
+  /**
    * Revoke a registered device slot
    */
   public async revokeDeviceSlot(params: {

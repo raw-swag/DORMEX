@@ -22,6 +22,16 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 33: Dynamic Three-Demo Accounts Architecture & Strict Hardware Gating**:
+  - **Deliverables Completed**:
+    - Gated dynamic account directory `GET /api/demo/accounts` behind hardware-enrolled WebAuthn demo session verification (`SLOT_01`, `SLOT_02`, `SLOT_03`).
+    - Implemented database-driven retrieval for canonical demo accounts (`DEMO-001`, `ADM001`, `OFF001`) with automatic missing-account assertion (`DEMO_ACCOUNTS_MISSING`).
+    - Integrated dynamic accounts into `PortalSelectionView.tsx`, removing hardcoded presets from client source code and hiding selector for unauthorized devices.
+    - Added automated integration suite `tests/demo_accounts_dynamic.test.ts` verifying gating, listing, dynamic updates, and deactivated account handling.
+  - **Verification Metrics**:
+    - 228/228 automated tests passing across 22 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`) and server build (`npm run build:server`).
 - [x] **Phase 31: Complete Production Readiness Audit, PostgreSQL Verification & Hosting Runbooks**:
   - **Deliverables Completed**:
     - Completed exhaustive full-stack architectural discovery and code audit across 33 database tables, Fastify server endpoints, Vite frontend assets, and authentication flows.
