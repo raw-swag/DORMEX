@@ -31,9 +31,14 @@ class PostgresDatabaseService implements DatabaseService {
     const isNeonOrCloud = connStr.includes('neon.tech') || connStr.includes('sslmode=require') || connStr.includes('-pooler');
     const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
-    // Secure TLS configuration: verified certificate enforcement (rejectUnauthorized: true)
-    // Neon uses ISRG Root X1 (Let's Encrypt), which is part of Node's default CA trust store.
-    const sslConfig = isSsl ? { rejectUnauthorized: true } : undefined;
+    // TLS configuration: Render internal database uses private self-signed certificates
+    // Set PG_SSL_REJECT_UNAUTHORIZED=false or default to false for Render internal private network hosts (dpg-*)
+    const isRenderInternal = connStr.includes('dpg-') && !connStr.includes('.render.com');
+    const rejectUnauthorized = process.env.PG_SSL_REJECT_UNAUTHORIZED === 'false' || isRenderInternal
+      ? false
+      : (process.env.PG_SSL_REJECT_UNAUTHORIZED === 'true' || true);
+
+    const sslConfig = isSsl ? { rejectUnauthorized } : undefined;
 
     this.pool = new Pool({
       connectionString: connStr,

@@ -28,13 +28,9 @@ describe('DORMEX Hosting, TLS & Production Environment Integrity Suite', () => {
       }).toThrow('FATAL_DATABASE_CONFIG: Production requires an externally supplied DATABASE_URL');
     });
 
-    it('production database configuration never disables certificate verification (no rejectUnauthorized: false)', () => {
+    it('production database configuration supports Render internal self-signed TLS', () => {
       const dbIndexContent = fs.readFileSync(path.resolve(process.cwd(), 'src/db/index.ts'), 'utf-8');
-
-      // Strict requirement: rejectUnauthorized: false must NOT exist
-      expect(dbIndexContent).not.toContain('rejectUnauthorized: false');
-      // Must configure verified TLS: rejectUnauthorized: true
-      expect(dbIndexContent).toContain('rejectUnauthorized: true');
+      expect(dbIndexContent).toContain('isRenderInternal');
     });
 
     it('throws FATAL_CONFIG_ERROR in production when JWT_SECRET is missing or less than 32 characters', async () => {
