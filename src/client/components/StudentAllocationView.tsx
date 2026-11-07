@@ -1072,21 +1072,21 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           </div>
 
           {/* Focused Allocation Status Card with High Contrast */}
-          <div className="bg-[#203653] text-white rounded-xl p-6 shadow-sm border border-[#17283B] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-2">
+          <div className="bg-[#203653] text-white rounded-xl p-4 sm:p-6 shadow-sm border border-[#17283B] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
+            <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#84d5ca] animate-pulse" />
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#84d5ca]">
                   Allocation Cycle Active · BVB Block Floor 2
                 </span>
               </div>
-              <div className="text-xl font-bold tracking-tight text-white flex items-center gap-3">
+              <div className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2.5 sm:gap-3 flex-wrap">
                 <span>{session?.fullName}</span>
                 <span className="text-xs font-mono font-medium bg-[#112947] text-slate-200 px-2.5 py-1 rounded border border-[#263345]">
                   {session?.collegeId}
                 </span>
               </div>
-              <div className="text-xs text-slate-300 flex items-center gap-2">
+              <div className="text-xs text-slate-300 flex items-center gap-2 flex-wrap">
                 <span>Assigned Priority Rank:</span>
                 <span className="font-bold text-[#D4B779] font-mono text-sm">
                   #{myProfile?.assigned_priority || '1'}
@@ -1096,7 +1096,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                   const activeCycle = availableCycles.find((c: any) => c.id === cycleId);
                   const isPublished = activeCycle?.status === 'PUBLISHED' || activeCycle?.status === 'LOCKED';
                   return (
-                    <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                       isPublished 
                         ? 'bg-[#E7F2ED] text-[#1E7B54] border-[#A8D5C2]' 
                         : 'bg-[#FAF4E6] text-[#9C7A2E] border-[#D4B779]'
@@ -1109,7 +1109,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             </div>
 
             {/* Turn Action / Timer Box */}
-            <div className="bg-[#07203C] p-4 rounded-xl border border-[#263345] min-w-[260px] flex flex-col items-start gap-3">
+            <div className="bg-[#07203C] p-3.5 sm:p-4 rounded-xl border border-[#263345] w-full md:w-auto md:min-w-[260px] flex flex-col items-start gap-2.5 sm:gap-3">
               <div className="text-[11px] font-medium text-slate-300 flex items-center justify-between w-full">
                 <span>Turn Status:</span>
                 {activeSession ? (
@@ -1176,13 +1176,13 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             </div>
           )}
 
-          {/* Clean Floor Map Header Bar: Row 1 Title, Row 2 Wing Filters, Search, Zoom */}
-          <div className="bg-white rounded-xl p-5 border border-[#E2E6E8] shadow-xs space-y-4">
+          {/* Clean Floor Map Header Bar: Row 1 Title & Selectors, Row 2 Wing Filters, Search, Zoom */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#E2E6E8] shadow-xs space-y-4">
             {/* First Row: Title & Context */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E6E8] pb-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-[#203653] tracking-tight">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-bold text-[#203653] tracking-tight">
                     BVB Block — Floor 2 Allocation Map
                   </h2>
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2] px-2 py-0.5 rounded-full">
@@ -1195,11 +1195,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               </div>
 
               {/* Building & Floor Selectors */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <select
                   value={selectedBuildingId}
                   onChange={(e) => setSelectedBuildingId(e.target.value)}
-                  className="text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+                  className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                 >
                   {buildings.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -1211,7 +1211,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                 <select
                   value={floorId}
                   onChange={(e) => setFloorId(e.target.value)}
-                  className="text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+                  className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                 >
                   {floors.map((f) => (
                     <option key={f.id} value={f.id}>
@@ -1224,7 +1224,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             </div>
 
             {/* Second Row: Wing Filter Pills, Room Search, and Zoom Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               {/* Wing Filter Pills */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-bold text-[#627084] uppercase mr-1">Wings:</span>
@@ -1249,7 +1249,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                         setSelectedRoomNumber('250');
                       }
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                       selectedWingFilter === w.id
                         ? 'bg-[#203653] text-white border-[#203653]'
                         : 'bg-[#F7F6F1] text-[#627084] border-[#E2E6E8] hover:bg-slate-200/60 hover:text-[#263345]'
@@ -1261,20 +1261,20 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               </div>
 
               {/* Room Search & Zoom Toolbar */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
                 {/* Search Room */}
-                <div className="relative">
+                <div className="relative flex-1 sm:flex-none">
                   <input
                     type="text"
                     placeholder="Search room (e.g. 202)..."
                     value={selectedRoomNumber || ''}
                     onChange={(e) => setSelectedRoomNumber(e.target.value.trim() || null)}
-                    className="text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] w-44"
+                    className="w-full sm:w-44 text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                   />
                 </div>
 
                 {/* SVG Zoom Controls */}
-                <div className="flex items-center border border-[#E2E6E8] rounded-lg bg-[#F7F6F1] p-0.5">
+                <div className="flex items-center border border-[#E2E6E8] rounded-lg bg-[#F7F6F1] p-0.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => setZoomLevel((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
@@ -1283,7 +1283,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[11px] font-mono font-bold px-2 text-[#203653]">
+                  <span className="text-[11px] font-mono font-bold px-1.5 text-[#203653]">
                     {Math.round(zoomLevel * 100)}%
                   </span>
                   <button
@@ -1408,7 +1408,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           {/* Master-Detail Layout: 70% Floor Map, 30% Room Inspector */}
           <div id="room-matrix-container" tabIndex={-1} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start focus:outline-none">
             {/* 70% Map Panel (8 cols on lg) */}
-            <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-[#E2E6E8] shadow-xs space-y-4">
+            <div className="lg:col-span-8 bg-white p-3.5 sm:p-5 rounded-xl border border-[#E2E6E8] shadow-xs space-y-4 overflow-hidden">
               {/* Floor Plan Header Overlay */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-1 bg-[#F0F4F6] px-3 py-2 rounded-lg gap-2 border border-[#E5E9EB]">
                 <div className="flex items-center gap-2">

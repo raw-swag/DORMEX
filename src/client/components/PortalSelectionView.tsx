@@ -79,44 +79,44 @@ export const PortalSelectionView: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F7F6F1] flex flex-col justify-between font-sans">
       {/* Top Header */}
-      <header className="bg-white border-b border-[#E2E6E8] px-6 py-3.5 flex items-center justify-between">
-        <DormexLogo theme="primary" size="md" />
+      <header className="bg-white border-b border-[#E2E6E8] px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
+        <DormexLogo theme="primary" size="md" className="h-8 sm:h-10 w-auto" />
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#627084] hidden sm:inline">Pilot Scope: BVB Block • Floor 2</span>
-          <div className="px-2.5 py-1 bg-[#E7F2ED] text-[#1E7B54] text-xs font-semibold rounded border border-[#A8D5C2] flex items-center gap-1.5">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="text-[11px] sm:text-xs text-[#627084] hidden md:inline">Pilot Scope: BVB Block • Floor 2</span>
+          <div className="px-2 sm:px-2.5 py-1 bg-[#E7F2ED] text-[#1E7B54] text-[11px] sm:text-xs font-semibold rounded-lg border border-[#A8D5C2] flex items-center gap-1.5 shrink-0">
             <span className="w-2 h-2 rounded-full bg-[#1E7B54] animate-pulse" />
-            Institutional Portal
+            <span>Institutional Portal</span>
           </div>
         </div>
       </header>
 
       {/* Main Content: Single Focused Login Card with 3-Toggle Portal Selector */}
-      <main className="max-w-xl mx-auto px-6 py-12 flex-1 flex flex-col justify-center w-full">
-        <div className="text-center mb-8 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#E7F2ED] border border-[#2C8279]/30 text-[#2C8279] rounded text-xs font-semibold">
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 flex flex-col justify-center w-full">
+        <div className="text-center mb-6 sm:mb-8 space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#E7F2ED] border border-[#2C8279]/30 text-[#2C8279] rounded-full text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-[#2C8279]" />
             DORMEX Allocation Platform
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#203653] tracking-tight">
             Institutional Sign In
           </h1>
-          <p className="text-[#627084] text-xs leading-relaxed">
+          <p className="text-[#627084] text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
             Select your account type and enter your credentials to access the allocation workspace.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-3.5 bg-[#FDE8E8] border border-[#F8B4B4] rounded text-[#C93B3B] text-xs font-medium flex items-center gap-2.5 shadow-xs">
+          <div className="mb-5 sm:mb-6 p-3 sm:p-3.5 bg-[#FDE8E8] border border-[#F8B4B4] rounded-xl text-[#C93B3B] text-xs font-medium flex items-center gap-2.5 shadow-xs">
             <AlertCircle className="w-4 h-4 text-[#C93B3B] shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {/* Three-Toggle Option Login Panel: ID + Password Credentials */}
-        <div className="bg-white p-7 rounded-2xl border border-[#E2E6E8] shadow-sm w-full animate-fadeIn">
+        <div className="bg-white p-5 sm:p-7 rounded-2xl border border-[#E2E6E8] shadow-sm w-full animate-fadeIn">
             {/* 3-Toggle Portal Switcher */}
-            <div className="mb-6 space-y-2">
+            <div className="mb-5 sm:mb-6 space-y-2">
               <label className="text-[11px] font-bold uppercase tracking-wider text-[#627084] block">
                 Select Portal Access Option
               </label>
@@ -124,40 +124,40 @@ export const PortalSelectionView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handlePortalSelect('STUDENT')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`min-h-[44px] py-2 px-1.5 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
                     selectedPortal === 'STUDENT'
                       ? 'bg-white text-[#07203C] shadow-xs'
                       : 'text-[#627084] hover:text-[#07203C]'
                   }`}
                 >
-                  <GraduationCap className="w-4 h-4 text-[#016A62]" />
-                  <span>Student</span>
+                  <GraduationCap className="w-4 h-4 text-[#016A62] shrink-0" />
+                  <span className="truncate">Student</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handlePortalSelect('ADMIN')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`min-h-[44px] py-2 px-1.5 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
                     selectedPortal === 'ADMIN'
                       ? 'bg-white text-[#07203C] shadow-xs'
                       : 'text-[#627084] hover:text-[#07203C]'
                   }`}
                 >
-                  <ShieldCheck className="w-4 h-4 text-[#203653]" />
-                  <span>Admin</span>
+                  <ShieldCheck className="w-4 h-4 text-[#203653] shrink-0" />
+                  <span className="truncate">Admin</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handlePortalSelect('HOSTEL_OFFICE')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`min-h-[44px] py-2 px-1.5 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
                     selectedPortal === 'HOSTEL_OFFICE'
                       ? 'bg-white text-[#07203C] shadow-xs'
                       : 'text-[#627084] hover:text-[#07203C]'
                   }`}
                 >
-                  <Building className="w-4 h-4 text-[#9C7A2E]" />
-                  <span>Hostel Office</span>
+                  <Building className="w-4 h-4 text-[#9C7A2E] shrink-0" />
+                  <span className="truncate">Office</span>
                 </button>
               </div>
             </div>
@@ -206,9 +206,9 @@ export const PortalSelectionView: React.FC = () => {
                         ? 'e.g. ADM001 or WRD001'
                         : 'e.g. OFF001'
                     }
-                    className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3.5 py-2.5 text-[#203653] focus:outline-none focus:ring-2 focus:ring-[#016A62] transition-all"
+                    className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3.5 py-3 text-[#203653] focus:outline-none focus:ring-2 focus:ring-[#016A62] transition-all"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#627084]">
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084]">
                     <UserCheck className="w-4 h-4" />
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export const PortalSelectionView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-[#016A62] hover:text-[#0d6f66] font-medium flex items-center gap-1"
+                    className="text-[11px] text-[#016A62] hover:text-[#0d6f66] font-medium flex items-center gap-1 p-1"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     <span>{showPassword ? 'Hide' : 'Show'}</span>
@@ -235,9 +235,9 @@ export const PortalSelectionView: React.FC = () => {
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     placeholder="Enter account password..."
-                    className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3.5 py-2.5 text-[#203653] focus:outline-none focus:ring-2 focus:ring-[#016A62] transition-all"
+                    className="w-full text-xs font-mono bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3.5 py-3 text-[#203653] focus:outline-none focus:ring-2 focus:ring-[#016A62] transition-all"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#627084]">
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084]">
                     <KeyRound className="w-4 h-4" />
                   </div>
                 </div>
@@ -261,7 +261,7 @@ export const PortalSelectionView: React.FC = () => {
                       setAuthIdInput(user.collegeId);
                     }
                   }}
-                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
+                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
                 >
                   {selectedPortal === 'STUDENT' && (
                     <optgroup label="Seeded Demo Students (Pilot Participants)">
@@ -293,13 +293,13 @@ export const PortalSelectionView: React.FC = () => {
               <div className="pt-3 space-y-3">
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+                  className="w-full min-h-[48px] py-3 px-4 bg-[#016A62] hover:bg-[#0d6f66] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
                 >
                   <span>Authenticate with ID & Password</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-1 pt-1 text-center sm:text-left">
                   <button
                     type="button"
                     onClick={() => {

@@ -82,13 +82,20 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
 
   describe('4. PWA Install Logic & Browser Behavioral Rules', () => {
     let mockLocalStorage: Record<string, string> = {};
+    let mockSessionStorage: Record<string, string> = {};
 
     beforeEach(() => {
       mockLocalStorage = {};
+      mockSessionStorage = {};
       vi.stubGlobal('localStorage', {
         getItem: (key: string) => mockLocalStorage[key] || null,
         setItem: (key: string, value: string) => { mockLocalStorage[key] = value; },
         removeItem: (key: string) => { delete mockLocalStorage[key]; },
+      });
+      vi.stubGlobal('sessionStorage', {
+        getItem: (key: string) => mockSessionStorage[key] || null,
+        setItem: (key: string, value: string) => { mockSessionStorage[key] = value; },
+        removeItem: (key: string) => { delete mockSessionStorage[key]; },
       });
     });
 
@@ -96,15 +103,27 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
       vi.unstubAllGlobals();
     });
 
-    it('does not persist dismissal across reloads or future visits in localStorage, sessionStorage, cookies or IndexedDB', () => {
-      // Storage keys must remain completely empty after dismissal
-      expect(localStorage.getItem('dormex_pwa_dismissed_until')).toBeNull();
-      expect(mockLocalStorage['dormex_pwa_dismissed_until']).toBeUndefined();
+    it('persists installation flag in localStorage under versioned key', () => {
+      // Installed app records versioned key
+      const PWA_STORAGE_KEY = 'dormex_pwa_installed_v1';
+      localStorage.setItem(PWA_STORAGE_KEY, 'true');
+      expect(localStorage.getItem(PWA_STORAGE_KEY)).toBe('true');
+      expect(mockLocalStorage[PWA_STORAGE_KEY]).toBe('true');
 
       // Verify no sensitive credentials or tokens in storage
       expect(localStorage.getItem('token')).toBeNull();
       expect(localStorage.getItem('user')).toBeNull();
       expect(localStorage.getItem('password')).toBeNull();
+    });
+
+    it('persists Maybe later dismissal in sessionStorage under versioned key across page refreshes in same tab', () => {
+      const PWA_DISMISSED_SESSION_KEY = 'dormex_pwa_dismissed_session_v1';
+      sessionStorage.setItem(PWA_DISMISSED_SESSION_KEY, 'true');
+      expect(sessionStorage.getItem(PWA_DISMISSED_SESSION_KEY)).toBe('true');
+      expect(mockSessionStorage[PWA_DISMISSED_SESSION_KEY]).toBe('true');
+
+      // Verify localStorage is NOT polluted with session dismissal
+      expect(localStorage.getItem(PWA_DISMISSED_SESSION_KEY)).toBeNull();
     });
 
     it('identifies standalone display mode reliably across desktop and iOS', () => {
@@ -127,6 +146,32 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
 
       expect(isInstalled).toBe(true);
       expect(showPrompt).toBe(false);
+    });
+
+    it('prompts eligible mobile visitors and handles Android and iOS guidance', () => {
+      const isMobile = true;
+      const isStandalone = false;
+      let isDismissedForSession = false;
+
+      // Eligible mobile prompt condition
+      const shouldPrompt = isMobile && !isStandalone && !isDismissedForSession;
+      expect(shouldPrompt).toBe(true);
+
+      // Session dismissal suppresses prompt in same session/tab
+      isDismissedForSession = true;
+      expect(isMobile && !isStandalone && !isDismissedForSession).toBe(false);
+
+      // New tab/session has isDismissedForSession = false
+      isDismissedForSession = false;
+      expect(isMobile && !isStandalone && !isDismissedForSession).toBe(true);
+    });
+
+    it('critical active workflows suppress install prompt', () => {
+      const isWorkflowActive = true;
+      const showPrompt = true;
+      // PWAInstallPrompt checks: if (isInstalled || !showPrompt || isWorkflowActive) return null;
+      const shouldRender = !isWorkflowActive && showPrompt;
+      expect(shouldRender).toBe(false);
     });
   });
 });

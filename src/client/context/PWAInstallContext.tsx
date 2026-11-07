@@ -9,6 +9,9 @@ export interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+export const PWA_STORAGE_KEY = 'dormex_pwa_installed_v1';
+export const PWA_DISMISSED_SESSION_KEY = 'dormex_pwa_dismissed_session_v1';
+
 interface PWAInstallContextType {
   canInstall: boolean;
   isInstallable: boolean;
@@ -19,6 +22,7 @@ interface PWAInstallContextType {
   openInstallPrompt: () => void;
   closePrompt: () => void;
   dismissPrompt: () => void;
+  acknowledgeIOSInstall: () => void;
   triggerNativeInstall: () => Promise<boolean>;
 }
 
@@ -26,38 +30,77 @@ const PWAInstallContext = createContext<PWAInstallContextType | undefined>(undef
 
 export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(PWA_STORAGE_KEY);
+        if (stored === 'true') return true;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+          (window.navigator as any).standalone === true ||
+          document.referrer.includes('android-app://');
+        if (isStandalone) {
+          localStorage.setItem(PWA_STORAGE_KEY, 'true');
+          return true;
+        }
+      }
+    } catch {
+      // Storage unavailable or disabled
+    }
+    return false;
+  });
+
   const [showPrompt, setShowPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  // Session/visit-scoped in-memory dismissal: survives state updates on the current page,
-  // but resets on full page reload or revisit without using localStorage, sessionStorage, cookies or IndexedDB.
-  const [isDismissedForSession, setIsDismissedForSession] = useState(false);
+  // Session-scoped dismissal: survives page refreshes and navigation in same tab via sessionStorage,
+  // but resets when browser tab/session is closed.
+  const [isDismissedForSession, setIsDismissedForSession] = useState<boolean>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        return sessionStorage.getItem(PWA_DISMISSED_SESSION_KEY) === 'true';
+      }
+    } catch {
+      // Storage unavailable or disabled
+    }
+    return false;
+  });
 
   useEffect(() => {
-    // Clean up any legacy persistent dismissal keys from localStorage
-    try {
-      localStorage.removeItem('dormex_pwa_dismissed_until');
-    } catch {
-      // Ignore storage errors if disabled/sandboxed
-    }
-
     // 1. Device and browser capability detection
     const userAgent = window.navigator.userAgent || '';
     const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
+    // Check coarse pointer or touch support or narrow width
+    const hasTouch = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
-      (window.innerWidth <= 844 && 'ontouchstart' in window);
+      (window.innerWidth <= 844 && Boolean(hasTouch)) ||
+      (window.innerWidth <= 640); // Also treat narrow viewport emulation (e.g. Chrome DevTools responsive mode) as mobile
 
     setIsIOS(isIOSDevice);
     setIsMobile(isMobileDevice);
 
-    // 2. Check if already running in standalone mode (installed)
+    // 2. Standalone detection check
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true ||
       document.referrer.includes('android-app://');
 
     if (isStandalone) {
       setIsInstalled(true);
+      try {
+        localStorage.setItem(PWA_STORAGE_KEY, 'true');
+      } catch {}
+      return;
+    }
+
+    // If persistent flag already says installed, never prompt
+    try {
+      if (localStorage.getItem(PWA_STORAGE_KEY) === 'true') {
+        setIsInstalled(true);
+        return;
+      }
+    } catch {}
+
+    // Never prompt on desktop
+    if (!isMobileDevice) {
       return;
     }
 
@@ -67,14 +110,12 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const promptEvent = e as BeforeInstallPromptEvent;
       setDeferredPrompt(promptEvent);
 
-      // Only present mobile prompt if on mobile device, not standalone, and not dismissed for this page visit
-      if (isMobileDevice && !isDismissedForSession) {
-        // Wait 3 seconds so user can see interface before prompting
+      if (!isDismissedForSession) {
         const timer = setTimeout(() => {
           if (!isDismissedForSession) {
             setShowPrompt(true);
           }
-        }, 3000);
+        }, 1500);
         return () => clearTimeout(timer);
       }
     };
@@ -82,6 +123,9 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // 4. Listen for appinstalled
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      try {
+        localStorage.setItem(PWA_STORAGE_KEY, 'true');
+      } catch {}
       setDeferredPrompt(null);
       setShowPrompt(false);
     };
@@ -89,14 +133,26 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // 5. iOS Safari auto-guide if mobile, not standalone, not dismissed for this page visit
+    // 5. iOS Safari auto-guide
     if (isIOSDevice && !isStandalone && !isDismissedForSession) {
       const timer = setTimeout(() => {
         if (!isDismissedForSession) {
           setShowPrompt(true);
         }
-      }, 3500);
+      }, 1800);
       return () => clearTimeout(timer);
+    }
+
+    // 6. Generic mobile fallback: on mobile device / mobile viewport when beforeinstallprompt
+    // hasn't fired yet or browser doesn't support it (e.g. Firefox Mobile, responsive inspection),
+    // show install banner shortly so user has clear manual guidance
+    if (!isIOSDevice && !isStandalone && !isDismissedForSession) {
+      const fallbackTimer = setTimeout(() => {
+        if (!isDismissedForSession) {
+          setShowPrompt(true);
+        }
+      }, 2500);
+      return () => clearTimeout(fallbackTimer);
     }
 
     return () => {
@@ -114,12 +170,26 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const closePrompt = useCallback(() => {
     setShowPrompt(false);
     setIsDismissedForSession(true);
+    try {
+      sessionStorage.setItem(PWA_DISMISSED_SESSION_KEY, 'true');
+    } catch {}
   }, []);
 
   const dismissPrompt = useCallback(() => {
     setShowPrompt(false);
-    // Dismiss strictly for this page visit only — never persisted across reloads or revisits
+    // Dismiss for the current browser tab session via versioned sessionStorage key
     setIsDismissedForSession(true);
+    try {
+      sessionStorage.setItem(PWA_DISMISSED_SESSION_KEY, 'true');
+    } catch {}
+  }, []);
+
+  const acknowledgeIOSInstall = useCallback(() => {
+    setIsInstalled(true);
+    setShowPrompt(false);
+    try {
+      localStorage.setItem(PWA_STORAGE_KEY, 'true');
+    } catch {}
   }, []);
 
   const triggerNativeInstall = useCallback(async (): Promise<boolean> => {
@@ -132,6 +202,9 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const choiceResult = await deferredPrompt.userChoice;
       if (choiceResult.outcome === 'accepted') {
         setIsInstalled(true);
+        try {
+          localStorage.setItem(PWA_STORAGE_KEY, 'true');
+        } catch {}
         setShowPrompt(false);
         setDeferredPrompt(null);
         return true;
@@ -155,6 +228,7 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     openInstallPrompt,
     closePrompt,
     dismissPrompt,
+    acknowledgeIOSInstall,
     triggerNativeInstall,
   };
 

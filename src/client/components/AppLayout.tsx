@@ -45,11 +45,11 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
         Visible only on < md (768px). Eliminates clutter, provides institution branding + quick notifications.
       */}
       <header className="md:hidden sticky top-0 z-30 bg-[#07203C] text-white border-b border-[#203653] px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-xs pt-[calc(0.625rem+env(safe-area-inset-top,0px))]">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <DormexLogo theme="white" size="sm" className="h-7 w-auto shrink-0" />
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <DormexLogo theme="white" size="custom" className="h-6 w-auto shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] text-[#84D5CA] font-bold uppercase tracking-wider truncate leading-tight">
-              SIT · {session.role.replace('_', ' ')}
+              SIT Tumakuru · {session.role.replace('_', ' ')}
             </span>
             <span className="text-xs font-bold text-white truncate leading-tight">
               {currentTitle}
@@ -241,7 +241,7 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
         </header>
 
         {/* Content Body: safe-area padding at bottom on mobile so bottom bar does not clip content */}
-        <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+        <main className="flex-1 p-3 sm:p-5 md:p-8 max-w-7xl w-full mx-auto pb-32 md:pb-8">
           {children}
         </main>
       </div>

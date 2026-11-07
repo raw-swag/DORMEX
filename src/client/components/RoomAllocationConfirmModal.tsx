@@ -29,9 +29,12 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-allocation-title"
-      className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
     >
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-[#E2E6E8] shadow-2xl">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 sm:space-y-5 border border-[#E2E6E8] shadow-2xl max-h-[90vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+        {/* Mobile handle */}
+        <div className="w-10 h-1 bg-[#E2E6E8] rounded-full mx-auto sm:hidden -mt-1 mb-1" />
+
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
           <div className="flex items-center gap-3">
@@ -175,12 +178,12 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E6E8]">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-[#E2E6E8]">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 border border-[#E2E6E8] hover:bg-[#F7F6F1] text-[#627084] text-xs font-semibold rounded-lg transition-colors"
+            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 border border-[#E2E6E8] hover:bg-[#F7F6F1] text-[#627084] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center"
           >
             Cancel
           </button>
@@ -189,7 +192,7 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
             type="button"
             onClick={onConfirm}
             disabled={loading || isSeatTaken || !context.isEligibleForTurn}
-            className="px-5 py-2.5 bg-[#1E7B54] hover:bg-[#166041] text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto min-h-[48px] px-5 py-3 bg-[#1E7B54] hover:bg-[#166041] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

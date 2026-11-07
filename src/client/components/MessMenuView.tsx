@@ -588,25 +588,31 @@ export const MessMenuView: React.FC = () => {
 
       {/* Accessible Fullscreen Image Lightbox Modal */}
       {fullscreenImage && (
-        <div className="fixed inset-0 z-50 bg-[#07203C]/90 backdrop-blur-xs flex flex-col p-4 sm:p-8 animate-fade-in">
-          <div className="flex items-center justify-between pb-4 text-white">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notice Board Image Preview"
+          className="fixed inset-0 z-50 bg-[#07203C]/95 backdrop-blur-sm flex flex-col p-3 sm:p-6 animate-fade-in pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
+        >
+          <div className="flex items-center justify-between pb-3 text-white max-w-5xl w-full mx-auto border-b border-white/10">
             <div className="flex items-center gap-2 text-xs font-bold">
               <Utensils className="w-4 h-4 text-[#84d5ca]" />
               <span>Notice Board Image Inspection</span>
             </div>
             <button
               onClick={() => setFullscreenImage(null)}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-              title="Close modal"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#84D5CA]"
+              title="Close preview"
+              aria-label="Close image preview"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 flex items-center justify-center overflow-auto p-2">
+          <div className="flex-1 flex items-center justify-center overflow-auto p-2 sm:p-4 max-w-5xl w-full mx-auto">
             <img
               src={fullscreenImage}
-              alt="Fullscreen Menu"
-              className="max-h-[90vh] max-w-[95vw] object-contain rounded-lg shadow-2xl border border-white/20"
+              alt="Notice Board Image Inspection"
+              className="max-h-[82vh] max-w-full object-contain rounded-xl shadow-2xl border border-white/15 bg-[#17283B]"
             />
           </div>
         </div>
