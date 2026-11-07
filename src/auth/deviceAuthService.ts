@@ -123,6 +123,19 @@ export class DeviceAuthService {
     return host;
   }
 
+  public getExpectedRPIDs(hostname?: string): string[] {
+    const list = new Set<string>();
+    list.add('dormex-sit.vercel.app');
+    list.add('dormex-api-s4qq.onrender.com');
+    list.add('localhost');
+    list.add('127.0.0.1');
+    if (hostname) {
+      const clean = hostname.split(':')[0].toLowerCase();
+      if (clean) list.add(clean);
+    }
+    return Array.from(list);
+  }
+
   public getRpId(hostname: string): string {
     const cleanHost = hostname.split(':')[0].toLowerCase();
     if (cleanHost === 'localhost' || cleanHost === '127.0.0.1') {
@@ -304,7 +317,7 @@ export class DeviceAuthService {
     // Invalidate challenge immediately (single use, prevents replay)
     this.challenges.delete(challengeToken);
 
-    const rpID = this.getRpId(hostname);
+    const expectedRPIDs = this.getExpectedRPIDs(hostname);
 
     let verification: VerifiedRegistrationResponse;
     try {
@@ -312,7 +325,7 @@ export class DeviceAuthService {
         response,
         expectedChallenge: storedChallenge.challenge,
         expectedOrigin,
-        expectedRPID: rpID,
+        expectedRPID: expectedRPIDs,
         requireUserVerification: true,
       });
     } catch (err: any) {
@@ -546,7 +559,7 @@ export class DeviceAuthService {
       throw new Error('MULTI_DEVICE_CREDENTIAL_REJECTED: Registered credential violates device-bound invariant.');
     }
 
-    const rpID = this.getRpId(hostname);
+    const expectedRPIDs = this.getExpectedRPIDs(hostname);
     const publicKeyUint8 = new Uint8Array(Buffer.from(slot.public_key, 'base64'));
 
     let verification: VerifiedAuthenticationResponse;
@@ -555,7 +568,7 @@ export class DeviceAuthService {
         response,
         expectedChallenge: storedChallenge.challenge,
         expectedOrigin,
-        expectedRPID: rpID,
+        expectedRPID: expectedRPIDs,
         credential: {
           id: slot.credential_id,
           publicKey: publicKeyUint8,
