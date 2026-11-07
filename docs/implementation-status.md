@@ -22,6 +22,15 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 30: Direct Institutional Authentication Restoration & Demo Provisioning**:
+  - **Deliverables Completed**:
+    - Completely removed presentation gate view, middleware, cookies, and status endpoints.
+    - Restored direct Institutional Sign In experience across Student, Admin (`CHIEF_WARDEN`), and Hostel Office portals.
+    - Verified all 32 hosted demo accounts (`DEMO-001..030`, `ADM001`, `OFF001`) with authentic `scrypt` hashing.
+  - **Verification Metrics**:
+    - 190/190 automated tests passing across 18 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client and server builds (`npm run build:client`, `npm run build:server`).
 - [x] **Phase 29: Staging Presentation Gate UI & Lifecycle Integration**:
   - **Deliverables Completed**:
     - Dedicated presentation access screen (`PresentationGateView.tsx`) with authentic DORMEX branding, show/hide password toggle, and clear feedback.

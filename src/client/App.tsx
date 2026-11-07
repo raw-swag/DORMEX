@@ -9,12 +9,11 @@ import { AdminDashboard } from './components/AdminDashboard.js';
 import { StudentRegistryView } from './components/StudentRegistryView.js';
 import { ComplaintsView } from './components/ComplaintsView.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
-import { PresentationGateView } from './components/PresentationGateView.js';
 import { StudentAdmissionManagementView } from './components/StudentAdmissionManagementView.js';
 import { MessMenuView } from './components/MessMenuView.js';
 
 const AppContent: React.FC = () => {
-  const { session, isAuthenticated, isLoading, isPresentationBlocked, clearPresentationBlock } = useAuth();
+  const { session, isAuthenticated, isLoading } = useAuth();
 
   // Show a neutral clean spinner during session restoration so protected views don't prematurely render
   if (isLoading) {
@@ -26,12 +25,6 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
-  }
-
-  // If staging presentation gate is active and user does not have presentation access,
-  // show dedicated presentation access screen before institutional sign in
-  if (isPresentationBlocked) {
-    return <PresentationGateView onAccessGranted={clearPresentationBlock} />;
   }
 
   // If not authenticated, show the 3 Login Portals Welcome Screen

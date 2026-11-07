@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.10.0] - 2026-11-07
+
+- **Feat(auth-restoration): Removed Staging Presentation Gate and Restored Direct Institutional Sign In**:
+  - **Direct Institutional Authentication Experience (`src/app.ts`, `src/client/App.tsx`, `src/client/context/AuthContext.tsx`)**:
+    - Completely removed presentation access screen (`PresentationGateView.tsx`), gate middleware, and presentation verification endpoints (`POST /api/presentation/verify`, `GET /api/presentation/status`).
+    - Removed `PRESENTATION_ACCESS_PASSWORD_HASH` and `PRESENTATION_ACCESS_TOKEN_SECRET` requirements and presentation cookie generation/enforcement.
+    - Application entry point loads directly into standard DORMEX Institutional Sign In without intermediate gate.
+  - **Demo Account Provisioning & Verification (`tests/hosted_institutional_auth.test.ts`)**:
+    - Added dedicated test suite verifying direct login for students (`DEMO-001..030`), admin (`ADM001` with `CHIEF_WARDEN` role and `SYSTEM` scope), and hostel office (`OFF001` with `HOSTEL_OFFICE` role).
+    - Verified HttpOnly cookie session restoration at `/api/auth/me` without presentation token requirement.
+    - 190/190 automated tests passing across 18 test suites (100% pass rate).
+
+---
+
 ## [2.9.1] - 2026-11-07
 
 - **Fix(presentation-ui): Dedicated Staging Presentation Access Screen & Integration Gate**:

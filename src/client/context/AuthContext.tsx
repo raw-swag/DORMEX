@@ -118,9 +118,6 @@ export interface AuthContextType {
   session: UserSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isPresentationBlocked: boolean;
-  clearPresentationBlock: () => void;
-  checkPresentationAccess: () => Promise<boolean>;
   currentPortal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null;
   setCurrentPortal: (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null) => void;
   login: (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE', identityKey: string) => Promise<void>;
@@ -138,9 +135,6 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isAuthenticated: false,
   isLoading: true,
-  isPresentationBlocked: false,
-  clearPresentationBlock: () => {},
-  checkPresentationAccess: async () => true,
   currentPortal: null,
   setCurrentPortal: () => {},
   login: async () => {},
@@ -153,7 +147,6 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isPresentationBlocked, setIsPresentationBlocked] = useState<boolean>(false);
   const [currentPortal, setCurrentPortal] = useState<'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null>(() => {
     return (localStorage.getItem('dormex_current_portal') as any) || null;
   });
@@ -163,60 +156,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.getItem('dormex_dev_mode') === 'true'
   );
 
-  const checkPresentationAccess = async (): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/presentation/status', {
-        credentials: 'same-origin',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.gateEnabled && !data.hasAccess) {
-          setIsPresentationBlocked(true);
-          return false;
-        }
-      } else if (res.status === 401) {
-        const errData = await res.json().catch(() => ({}));
-        if (typeof errData.error === 'string' && errData.error.includes('PRESENTATION_ACCESS_REQUIRED')) {
-          setIsPresentationBlocked(true);
-          return false;
-        }
-      }
-      setIsPresentationBlocked(false);
-      return true;
-    } catch {
-      return !isPresentationBlocked;
-    }
-  };
-
-  const clearPresentationBlock = () => {
-    setIsPresentationBlocked(false);
-  };
-
   // Restore authenticated session authoritatively from server via HttpOnly cookie
   useEffect(() => {
     let mounted = true;
     const restoreSession = async () => {
       try {
-        // First verify presentation gate status if active
-        try {
-          const statusRes = await fetch('/api/presentation/status', {
-            credentials: 'same-origin',
-          });
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.gateEnabled && !statusData.hasAccess) {
-              if (mounted) {
-                setIsPresentationBlocked(true);
-                setSession(null);
-                setIsLoading(false);
-              }
-              return;
-            }
-          }
-        } catch {
-          // If status endpoint fails or doesn't exist yet, proceed to /api/auth/me check
-        }
-
         const res = await fetch('/api/auth/me', {
           credentials: 'same-origin',
         });
@@ -233,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               profileId: data.profileId,
             };
             setSession(restoredSession);
-            setIsPresentationBlocked(false);
             if (!currentPortal) {
               const mappedPortal = data.role === 'STUDENT' ? 'STUDENT' : (data.role === 'HOSTEL_OFFICE' ? 'HOSTEL_OFFICE' : 'ADMIN');
               setCurrentPortal(mappedPortal);
@@ -241,12 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } else {
-          const errData = await res.json().catch(() => ({}));
           if (mounted) {
             setSession(null);
-            if (res.status === 401 && typeof errData.error === 'string' && errData.error.includes('PRESENTATION_ACCESS_REQUIRED')) {
-              setIsPresentationBlocked(true);
-            }
           }
         }
       } catch (e) {
@@ -354,9 +293,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else {
       const errData = await res.json().catch(() => ({}));
-      if (res.status === 401 && typeof errData.error === 'string' && errData.error.includes('PRESENTATION_ACCESS_REQUIRED')) {
-        setIsPresentationBlocked(true);
-      }
       if (res.status === 401 && errData.error) {
         throw new Error(errData.error);
       }
@@ -392,9 +328,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         isAuthenticated: !!session,
         isLoading,
-        isPresentationBlocked,
-        clearPresentationBlock,
-        checkPresentationAccess,
         currentPortal,
         setCurrentPortal,
         login,
