@@ -22,6 +22,16 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 29: Staging Presentation Gate UI & Lifecycle Integration**:
+  - **Deliverables Completed**:
+    - Dedicated presentation access screen (`PresentationGateView.tsx`) with authentic DORMEX branding, show/hide password toggle, and clear feedback.
+    - Application entry orchestration in `App.tsx` preventing flash-of-unauthenticated-content before presentation status resolution.
+    - Added unauthenticated `GET /api/presentation/status` endpoint to communicate gate status and verified cookie presence.
+    - Full end-to-end integration test suite (`tests/presentation-integration.test.ts`) covering token lifecycle, rate limiting, and normal login continuity.
+  - **Verification Metrics**:
+    - 198/198 automated tests passing across 19 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client and server builds (`npm run build:client`, `npm run build:server`).
 - [x] **Phase 28: Staging Presentation Gate, Hosted Demo Seeding & Relational Schema Manifest**:
   - **Deliverables Completed**:
     - Server-side presentation gate with hash-only password verification (`scrypt`), signed HttpOnly session cookie, and fail-closed staging enforcement (`src/app.ts`).

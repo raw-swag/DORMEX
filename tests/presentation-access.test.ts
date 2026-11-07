@@ -171,4 +171,54 @@ describe('DORMEX Staging Presentation Access Protection Suite', () => {
     expect(rateLimitedRes.statusCode).toBe(429);
     expect(rateLimitedRes.json().error).toContain('RATE_LIMITED');
   });
+
+  it('exposes /api/presentation/status reporting gateEnabled and hasAccess with/without token', async () => {
+    app = await buildApp(db);
+    await app.ready();
+
+    // 1. Without cookie
+    const noCookieRes = await app.inject({
+      method: 'GET',
+      url: '/api/presentation/status',
+    });
+    expect(noCookieRes.statusCode).toBe(200);
+    expect(noCookieRes.json()).toEqual({
+      gateEnabled: true,
+      hasAccess: false,
+    });
+
+    // 2. Obtain valid cookie
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: '/api/presentation/verify',
+      payload: { password: validPassword },
+    });
+    expect(verifyRes.statusCode).toBe(200);
+    const presentationCookie = verifyRes.cookies.find((c: any) => c.name === 'dormex_presentation_token')!;
+    const cookieHeader = `${presentationCookie.name}=${presentationCookie.value}`;
+
+    // 3. With valid cookie
+    const hasCookieRes = await app.inject({
+      method: 'GET',
+      url: '/api/presentation/status',
+      headers: { cookie: cookieHeader },
+    });
+    expect(hasCookieRes.statusCode).toBe(200);
+    expect(hasCookieRes.json()).toEqual({
+      gateEnabled: true,
+      hasAccess: true,
+    });
+
+    // 4. With forged cookie
+    const forgedRes = await app.inject({
+      method: 'GET',
+      url: '/api/presentation/status',
+      headers: { cookie: 'dormex_presentation_token=bad.token.value' },
+    });
+    expect(forgedRes.statusCode).toBe(200);
+    expect(forgedRes.json()).toEqual({
+      gateEnabled: true,
+      hasAccess: false,
+    });
+  });
 });

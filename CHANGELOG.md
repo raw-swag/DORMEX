@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.1] - 2026-11-07
+
+- **Fix(presentation-ui): Dedicated Staging Presentation Access Screen & Integration Gate**:
+  - **Presentation Access View (`src/client/components/PresentationGateView.tsx`, `src/client/App.tsx`)**:
+    - Created dedicated presentation access barrier screen with authentic DORMEX branding and environment security indicators.
+    - Added password input with show/hide password toggle, autofocus, loading state, and clear error alerts.
+    - Conditioned presentation gate ahead of institutional sign in, preventing flash of unauthenticated login portal.
+  - **Backend Status Route & Frontend State Synchronization (`src/app.ts`, `src/client/context/AuthContext.tsx`)**:
+    - Added `GET /api/presentation/status` unauthenticated endpoint reporting `{ gateEnabled, hasAccess }`.
+    - Integrated automatic gate interception in `AuthContext`: verifies access on initial mount and redirects to presentation gate if blocked by backend middleware.
+  - **Integration Verification Suite (`tests/presentation-integration.test.ts`, `tests/presentation-access.test.ts`)**:
+    - Added full end-to-end integration tests validating cookie issuance, tampered cookie rejection, seamless transition to institutional login, and rate limiting.
+    - 198/198 automated tests passing across 19 test suites (100% pass rate).
+
+---
+
 ## [2.9.0] - 2026-11-07
 
 - **Feat(presentation-security): Staging Presentation Access Gate, Hosted Demo Seeding & Production Hardening**:

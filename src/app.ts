@@ -91,8 +91,14 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   app.addHook('onRequest', async (req: any, reply: any) => {
     const url = req.url.split('?')[0];
 
-    // Always exempt health, readiness, and public assets
-    if (url === '/health' || url === '/readyz' || url === '/api/presentation/verify' || !url.startsWith('/api/')) {
+    // Always exempt health, readiness, public assets, and presentation endpoints
+    if (
+      url === '/health' ||
+      url === '/readyz' ||
+      url === '/api/presentation/verify' ||
+      url === '/api/presentation/status' ||
+      !url.startsWith('/api/')
+    ) {
       return;
     }
 
@@ -176,6 +182,44 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     });
 
     return reply.send({ success: true, message: 'Presentation access granted.' });
+  });
+
+  // Presentation Access Status Check Endpoint
+  // Returns whether presentation gate is required and whether the current request holds a valid presentation token
+  app.get('/api/presentation/status', async (req: any, reply: any) => {
+    if (!isPresentationGateEnabled) {
+      return reply.send({
+        gateEnabled: false,
+        hasAccess: true,
+      });
+    }
+
+    const presentationCookie = req.cookies?.dormex_presentation_token;
+    if (!presentationCookie) {
+      return reply.send({
+        gateEnabled: true,
+        hasAccess: false,
+      });
+    }
+
+    try {
+      const decoded = (await app.jwt.verify(presentationCookie)) as any;
+      if (!decoded || decoded.type !== 'PRESENTATION_ACCESS_GRANTED') {
+        return reply.send({
+          gateEnabled: true,
+          hasAccess: false,
+        });
+      }
+      return reply.send({
+        gateEnabled: true,
+        hasAccess: true,
+      });
+    } catch {
+      return reply.send({
+        gateEnabled: true,
+        hasAccess: false,
+      });
+    }
   });
 
   const allocationEngine = new AllocationEngineService(database);
