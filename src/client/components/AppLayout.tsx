@@ -12,12 +12,14 @@ import {
   X,
   UserCheck,
   UserPlus,
-  Utensils
+  Utensils,
+  Download
 } from 'lucide-react';
 import { DormexLogo } from './DormexLogo.js';
 import { NotificationCenter } from './NotificationCenter.js';
 import { MobileBottomNav } from './MobileBottomNav.js';
 import { getNavigationForRole } from '../config/navigation.js';
+import { usePWAInstall } from '../context/PWAInstallContext.js';
 
 interface LayoutProps {
   currentTab: string;
@@ -27,6 +29,7 @@ interface LayoutProps {
 
 export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, children }) => {
   const { session, logout, isDevMode, switchUser } = useAuth();
+  const { isInstalled, openInstallPrompt, canInstall } = usePWAInstall();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   if (!session) return null;
@@ -128,20 +131,29 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
                 }}
                 className="w-full min-h-[44px] text-xs bg-[#07203C] border border-[#203653] rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
               >
-                <optgroup label="BVB Pilot Demo Students (30 Seeded)">
-                  <option value="demo1">Aarav Sharma (DEMO-001, Rank #1)</option>
-                  <option value="demo2">Diya Patel (DEMO-002, Rank #2)</option>
-                  <option value="demo3">Rohan Verma (DEMO-003, Rank #3)</option>
-                  <option value="demo10">Arjun Menon (DEMO-010, Rank #10)</option>
-                  <option value="demo29">Prisha Pandey (DEMO-029, Fee Pending)</option>
-                  <option value="demo30">Nikhil Saxena (DEMO-030, Unpaid)</option>
-                </optgroup>
-                <optgroup label="Staff Administration">
-                  <option value="hostelOffice">Hostel Office Staff</option>
-                  <option value="superAdmin">System Administrator (Super Admin)</option>
-                  <option value="chiefWarden">Dr. Sharma (Chief Warden)</option>
-                  <option value="wardenBvb">Prof. Rao (Warden - BVB Block)</option>
-                </optgroup>
+                {session.role === 'STUDENT' ? (
+                  <optgroup label="BVB Pilot Demo Students (Student Persona Only)">
+                    <option value="demo1">Aarav Sharma (DEMO-001, Rank #1)</option>
+                    <option value="demo2">Diya Patel (DEMO-002, Rank #2)</option>
+                    <option value="demo3">Rohan Verma (DEMO-003, Rank #3)</option>
+                    <option value="demo10">Arjun Menon (DEMO-010, Rank #10)</option>
+                    <option value="demo29">Prisha Pandey (DEMO-029, Fee Pending)</option>
+                    <option value="demo30">Nikhil Saxena (DEMO-030, Unpaid)</option>
+                  </optgroup>
+                ) : (
+                  <>
+                    <optgroup label="Staff Administration">
+                      <option value="hostelOffice">Hostel Office Staff</option>
+                      <option value="superAdmin">System Administrator (Super Admin)</option>
+                      <option value="chiefWarden">Dr. Sharma (Chief Warden)</option>
+                      <option value="wardenBvb">Prof. Rao (Warden - BVB Block)</option>
+                    </optgroup>
+                    <optgroup label="Switch to Student Persona">
+                      <option value="demo1">Aarav Sharma (DEMO-001, Rank #1)</option>
+                      <option value="demo2">Diya Patel (DEMO-002, Rank #2)</option>
+                    </optgroup>
+                  </>
+                )}
               </select>
             </div>
           )}
@@ -176,6 +188,26 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
             })}
           </nav>
         </div>
+
+        {/* PWA Install Button (Accessible anytime after login) */}
+        {!isInstalled && (
+          <div className="px-3 pb-2 pt-1 border-t border-[#203653]/40">
+            <button
+              type="button"
+              onClick={() => {
+                openInstallPrompt();
+                setMobileDrawerOpen(false);
+              }}
+              className="w-full min-h-[40px] flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-[#84D5CA] bg-[#112947] hover:bg-[#1a385f] hover:text-white transition-all border border-[#203653]"
+            >
+              <div className="flex items-center space-x-2.5">
+                <Download className="w-4 h-4 text-[#84D5CA]" />
+                <span>Install DORMEX App</span>
+              </div>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#07203C] text-[#84D5CA] border border-[#203653]">PWA</span>
+            </button>
+          </div>
+        )}
 
         {/* User Card & Sign Out at Bottom of Sidebar */}
         <div className="p-4 border-t border-[#203653]/60 bg-[#07203C] flex items-center justify-between">

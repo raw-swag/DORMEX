@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth, DEV_USERS, apiFetch } from '../context/AuthContext.js';
 import { apiJson } from '../api/apiJson.js';
 import { 
@@ -46,32 +46,41 @@ export const PortalSelectionView: React.FC = () => {
   }>>([]);
   const [demoAccountsError, setDemoAccountsError] = useState<string | null>(null);
 
+  const fetchAuthorizedAccounts = useCallback(() => {
+    apiJson<{ success: boolean; accounts: any[]; error?: string }>('/api/demo/accounts')
+      .then((accRes) => {
+        if (accRes.success && accRes.accounts) {
+          setDemoAccounts(accRes.accounts);
+          setDemoAccountsError(null);
+        }
+      })
+      .catch((err) => {
+        setDemoAccountsError(err.message || 'Failed to load demo accounts');
+      });
+  }, []);
+
   useEffect(() => {
     // Probe server-authoritative endpoint: GET /api/demo/access
-    apiJson<{ authorized: boolean; slot_id?: string; device_label?: string; expires_at?: string }>('/api/demo/access')
+    // Silently check if this hardware device holds an active demo slot session
+    fetch('/api/demo/access', { credentials: 'same-origin' })
       .then((res) => {
-        if (res.authorized && res.slot_id) {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((res: { authorized?: boolean; slot_id?: string; device_label?: string; expires_at?: string } | null) => {
+        if (res && res.authorized && res.slot_id) {
           setDemoSessionInfo({
             slot_id: res.slot_id,
             device_label: res.device_label || 'Authorized Device',
             expires_at: res.expires_at || '',
           });
-          // Fetch dynamic demo accounts exclusively for authorized devices
-          apiJson<{ success: boolean; accounts: any[]; error?: string }>('/api/demo/accounts')
-            .then((accRes) => {
-              if (accRes.success && accRes.accounts) {
-                setDemoAccounts(accRes.accounts);
-              }
-            })
-            .catch((err) => {
-              setDemoAccountsError(err.message || 'Failed to load demo accounts');
-            });
+          fetchAuthorizedAccounts();
         }
       })
       .catch(() => {
-        // Normal device: demo entry point remains unauthenticated
+        // Normal unauthenticated device
       });
-  }, []);
+  }, [fetchAuthorizedAccounts]);
 
   // Forgot Password Modal State (Phase Five)
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -321,27 +330,31 @@ export const PortalSelectionView: React.FC = () => {
                       className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
                     >
                       <option value="" disabled>-- Select Authorized Demo Account --</option>
-                      <optgroup label="Students (10 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'STUDENT').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Hostel Office (5 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'HOSTEL_OFFICE').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Administrative Staff (3 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'ADMIN').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
+                      {selectedPortal === 'STUDENT' ? (
+                        <optgroup label="Student Demo Accounts (10 Accounts)">
+                          {demoAccounts.filter((a) => a.portal === 'STUDENT').map((acc) => (
+                            <option key={acc.userId} value={acc.collegeId}>
+                              {acc.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : selectedPortal === 'HOSTEL_OFFICE' ? (
+                        <optgroup label="Hostel Office Accounts (5 Accounts)">
+                          {demoAccounts.filter((a) => a.portal === 'HOSTEL_OFFICE').map((acc) => (
+                            <option key={acc.userId} value={acc.collegeId}>
+                              {acc.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : (
+                        <optgroup label="Administrative Staff Accounts (3 Accounts)">
+                          {demoAccounts.filter((a) => a.portal === 'ADMIN').map((acc) => (
+                            <option key={acc.userId} value={acc.collegeId}>
+                              {acc.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   )}
                 </div>
@@ -428,6 +441,7 @@ export const PortalSelectionView: React.FC = () => {
               device_label: info.device_label,
               expires_at: info.expires_at,
             });
+            fetchAuthorizedAccounts();
             // Automatically prefill DEMO-001 for seamless walkthrough
             handlePortalSelect('STUDENT');
             setAuthIdInput('DEMO-001');

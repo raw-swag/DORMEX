@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.27.0] - 2026-11-08
+
+### Added
+- **Post-Login PWA Install Option**: Added an accessible "Install DORMEX App" button directly into the desktop sidebar navigation and mobile slide-over drawer in `src/client/components/AppLayout.tsx`, allowing authenticated users to trigger installation whenever desired.
+
+### Changed
+- **Student Persona Demo Account Isolation**: Filtered demo account selection in `src/client/components/PortalSelectionView.tsx` to strictly show only Student demo accounts (10 accounts) when the Student portal is active. Similarly restricted the persona switcher in `src/client/components/AppLayout.tsx` to student personas when logged in as a Student.
+- **Immediate WebAuthn Demo Account Loading**: Fixed demo account population after hardware WebAuthn unlock in `src/client/components/PortalSelectionView.tsx` by triggering dynamic account fetching immediately upon credential assertion success without requiring a reload or re-login.
+- **Silent Unauthenticated Access Probe**: Silently handled initial `GET /api/demo/access` on first page load for unauthenticated devices, eliminating noisy console 403 errors.
+
+---
+
 ## [2.26.0] - 2026-11-08
 
 ### Security
