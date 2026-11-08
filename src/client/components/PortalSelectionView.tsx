@@ -60,11 +60,19 @@ export const PortalSelectionView: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Probe server-authoritative endpoint: GET /api/demo/access
-    // Silently check if this hardware device holds an active demo slot session
+    // Only probe /api/demo/access if this device previously unlocked hardware demo mode,
+    // avoiding unnecessary 403 Forbidden console errors on unauthenticated devices.
+    const isHardwareUnlocked = typeof window !== 'undefined' && localStorage.getItem('dormex_hardware_unlocked') === 'true';
+    if (!isHardwareUnlocked) {
+      return;
+    }
+
     fetch('/api/demo/access', { credentials: 'same-origin' })
       .then((res) => {
-        if (!res.ok) return null;
+        if (!res.ok) {
+          localStorage.removeItem('dormex_hardware_unlocked');
+          return null;
+        }
         return res.json();
       })
       .then((res: { authorized?: boolean; slot_id?: string; device_label?: string; expires_at?: string } | null) => {
@@ -436,6 +444,9 @@ export const PortalSelectionView: React.FC = () => {
         <DemoAuthModal
           onSuccess={(info) => {
             setShowDemoAuthModal(false);
+            try {
+              localStorage.setItem('dormex_hardware_unlocked', 'true');
+            } catch {}
             setDemoSessionInfo({
               slot_id: info.slot_id,
               device_label: info.device_label,

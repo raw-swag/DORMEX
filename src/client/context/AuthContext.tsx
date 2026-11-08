@@ -162,6 +162,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
     const restoreSession = async () => {
+      // Only probe /api/auth/me if there is an active institutional session indicator,
+      // avoiding unnecessary 401 Unauthorized errors on clean browser visits.
+      const hasActiveSession = typeof window !== 'undefined' && localStorage.getItem('dormex_has_session') === 'true';
+      if (!hasActiveSession) {
+        if (mounted) {
+          setSession(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
       try {
         const res = await fetch('/api/auth/me', {
           credentials: 'same-origin',
@@ -190,6 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           if (mounted) {
             setSession(null);
+            localStorage.removeItem('dormex_has_session');
           }
         }
       } catch (e) {
@@ -244,6 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(data.session);
         setCurrentPortal(portal);
         localStorage.setItem('dormex_current_portal', portal);
+        localStorage.setItem('dormex_has_session', 'true');
       }
     }
   };
@@ -313,6 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
     setSession(null);
     setCurrentPortal(null);
+    localStorage.removeItem('dormex_has_session');
     localStorage.removeItem('dormex_auth_session');
     localStorage.removeItem('dormex_current_portal');
     localStorage.removeItem('dormex_dev_session');
