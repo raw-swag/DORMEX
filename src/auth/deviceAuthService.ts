@@ -49,15 +49,22 @@ export class DeviceAuthService {
       .map(o => o.trim())
       .filter(Boolean);
 
-    return Array.from(new Set([
-      'https://dormex-sit.vercel.app',
-      'https://dormex-api-s4qq.onrender.com',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-      ...configuredOrigins
-    ]));
+    const isProd = process.env.NODE_ENV === 'production';
+    const base = isProd
+      ? [
+          'https://dormex-sit.vercel.app',
+          'https://dormex-api-s4qq.onrender.com',
+        ]
+      : [
+          'https://dormex-sit.vercel.app',
+          'https://dormex-api-s4qq.onrender.com',
+          'http://localhost:5173',
+          'http://localhost:3000',
+          'http://127.0.0.1:5173',
+          'http://127.0.0.1:3000',
+        ];
+
+    return Array.from(new Set([...base, ...configuredOrigins]));
   }
 
   public static getApprovedRpIds(): string[] {
@@ -66,13 +73,20 @@ export class DeviceAuthService {
       .map(r => r.trim())
       .filter(Boolean);
 
-    return Array.from(new Set([
-      'dormex-sit.vercel.app',
-      'dormex-api-s4qq.onrender.com',
-      'localhost',
-      '127.0.0.1',
-      ...configuredRpIds
-    ]));
+    const isProd = process.env.NODE_ENV === 'production';
+    const base = isProd
+      ? [
+          'dormex-sit.vercel.app',
+          'dormex-api-s4qq.onrender.com',
+        ]
+      : [
+          'dormex-sit.vercel.app',
+          'dormex-api-s4qq.onrender.com',
+          'localhost',
+          '127.0.0.1',
+        ];
+
+    return Array.from(new Set([...base, ...configuredRpIds]));
   }
 
   public static get APPROVED_ORIGINS(): string[] {

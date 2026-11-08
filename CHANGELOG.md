@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.26.0] - 2026-11-08
+
+### Security
+- **Production Cookie Secret Enforcement**: Made `COOKIE_SECRET` mandatory in production (>= 32 characters) with safe startup fail-fast validation in `src/config/index.ts`.
+- **CORS Production Isolation**: Strictly isolated production CORS origins to verified production endpoints (`https://dormex-sit.vercel.app` and `https://dormex-api-s4qq.onrender.com`), preventing development localhost fallback in production mode.
+- **WebAuthn Production RP ID Scoping**: Restricted WebAuthn Relying Party IDs in production to exclude `localhost` and `127.0.0.1`.
+- **PostgreSQL TLS Hostname Verification**: Hardened `isRenderInternal` detection in `src/db/index.ts` and `src/config/index.ts` to ensure only internal Render database hostnames (`dpg-*.[region]...internal` or naked `dpg-*`) trigger internal self-signed TLS behavior, while external `*.render.com` hosts strictly enforce full certificate authority verification.
+
 ## [2.25.0] - 2026-11-08
 
 ### Added

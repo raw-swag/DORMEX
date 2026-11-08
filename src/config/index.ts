@@ -51,20 +51,36 @@ export interface ServerConfig {
 /**
  * Standard default RP IDs and origins for WebAuthn & CORS.
  */
-export const DEFAULT_ALLOWED_ORIGINS = [
+export const PRODUCTION_DEFAULT_ALLOWED_ORIGINS = [
   'https://dormex-sit.vercel.app',
   'https://dormex-api-s4qq.onrender.com',
+];
+
+export const DEVELOPMENT_LOCAL_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
 ];
 
-export const DEFAULT_RP_IDS = [
+export const DEFAULT_ALLOWED_ORIGINS = [
+  ...PRODUCTION_DEFAULT_ALLOWED_ORIGINS,
+  ...DEVELOPMENT_LOCAL_ORIGINS,
+];
+
+export const PRODUCTION_DEFAULT_RP_IDS = [
   'dormex-sit.vercel.app',
   'dormex-api-s4qq.onrender.com',
+];
+
+export const DEVELOPMENT_LOCAL_RP_IDS = [
   'localhost',
   '127.0.0.1',
+];
+
+export const DEFAULT_RP_IDS = [
+  ...PRODUCTION_DEFAULT_RP_IDS,
+  ...DEVELOPMENT_LOCAL_RP_IDS,
 ];
 
 /**
@@ -109,8 +125,18 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
   );
   const isSsl = env.PG_SSL === 'true' || isCloudOrSslUrl;
 
-  // Render internal private network hosts (dpg-* without .render.com) use private certs
-  const isRenderInternal = !!dbUrl && dbUrl.includes('dpg-') && !dbUrl.includes('.render.com');
+  // Render internal private network hosts (dpg-* with internal domain or without .render.com) use private certs
+  let isRenderInternal = false;
+  if (dbUrl) {
+    try {
+      const parsedUrl = new URL(dbUrl);
+      const host = parsedUrl.hostname.toLowerCase();
+      // Only treat host as Render internal if hostname begins with dpg- and does NOT end with .render.com
+      isRenderInternal = host.startsWith('dpg-') && !host.endsWith('.render.com');
+    } catch {
+      isRenderInternal = dbUrl.includes('dpg-') && !dbUrl.includes('.render.com');
+    }
+  }
   const rejectUnauthorized = env.PG_SSL_REJECT_UNAUTHORIZED === 'false' || isRenderInternal
     ? false
     : (env.PG_SSL_REJECT_UNAUTHORIZED === 'true' || true);
@@ -127,14 +153,20 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
 
   const effectiveJwtSecret = rawJwtSecret || 'dormex-super-secure-jwt-signing-key-2026';
 
-  // 4. CORS Allowed Origins
+  const rawCookieSecret = env.COOKIE_SECRET ? env.COOKIE_SECRET.trim() : '';
+  if (isProduction && rawCookieSecret.length < 32) {
+    throw new Error('FATAL_CONFIG_ERROR: Production requires an externally supplied COOKIE_SECRET with at least 32 characters');
+  }
+
+  // 4. CORS Allowed Origins (Production strictly enforces production origins and excludes localhost)
   const configuredOrigins = env.CORS_ALLOWED_ORIGINS || env.FRONTEND_ORIGIN || '';
   const parsedOrigins = configuredOrigins
     .split(',')
     .map(o => o.trim())
     .filter(Boolean);
 
-  const corsAllowedOrigins = Array.from(new Set([...DEFAULT_ALLOWED_ORIGINS, ...parsedOrigins]));
+  const baseOrigins = isProduction ? PRODUCTION_DEFAULT_ALLOWED_ORIGINS : DEFAULT_ALLOWED_ORIGINS;
+  const corsAllowedOrigins = Array.from(new Set([...baseOrigins, ...parsedOrigins]));
 
   // 5. SMTP configuration
   const smtpHost = env.SMTP_HOST ? env.SMTP_HOST.trim() : undefined;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadServerConfig, getSafeConfigDiagnostics, resetServerConfig, DEFAULT_ALLOWED_ORIGINS } from '../src/config/index.js';
+import { loadServerConfig, getSafeConfigDiagnostics, resetServerConfig, DEFAULT_ALLOWED_ORIGINS, PRODUCTION_DEFAULT_ALLOWED_ORIGINS } from '../src/config/index.js';
 import { DeviceAuthService } from '../src/auth/deviceAuthService.js';
 import { buildApp } from '../src/app.js';
 import { getDatabaseService, resetDatabaseInstance } from '../src/db/index.js';
@@ -64,17 +64,88 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       }).toThrow(/FATAL_CONFIG_ERROR: Production requires an externally supplied JWT_SECRET with at least 32 characters/);
     });
 
+    it('rejects production startup when COOKIE_SECRET is missing or under 32 characters', () => {
+      expect(() => {
+        loadServerConfig({
+          NODE_ENV: 'production',
+          DATABASE_URL: 'postgresql://postgres@localhost:5432/dormex',
+          JWT_SECRET: 'a'.repeat(32),
+          COOKIE_SECRET: '',
+        });
+      }).toThrow(/FATAL_CONFIG_ERROR: Production requires an externally supplied COOKIE_SECRET with at least 32 characters/);
+
+      expect(() => {
+        loadServerConfig({
+          NODE_ENV: 'production',
+          DATABASE_URL: 'postgresql://postgres@localhost:5432/dormex',
+          JWT_SECRET: 'a'.repeat(32),
+          COOKIE_SECRET: 'short-cookie-secret',
+        });
+      }).toThrow(/FATAL_CONFIG_ERROR: Production requires an externally supplied COOKIE_SECRET with at least 32 characters/);
+    });
+
     it('accepts valid production configuration and defaults host to 0.0.0.0 for Render', () => {
       const cfg = loadServerConfig({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://user:pass@dpg-abc-a.oregon-postgres.render.com/dormex_db',
         JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
       });
 
       expect(cfg.isProduction).toBe(true);
       expect(cfg.host).toBe('0.0.0.0');
       expect(cfg.port).toBe(3000);
       expect(cfg.database.isSsl).toBe(true);
+    });
+
+    it('strictly isolates production CORS and RP IDs from development localhost origins', () => {
+      const prodCfg = loadServerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://user:pass@dpg-abc-a.oregon-postgres.render.com/dormex_db',
+        JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
+      });
+
+      expect(prodCfg.corsAllowedOrigins).not.toContain('http://localhost:5173');
+      expect(prodCfg.corsAllowedOrigins).not.toContain('http://localhost:3000');
+      expect(prodCfg.corsAllowedOrigins).toContain('https://dormex-sit.vercel.app');
+
+      const devCfg = loadServerConfig({
+        NODE_ENV: 'development',
+      });
+      expect(devCfg.corsAllowedOrigins).toContain('http://localhost:5173');
+    });
+
+    it('verifies TLS behavior for internal vs external vs third-party database hosts', () => {
+      // 1. Render internal host (hostname starts with dpg- and does not end with .render.com)
+      const internalCfg = loadServerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a/dormex_db',
+        JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
+      });
+      expect(internalCfg.database.isRenderInternal).toBe(true);
+      expect(internalCfg.database.rejectUnauthorized).toBe(false);
+
+      // 2. Render external host (ends with .render.com)
+      const externalCfg = loadServerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a.oregon-postgres.render.com/dormex_db',
+        JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
+      });
+      expect(externalCfg.database.isRenderInternal).toBe(false);
+      expect(externalCfg.database.rejectUnauthorized).toBe(true);
+
+      // 3. Unrelated host that contains dpg- in path or query
+      const spoofCfg = loadServerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://user:pass@my-custom-host.com/dpg-db',
+        JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
+      });
+      expect(spoofCfg.database.isRenderInternal).toBe(false);
+      expect(spoofCfg.database.rejectUnauthorized).toBe(true);
     });
 
     it('defaults local development host to 127.0.0.1', () => {
@@ -94,6 +165,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
         NODE_ENV: 'production',
         DATABASE_URL: `postgresql://user:${sensitivePassword}@dpg-db-a.render.com/dormex_db`,
         JWT_SECRET: sensitiveSecret,
+        COOKIE_SECRET: sensitiveSecret,
       });
 
       const diag = getSafeConfigDiagnostics(cfg);
@@ -126,11 +198,12 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://user@localhost/db',
         JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
         CORS_ALLOWED_ORIGINS: customOrigin,
       });
 
       expect(cfg.corsAllowedOrigins).toContain(customOrigin);
-      for (const def of DEFAULT_ALLOWED_ORIGINS) {
+      for (const def of PRODUCTION_DEFAULT_ALLOWED_ORIGINS) {
         expect(cfg.corsAllowedOrigins).toContain(def);
       }
     });
@@ -156,6 +229,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://user@localhost/db',
         JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
         SEED_DEMO_DATA: 'true',
       });
 
@@ -177,6 +251,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       process.env.NODE_ENV = 'production';
       process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/dormex';
       process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env.COOKIE_SECRET = 'b'.repeat(32);
       process.env.CORS_ALLOWED_ORIGINS = 'https://approved-partner.edu';
       resetServerConfig();
 
