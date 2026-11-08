@@ -653,4 +653,52 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
   } catch (err) {
     // Ignore if table not yet created
   }
+
+  // Real PostgreSQL-only triggers: Install audit immutability functions & triggers
+  try {
+    await db.query(`
+      CREATE OR REPLACE FUNCTION trg_prevent_audit_tampering()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          RAISE EXCEPTION 'TAMPER_PROTECTION_VIOLATION: Modifications or deletions of immutable audit ledger entries are strictly forbidden.';
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+
+    await db.query(`DROP TRIGGER IF EXISTS trg_audit_logs_immutable ON audit_logs;`);
+    await db.query(`
+      CREATE TRIGGER trg_audit_logs_immutable
+          BEFORE UPDATE OR DELETE ON audit_logs
+          FOR EACH ROW
+          EXECUTE FUNCTION trg_prevent_audit_tampering();
+    `);
+    await db.query(`DROP TRIGGER IF EXISTS trg_audit_logs_truncate ON audit_logs;`);
+    await db.query(`
+      CREATE TRIGGER trg_audit_logs_truncate
+          BEFORE TRUNCATE ON audit_logs
+          FOR EACH STATEMENT
+          EXECUTE FUNCTION trg_prevent_audit_tampering();
+    `);
+
+    await db.query(`DROP TRIGGER IF EXISTS trg_gov_action_events_immutable ON governance_action_events;`);
+    await db.query(`
+      CREATE TRIGGER trg_gov_action_events_immutable
+          BEFORE UPDATE OR DELETE ON governance_action_events
+          FOR EACH ROW
+          EXECUTE FUNCTION trg_prevent_audit_tampering();
+    `);
+    await db.query(`DROP TRIGGER IF EXISTS trg_gov_action_events_truncate ON governance_action_events;`);
+    await db.query(`
+      CREATE TRIGGER trg_gov_action_events_truncate
+          BEFORE TRUNCATE ON governance_action_events
+          FOR EACH STATEMENT
+          EXECUTE FUNCTION trg_prevent_audit_tampering();
+    `);
+  } catch (err: any) {
+    // Gracefully ignore on pg-mem if PL/pgSQL function or trigger parsing is unsupported
+    const msg = err.message || '';
+    if (!msg.includes('Not supported') && !msg.includes('syntax') && !msg.includes('lexer')) {
+      throw err;
+    }
+  }
 }

@@ -209,13 +209,16 @@ export async function verifyTableStructure(
   );
 
   // Check if __pgmem_is_column_nullable helper exists in memory test adapter
+  // IMPORTANT: Do NOT execute on real PostgreSQL within an active transaction block as it aborts the transaction!
   let isPgMem = false;
-  try {
-    const testFn = await client.query(`SELECT __pgmem_is_column_nullable('users', 'id') as res`);
-    if (testFn && testFn.rows) {
-      isPgMem = true;
-    }
-  } catch {}
+  if ((client as any).isInMemory || (client as any).adapter) {
+    try {
+      const testFn = await client.query(`SELECT __pgmem_is_column_nullable('users', 'id') as res`);
+      if (testFn && testFn.rows) {
+        isPgMem = true;
+      }
+    } catch {}
+  }
 
   const foundCols = new Map<string, { type: string; isNullable: boolean }>();
   for (const row of colsRes.rows) {

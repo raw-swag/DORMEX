@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.22.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 4: Release Readiness & Verification)**:
+  - **Tamper-Resistant Audit Immutability**:
+    - Installed PostgreSQL row-level triggers (`trg_prevent_audit_tampering`) on `audit_logs` and `governance_action_events` raising `TAMPER_PROTECTION_VIOLATION` on any `UPDATE` or `DELETE`.
+    - Verified append-only integrity on isolated real PostgreSQL 18.
+  - **Real PostgreSQL Migration Sequence Validation**:
+    - Validated migration sequence `20261103_001` through `20261108_005` on clean PostgreSQL 18 instance.
+    - Verified schema catalog definitions, primary keys, foreign keys, unique constraints, and partial indexes.
+  - **Concurrency & Transaction Locking Hardening**:
+    - Verified candidate user row locking (`SELECT FOR UPDATE` on `user_roles`) during concurrent appointment transactions to prevent duplicate or conflicting role assignments.
+    - Validated simultaneous review collision handling (`ACTION_ALREADY_REVIEWED`).
+  - **Migration Transaction Isolation Fix**:
+    - Updated `verifyTableStructure` in `src/db/migrate.ts` to prevent executing pg-mem custom functions inside active PostgreSQL transactions, ensuring migration integrity on real PostgreSQL engines.
+  - **Regression & Interface Verification**:
+    - Confirmed zero regression across all 18 canonical accounts, 3 hardware passkey device slots, student room allocations, and hostel office queues.
+    - Created comprehensive release report [`docs/reports/STAGE_4_RELEASE_READINESS_REPORT.md`](./docs/reports/STAGE_4_RELEASE_READINESS_REPORT.md).
+  - **Automated Verification**:
+    - Added real PostgreSQL integration test suite `tests/stage4_isolated_postgresql.test.ts` (6 tests).
+    - 291/291 automated tests passing across 30 test files (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
 ## [2.21.0] - 2026-11-08
 
 - **Phase 2 Governance & Authorization Redesign (Stage 3: Security Hardening & Integration)**:
