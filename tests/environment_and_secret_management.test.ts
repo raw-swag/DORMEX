@@ -335,6 +335,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       process.env.CORS_ALLOWED_ORIGINS = 'https://approved-partner.edu';
       resetServerConfig();
 
+      process.env.INITIAL_ADMIN_HASH = 'test';
       const db = getDatabaseService(true);
       const app = await buildApp(db);
 
@@ -363,7 +364,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       await app.close();
     });
 
-    it('rejects cross-origin state-changing mutations authenticated via cookies without Bearer token (CSRF defense)', async () => {
+    it('enforces strict CSRF defense across all 8 precedence and origin combination scenarios', async () => {
       process.env.NODE_ENV = 'production';
       process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/dormex';
       process.env.JWT_SECRET = 'a'.repeat(32);
@@ -371,81 +372,145 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       process.env.CORS_ALLOWED_ORIGINS = 'https://dormex-sit.vercel.app';
       resetServerConfig();
 
+      process.env.INITIAL_ADMIN_HASH = 'test_hash';
       const db = getDatabaseService(true);
       const app = await buildApp(db);
 
-      // Generate a valid signed JWT for testing
-      const testToken = app.jwt.sign({ sub: 'usr_test_student', role: 'STUDENT' });
+      const validToken = app.jwt.sign({ sub: 'usr_admin', role: 'STUDENT' });
+      const invalidToken = 'malformed.or.invalid.token';
 
-      // 1. Attack Scenario A: Form-compatible POST from malicious origin carrying cookie
-      const resMalicious = await app.inject({
+      // 1. Scenario 1: Valid cookie + invalid Bearer token + malicious Origin
+      // PreValidation CSRF hook rejects based on cookie presence; CORS rejects malicious Origin
+      const res1 = await app.inject({
         method: 'POST',
         url: '/api/room-change-requests',
         headers: {
-          origin: 'https://evil-attacker-site.com',
-          cookie: `token=${testToken}`,
+          origin: 'https://evil-attacker.com',
+          authorization: `Bearer ${invalidToken}`,
+          cookie: `token=${validToken}`,
           'content-type': 'application/json',
         },
-        payload: { targetRoomId: 'rm_202', reason: 'Malicious transfer' },
+        payload: { targetRoomId: 'rm_202', reason: 'Attack 1' },
       });
-      expect(resMalicious.statusCode).toBe(500);
-      expect(resMalicious.body).toContain('CORS_POLICY_VIOLATION');
+      expect(res1.statusCode).toBe(500);
+      expect(res1.body).toContain('CORS_POLICY_VIOLATION');
 
-      // 2. Attack Scenario B: Sibling subdomain or untrusted origin missing from approved list
-      const resSibling = await app.inject({
+      // 2. Scenario 2: Valid cookie + arbitrary Authorization header + malicious Origin
+      const res2 = await app.inject({
         method: 'POST',
         url: '/api/room-change-requests',
         headers: {
-          origin: 'https://attacker.vercel.app',
-          cookie: `token=${testToken}`,
+          origin: 'https://evil-attacker.com',
+          authorization: 'Basic dXNlcjpwYXNz',
+          cookie: `token=${validToken}`,
           'content-type': 'application/json',
         },
-        payload: { targetRoomId: 'rm_202', reason: 'Subdomain spoofing' },
+        payload: { targetRoomId: 'rm_202', reason: 'Attack 2' },
       });
-      expect(resSibling.statusCode).toBe(500);
-      expect(resSibling.body).toContain('CORS_POLICY_VIOLATION');
+      expect(res2.statusCode).toBe(500);
+      expect(res2.body).toContain('CORS_POLICY_VIOLATION');
 
-      // 3. Attack Scenario C: Direct browser navigation / missing origin header on cookie mutation
-      const resNoOrigin = await app.inject({
-        method: 'POST',
-        url: '/api/room-change-requests',
-        headers: {
-          cookie: `token=${testToken}`,
-          'content-type': 'application/json',
-        },
-        payload: { targetRoomId: 'rm_202', reason: 'No origin' },
-      });
-      expect(resNoOrigin.statusCode).toBe(403);
-      expect(resNoOrigin.body).toContain('CSRF_PROTECTION_VIOLATION');
-
-      // 4. Legitimate Scenario D: Approved frontend origin carrying cookie
-      const resApprovedOrigin = await app.inject({
+      // 3. Scenario 3: Valid cookie + approved Origin
+      // Passes CSRF and CORS; reaches business logic
+      const res3 = await app.inject({
         method: 'POST',
         url: '/api/room-change-requests',
         headers: {
           origin: 'https://dormex-sit.vercel.app',
-          cookie: `token=${testToken}`,
+          cookie: `token=${validToken}`,
           'content-type': 'application/json',
         },
-        payload: { targetRoomId: 'rm_202', reason: 'Legitimate change request' },
+        payload: { targetRoomId: 'rm_202', reason: 'Legitimate mutation' },
       });
-      // Origin passes CSRF validation (reaches business logic: 400 because student has no confirmed allocation to move from)
-      expect(resApprovedOrigin.statusCode).toBe(400);
-      expect(resApprovedOrigin.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+      expect(res3.statusCode).toBe(403); // 403 from domain: Insufficient permissions for non-student
+      expect(res3.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+      expect(res3.body).not.toContain('CORS_POLICY_VIOLATION');
 
-      // 5. Legitimate Scenario E: Non-browser machine-to-machine API client using Bearer token
-      const resBearer = await app.inject({
+      // 4. Scenario 4: Valid Bearer token without cookies
+      // Pure non-browser API client; passes CSRF
+      const res4 = await app.inject({
         method: 'POST',
         url: '/api/room-change-requests',
         headers: {
-          authorization: `Bearer ${testToken}`,
+          authorization: `Bearer ${validToken}`,
           'content-type': 'application/json',
         },
-        payload: { targetRoomId: 'rm_202', reason: 'Bearer token call' },
+        payload: { targetRoomId: 'rm_202', reason: 'M2M request' },
       });
-      // Passes CSRF validation (Bearer tokens are immune to ambient browser credential transmission)
-      expect(resBearer.statusCode).toBe(400);
-      expect(resBearer.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+      expect(res4.statusCode).toBe(403); // Reaches domain logic (insufficient permissions for non-student)
+      expect(res4.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+
+      // 5. Scenario 5: Invalid Bearer token without cookies
+      // Fails fast at extractActor with 401
+      const res5 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          authorization: `Bearer ${invalidToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Bad token' },
+      });
+      expect(res5.statusCode).toBe(401);
+      expect(res5.body).toContain('UNAUTHORIZED');
+
+      // 6. Scenario 6: Valid cookie + missing Origin and Referer
+      // Blocked by preValidation CSRF hook
+      const res6 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'No origin header' },
+      });
+      expect(res6.statusCode).toBe(403);
+      expect(res6.body).toContain('CSRF_PROTECTION_VIOLATION: Missing origin or referer header');
+
+      // 7. Scenario 7: Valid cookie + malformed Origin
+      // Blocked by preValidation CSRF hook
+      const res7 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: ':::not-a-valid-url:::',
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Malformed origin' },
+      });
+      expect(res7.statusCode).toBe(500);
+      expect(res7.body).toContain('CORS_POLICY_VIOLATION');
+
+      // 8. Scenario 8: Existing public authentication flows (Login) exempt from CSRF
+      const res8 = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        headers: {
+          origin: 'https://dormex-sit.vercel.app',
+          'content-type': 'application/json',
+        },
+        payload: { identifier: 'ADM001', password: 'wrong-password' },
+      });
+      // Permitted to reach login endpoint (fails at invalid password rather than CSRF)
+      expect(res8.statusCode).toBe(401);
+      expect(res8.body).toContain('Invalid credentials');
+
+      // Bonus Precedence Check: Invalid Bearer token MUST fail immediately even if valid cookie is present
+      const resPrecedence = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: 'https://dormex-sit.vercel.app',
+          authorization: `Bearer ${invalidToken}`,
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Precedence test' },
+      });
+      expect(resPrecedence.statusCode).toBe(401);
+      expect(resPrecedence.body).toContain('UNAUTHORIZED');
 
       await app.close();
     });

@@ -40,14 +40,15 @@ export class PostgresDatabaseService implements DatabaseService {
       let host = parsedUrl.hostname.trim().toLowerCase();
       if (host.endsWith('.')) host = host.slice(0, -1);
 
+      // Endpoint-specific TLS trust:
+      // Internal TLS exemption is granted EXCLUSIVELY to the explicitly configured internal endpoint.
+      // Suffix pattern matching is strictly disallowed.
       const trustedInternalHost = process.env.RENDER_INTERNAL_DB_HOST
         ? process.env.RENDER_INTERNAL_DB_HOST.trim().toLowerCase()
         : 'dpg-dbnjeqrl550s73fcr1lg-a';
 
-      const matchesExplicit = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
-      const matchesRenderInternalDomain = host.startsWith('dpg-') && (host.endsWith('.render.internal') || host.endsWith('.oregon-postgres.render.internal'));
-
-      isRenderInternal = (matchesExplicit || matchesRenderInternalDomain) && !host.endsWith('.render.com');
+      const isExactTrusted = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
+      isRenderInternal = isExactTrusted && !host.endsWith('.render.com');
     } catch {
       isRenderInternal = false;
     }

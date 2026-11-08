@@ -138,15 +138,18 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
       let host = parsedUrl.hostname.trim().toLowerCase();
       if (host.endsWith('.')) host = host.slice(0, -1);
 
+      // Endpoint-specific TLS trust:
+      // The internal TLS exception is granted EXCLUSIVELY to the explicitly configured internal endpoint.
+      // Arbitrary hostnames or suffix patterns (e.g. *.render.internal, *.oregon-postgres.render.internal)
+      // are NEVER trusted by default to eliminate lookalike and rogue internal spoofing.
+      // Default: the production Render database instance ('dpg-dbnjeqrl550s73fcr1lg-a').
+      // Non-production or staging environments must explicitly configure RENDER_INTERNAL_DB_HOST.
       const trustedInternalHost = env.RENDER_INTERNAL_DB_HOST
         ? env.RENDER_INTERNAL_DB_HOST.trim().toLowerCase()
         : 'dpg-dbnjeqrl550s73fcr1lg-a';
 
-      // Match exact configured internal host or strictly authenticated .internal domain on Render overlay
-      const matchesExplicit = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
-      const matchesRenderInternalDomain = host.startsWith('dpg-') && (host.endsWith('.render.internal') || host.endsWith('.oregon-postgres.render.internal'));
-
-      isRenderInternal = (matchesExplicit || matchesRenderInternalDomain) && !host.endsWith('.render.com');
+      const isExactTrusted = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
+      isRenderInternal = isExactTrusted && !host.endsWith('.render.com');
     } catch {
       isRenderInternal = false;
     }
