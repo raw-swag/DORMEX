@@ -107,6 +107,60 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     }
   });
 
+  // CSRF Defense Hook for Cookie-Authenticated State-Changing Operations:
+  // Protects all mutating HTTP methods (POST, PUT, PATCH, DELETE) against cross-site exploitation.
+  // If request relies on cookie authentication (token or demo_session), Origin or Referer must match approved origins.
+  app.addHook('preValidation', async (req, reply) => {
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase());
+    if (!isMutation || !req.url.startsWith('/api')) {
+      return;
+    }
+
+    // Skip public unauthenticated endpoints (login, password reset, demo assertion verification)
+    const publicExemptions = [
+      '/api/auth/login',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/demo/auth/verify',
+    ];
+    if (publicExemptions.some(p => req.url.startsWith(p))) {
+      return;
+    }
+
+    // Check if request relies on cookie authentication
+    const hasAuthCookie = !!(req.cookies?.token || req.cookies?.demo_session);
+    const hasBearerHeader = !!(req.headers['authorization'] || req.headers['Authorization']);
+
+    // If request uses cookie authentication without an explicit Bearer header, enforce strict origin validation
+    if (hasAuthCookie && !hasBearerHeader) {
+      const originHeader = req.headers['origin'] || req.headers['Origin'];
+      const refererHeader = req.headers['referer'] || req.headers['Referer'];
+      const candidateHeader = originHeader || refererHeader;
+
+      if (!candidateHeader || typeof candidateHeader !== 'string') {
+        return reply.code(403).send({
+          error: 'CSRF_PROTECTION_VIOLATION: Missing origin or referer header on cookie-authenticated mutation',
+        });
+      }
+
+      try {
+        const u = new URL(candidateHeader);
+        const requestOrigin = `${u.protocol}//${u.host}`;
+        const approved = serverConfig.corsAllowedOrigins;
+
+        if (!approved.includes(requestOrigin)) {
+          return reply.code(403).send({
+            error: 'CSRF_PROTECTION_VIOLATION: Cross-origin mutation request rejected',
+          });
+        }
+      } catch {
+        return reply.code(403).send({
+          error: 'CSRF_PROTECTION_VIOLATION: Malformed origin header on state-changing request',
+        });
+      }
+    }
+  });
+
   const allocationEngine = new AllocationEngineService(database);
   const floorPlanService = new FloorPlanService(database);
   const studentRegistry = new StudentRegistryService(database);

@@ -33,14 +33,21 @@ export class PostgresDatabaseService implements DatabaseService {
     const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
     // TLS configuration: Render internal database uses private self-signed certificates
-    // Fail-closed: Must parse successfully as a valid URL, hostname must match strict internal pattern
+    // Fail-closed: Must bind explicitly to configured internal database host or strict .render.internal domain
     let isRenderInternal = false;
     try {
       const parsedUrl = new URL(connStr);
       let host = parsedUrl.hostname.trim().toLowerCase();
       if (host.endsWith('.')) host = host.slice(0, -1);
-      const isInternalPattern = /^dpg-[a-z0-9]+(-[a-z0-9]+)*(\.internal)?$/.test(host);
-      isRenderInternal = isInternalPattern && !host.endsWith('.render.com');
+
+      const trustedInternalHost = process.env.RENDER_INTERNAL_DB_HOST
+        ? process.env.RENDER_INTERNAL_DB_HOST.trim().toLowerCase()
+        : 'dpg-dbnjeqrl550s73fcr1lg-a';
+
+      const matchesExplicit = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
+      const matchesRenderInternalDomain = host.startsWith('dpg-') && (host.endsWith('.render.internal') || host.endsWith('.oregon-postgres.render.internal'));
+
+      isRenderInternal = (matchesExplicit || matchesRenderInternalDomain) && !host.endsWith('.render.com');
     } catch {
       isRenderInternal = false;
     }

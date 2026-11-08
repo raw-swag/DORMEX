@@ -125,18 +125,28 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
   );
   const isSsl = env.PG_SSL === 'true' || isCloudOrSslUrl;
 
-  // Render internal private network hosts use private certs.
-  // Fail-closed: Must parse successfully as a valid URL, hostname must be non-empty,
-  // must start with "dpg-", must NOT end with ".render.com", and must either be a single-label
-  // internal hostname (dpg-xxx) or end with ".internal".
+  // PostgreSQL TLS configuration:
+  // Render internal managed database endpoints use private internal certificates.
+  // To eliminate spoofing or arbitrary "dpg-" hostname bypasses:
+  // 1. Explicit internal host binding via RENDER_INTERNAL_DB_HOST or trusted canonical internal host
+  // 2. Exact match against the authenticated Render private internal domain structure
+  // Any public domain (including dpg-*.com, dpg-*.example.com, or *.render.com) MUST retain strict CA verification.
   let isRenderInternal = false;
   if (dbUrl) {
     try {
       const parsedUrl = new URL(dbUrl);
       let host = parsedUrl.hostname.trim().toLowerCase();
       if (host.endsWith('.')) host = host.slice(0, -1);
-      const isInternalPattern = /^dpg-[a-z0-9]+(-[a-z0-9]+)*(\.internal)?$/.test(host);
-      isRenderInternal = isInternalPattern && !host.endsWith('.render.com');
+
+      const trustedInternalHost = env.RENDER_INTERNAL_DB_HOST
+        ? env.RENDER_INTERNAL_DB_HOST.trim().toLowerCase()
+        : 'dpg-dbnjeqrl550s73fcr1lg-a';
+
+      // Match exact configured internal host or strictly authenticated .internal domain on Render overlay
+      const matchesExplicit = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
+      const matchesRenderInternalDomain = host.startsWith('dpg-') && (host.endsWith('.render.internal') || host.endsWith('.oregon-postgres.render.internal'));
+
+      isRenderInternal = (matchesExplicit || matchesRenderInternalDomain) && !host.endsWith('.render.com');
     } catch {
       isRenderInternal = false;
     }
