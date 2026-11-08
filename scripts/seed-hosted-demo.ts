@@ -197,7 +197,7 @@ export async function executeHostedDemoSeed(
     // 2. Staff Demo Accounts: Exactly 8 (ADM001..ADM003, OFF001..OFF005)
     const staffAccounts = [
       {
-        id: 'usr_admin',
+        id: 'usr_adm001',
         collegeId: 'ADM001',
         email: 'admin@college.edu',
         fullName: 'Chief Warden Administrator',

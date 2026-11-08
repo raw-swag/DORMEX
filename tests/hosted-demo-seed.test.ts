@@ -144,7 +144,7 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
 
       const adminUser = await db.query("SELECT * FROM users WHERE college_id = 'ADM001'");
       expect(adminUser.rows.length).toBe(1);
-      expect(adminUser.rows[0].id).toBe('usr_admin');
+      expect(adminUser.rows[0].id).toBe('usr_adm001');
 
       const officeUser = await db.query("SELECT * FROM users WHERE college_id = 'OFF001'");
       expect(officeUser.rows.length).toBe(1);
