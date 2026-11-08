@@ -35,7 +35,11 @@ export type PermissionAction =
   | 'room_change.review'
   | 'audit.view'
   | 'demo.access'
-  | 'device.manage';
+  | 'device.manage'
+  | 'governance.manage'
+  | 'governance.submit_action'
+  | 'governance.review_action'
+  | 'governance.view';
 
 export interface AuthActor {
   id: string;
@@ -45,6 +49,9 @@ export interface AuthActor {
   scope_type: 'SYSTEM' | 'BUILDING' | 'STUDENT';
   scope_id?: string | null;
   student_profile_id?: string | null;
+  active_appointment_id?: string | null;
+  active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
+  supervisor_warden_appt_id?: string | null;
 }
 
 export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
@@ -74,6 +81,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'complaint.view_private',
     'room_change.review',
     'audit.view',
+    'governance.review_action',
+    'governance.view',
   ],
   DEPUTY_WARDEN: [
     'inventory.view',
@@ -83,6 +92,8 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'complaint.view_private',
     'room_change.review',
     'audit.view',
+    'governance.submit_action',
+    'governance.view',
   ],
   CHIEF_WARDEN: [
     'inventory.view',
@@ -97,6 +108,9 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'complaint.view_private',
     'room_change.review',
     'audit.view',
+    'governance.manage',
+    'governance.review_action',
+    'governance.view',
   ],
   HOSTEL_OFFICE: [
     'student.view_self',
@@ -116,6 +130,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'complaint.view_private',
     'room_change.review',
     'audit.view',
+    'governance.view',
   ],
   SUPER_ADMIN: [
     'device.manage',
@@ -138,6 +153,10 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'complaint.view_private',
     'room_change.review',
     'audit.view',
+    'governance.manage',
+    'governance.submit_action',
+    'governance.review_action',
+    'governance.view',
   ],
 };
 
@@ -210,6 +229,9 @@ export interface UserRoleRecord {
   scope_type: string;
   scope_id?: string | null;
   profile_id?: string | null;
+  active_appointment_id?: string | null;
+  active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
+  supervisor_warden_appt_id?: string | null;
 }
 
 /**
@@ -383,5 +405,8 @@ export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
     scope_type: primary.scope_type as 'SYSTEM' | 'BUILDING' | 'STUDENT',
     scope_id: primary.scope_id || null,
     student_profile_id: primary.profile_id || null,
+    active_appointment_id: primary.active_appointment_id || null,
+    active_appointment_status: primary.active_appointment_status || null,
+    supervisor_warden_appt_id: primary.supervisor_warden_appt_id || null,
   };
 }

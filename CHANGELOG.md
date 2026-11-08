@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.20.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 2: Authorization & Governance Services)**:
+  - **Authoritative Database-Backed Actor Resolution**:
+    - Updated `extractActor` in `src/app.ts` to look up live active appointments (`warden_appointments` and `deputy_appointments`) on every request.
+    - Prevents stale JWT tokens from acting with revoked administrative authority by failing closed if an appointment is inactive or missing.
+  - **Downward-Only Hierarchy & Operation Enforcement**:
+    - Chief Warden (`SUPER_ADMIN`) maintains complete institutional authority to appoint and revoke Wardens and Deputy Wardens.
+    - Supervising Wardens can manage and revoke subordinate Deputies in their assigned building.
+    - Lower roles (Deputies and Students) are strictly forbidden from reviewing or overriding Warden actions.
+  - **Governance Action Workflows & Building Boundaries**:
+    - Implemented `submitAction`, `reviewAction`, and `listActions` in `GovernanceService`.
+    - Added REST endpoints: `GET /api/governance/actions`, `POST /api/governance/actions`, `POST /api/governance/actions/:id/review`, `POST /api/governance/wardens`, `POST /api/governance/deputies`, `POST /api/governance/wardens/:id/revoke`, `POST /api/governance/deputies/:id/revoke`.
+    - Enforced cross-building access rejection (`CROSS_BUILDING_CONFLICT` 403 Forbidden) when a Deputy attempts to act outside their assigned building.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/governance_hierarchy_workflow.test.ts` (7 tests).
+    - 279/279 automated tests passing across 28 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
 ## [2.19.0] - 2026-11-08
 
 - **Phase 2 Governance & Authorization Redesign (Stage 1: Database Foundation)**:

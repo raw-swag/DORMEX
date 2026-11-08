@@ -1,4 +1,5 @@
 import { DatabaseService } from '../db/index.js';
+import { AuthActor, can } from './policy.js';
 
 export interface AppointWardenParams {
   userId: string;
@@ -25,6 +26,36 @@ export interface TransferSuperAdminParams {
   newChiefWardenUserId: string;
   transferredBy: string;
   reason: string;
+}
+
+export interface SubmitGovernanceActionParams {
+  actor: AuthActor;
+  actionType: string;
+  targetUserId?: string | null;
+  buildingId?: string | null;
+  reason: string;
+  details?: Record<string, any>;
+}
+
+export interface ReviewGovernanceActionParams {
+  actor: AuthActor;
+  actionId: string;
+  decision: 'APPROVED' | 'REJECTED';
+  reviewNotes: string;
+}
+
+export interface GovernanceActionRecord {
+  id: string;
+  action_type: string;
+  actor_id: string;
+  target_user_id: string | null;
+  building_id: string | null;
+  reason: string;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
 }
 
 /**
@@ -424,5 +455,155 @@ export class GovernanceService {
         { previous_chief_warden_id: prevChiefId, new_chief_warden_id: params.newChiefWardenUserId }
       );
     });
+  }
+
+  /**
+   * Submits a governance action for review.
+   * Deputy Wardens can submit actions strictly for their assigned building.
+   * Chief Wardens / Super Admins can submit institution-wide actions.
+   */
+  async submitAction(params: SubmitGovernanceActionParams): Promise<string> {
+    // Deputy Wardens can only act within their assigned building
+    if (params.actor.role === 'DEPUTY_WARDEN') {
+      if (!params.buildingId || params.actor.scope_id !== params.buildingId) {
+        throw new Error(`CROSS_BUILDING_CONFLICT: Deputy Warden can only submit actions for assigned building '${params.actor.scope_id}'.`);
+      }
+    }
+
+    if (!can(params.actor, 'governance.submit_action', { resource_type: 'BUILDING', building_id: params.buildingId })) {
+      throw new Error(`UNAUTHORIZED: Actor does not have permission to submit governance action for building '${params.buildingId}'.`);
+    }
+
+    return await this.db.transaction(async (client) => {
+      const actionId = `act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      await client.query(
+        `INSERT INTO governance_actions (id, action_type, actor_id, target_user_id, building_id, reason, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'SUBMITTED')`,
+        [actionId, params.actionType, params.actor.id, params.targetUserId || null, params.buildingId || null, params.reason]
+      );
+
+      await client.query(
+        `INSERT INTO governance_action_events (id, action_id, event_type, details_json)
+         VALUES ($1, $2, 'ACTION_SUBMITTED', $3)`,
+        [eventId, actionId, JSON.stringify(params.details || {})]
+      );
+
+      return actionId;
+    });
+  }
+
+  /**
+   * Reviews and approves or rejects a submitted governance action.
+   * Wardens can review submitted actions strictly for their assigned building and subordinate deputies.
+   * Chief Wardens / Super Admins can review all actions across the institution.
+   * Lower roles (e.g. Deputies) cannot review or override Warden/Chief Warden actions.
+   */
+  async reviewAction(params: ReviewGovernanceActionParams): Promise<void> {
+    if (!can(params.actor, 'governance.review_action')) {
+      throw new Error(`UNAUTHORIZED: Actor role '${params.actor.role}' cannot review governance actions.`);
+    }
+
+    await this.db.transaction(async (client) => {
+      // 1. Lock the governance action row
+      const actRes = await client.query(
+        `SELECT ga.id, ga.action_type, ga.actor_id, ga.target_user_id, ga.building_id, ga.status, ga.reason,
+                u.college_id as submitter_college_id, r.name as submitter_role
+         FROM governance_actions ga
+         JOIN users u ON ga.actor_id = u.id
+         JOIN user_roles ur ON u.id = ur.user_id
+         JOIN roles r ON ur.role_id = r.id
+         WHERE ga.id = $1 FOR UPDATE`,
+        [params.actionId]
+      );
+
+      if (actRes.rows.length === 0) {
+        throw new Error(`ACTION_NOT_FOUND: Governance action '${params.actionId}' does not exist.`);
+      }
+
+      const action = actRes.rows[0];
+      if (action.status !== 'SUBMITTED') {
+        throw new Error(`ACTION_ALREADY_REVIEWED: Governance action '${params.actionId}' has already been ${action.status}.`);
+      }
+
+      // 2. Hierarchy enforcement:
+      // A subordinate cannot review an equal or higher authority's action
+      // Chief Warden / Super Admin has full institution-wide oversight
+      if (params.actor.role === 'WARDEN') {
+        // Warden must match the building
+        if (params.actor.scope_id !== action.building_id) {
+          throw new Error(`CROSS_BUILDING_CONFLICT: Warden cannot review actions for building '${action.building_id}'. Assigned to '${params.actor.scope_id}'.`);
+        }
+        // Submitter must be a subordinate (e.g. DEPUTY_WARDEN) in the same building
+        if (action.submitter_role === 'CHIEF_WARDEN' || action.submitter_role === 'SUPER_ADMIN' || action.submitter_role === 'WARDEN') {
+          throw new Error(`HIERARCHY_VIOLATION: Warden cannot review or override actions submitted by '${action.submitter_role}'.`);
+        }
+      }
+
+      // 3. Update action status and review fields
+      const newStatus = params.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+      await client.query(
+        `UPDATE governance_actions
+         SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, review_notes = $3
+         WHERE id = $4`,
+        [newStatus, params.actor.id, params.reviewNotes, params.actionId]
+      );
+
+      // 4. Record event
+      const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await client.query(
+        `INSERT INTO governance_action_events (id, action_id, event_type, details_json)
+         VALUES ($1, $2, $3, $4)`,
+        [eventId, params.actionId, `ACTION_${newStatus}`, JSON.stringify({ reviewer_id: params.actor.id, notes: params.reviewNotes })]
+      );
+    });
+  }
+
+  /**
+   * Retrieves governance actions scoped to actor's authority:
+   * - Chief Warden / Super Admin / Hostel Office: view all actions across institution.
+   * - Warden: view all actions for assigned building.
+   * - Deputy Warden: view actions in assigned building submitted by self or pending review.
+   */
+  async listActions(actor: AuthActor, buildingId?: string | null): Promise<GovernanceActionRecord[]> {
+    if (!can(actor, 'governance.view')) {
+      throw new Error(`UNAUTHORIZED: Actor cannot view governance actions.`);
+    }
+
+    if (actor.role === 'WARDEN' || actor.role === 'DEPUTY_WARDEN') {
+      const targetBld = buildingId || actor.scope_id;
+      if (targetBld !== actor.scope_id) {
+        throw new Error(`CROSS_BUILDING_CONFLICT: Access to building '${targetBld}' is forbidden. Scoped to '${actor.scope_id}'.`);
+      }
+
+      const res = await this.db.query(
+        `SELECT id, action_type, actor_id, target_user_id, building_id, reason, status, reviewed_by, reviewed_at, review_notes, created_at
+         FROM governance_actions
+         WHERE building_id = $1
+         ORDER BY created_at DESC`,
+        [actor.scope_id]
+      );
+      return res.rows;
+    }
+
+    // Institution-wide roles
+    if (buildingId) {
+      const res = await this.db.query(
+        `SELECT id, action_type, actor_id, target_user_id, building_id, reason, status, reviewed_by, reviewed_at, review_notes, created_at
+         FROM governance_actions
+         WHERE building_id = $1
+         ORDER BY created_at DESC`,
+        [buildingId]
+      );
+      return res.rows;
+    }
+
+    const res = await this.db.query(
+      `SELECT id, action_type, actor_id, target_user_id, building_id, reason, status, reviewed_by, reviewed_at, review_notes, created_at
+       FROM governance_actions
+       ORDER BY created_at DESC`
+    );
+    return res.rows;
   }
 }

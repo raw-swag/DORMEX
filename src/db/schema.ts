@@ -527,11 +527,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_single_active_deputy_per_warden
 -- 4. Governance Actions & Action Events Ledger
 CREATE TABLE IF NOT EXISTS governance_actions (
     id TEXT PRIMARY KEY,
-    action_type TEXT NOT NULL, -- 'APPOINT_WARDEN', 'REVOKE_WARDEN', 'APPOINT_DEPUTY', 'REVOKE_DEPUTY', 'TRANSFER_SUPER_ADMIN', etc.
+    action_type TEXT NOT NULL, -- 'APPOINT_WARDEN', 'REVOKE_WARDEN', 'APPOINT_DEPUTY', 'REVOKE_DEPUTY', 'TRANSFER_SUPER_ADMIN', 'SUBMIT_ACTION', 'APPROVE_ACTION', 'REJECT_ACTION', etc.
     actor_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     target_user_id TEXT REFERENCES users(id) ON DELETE RESTRICT,
     building_id TEXT REFERENCES buildings(id) ON DELETE RESTRICT,
     reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'COMPLETED', -- 'SUBMITTED', 'APPROVED', 'REJECTED', 'COMPLETED'
+    reviewed_by TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    review_notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -605,6 +609,16 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
     await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS reviewed_by TEXT REFERENCES users(id)`);
     await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE`);
     await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS review_notes TEXT`);
+  } catch (err) {
+    // Ignore if already present
+  }
+
+  // Ensure governance_actions status and review columns exist
+  try {
+    await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'COMPLETED'`);
+    await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS reviewed_by TEXT REFERENCES users(id) ON DELETE RESTRICT`);
+    await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE`);
+    await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS review_notes TEXT`);
   } catch (err) {
     // Ignore if already present
   }

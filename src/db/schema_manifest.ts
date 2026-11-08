@@ -688,6 +688,10 @@ export const ALL_33_SCHEMA_TABLES: TableRequirement[] = [
       { name: 'target_user_id', expectedTypes: ['text'], nullable: true },
       { name: 'building_id', expectedTypes: ['text'], nullable: true },
       { name: 'reason', expectedTypes: ['text'], nullable: false },
+      { name: 'status', expectedTypes: ['text'], nullable: false },
+      { name: 'reviewed_by', expectedTypes: ['text'], nullable: true },
+      { name: 'reviewed_at', expectedTypes: ['timestamp'], nullable: true },
+      { name: 'review_notes', expectedTypes: ['text'], nullable: true },
       { name: 'created_at', expectedTypes: ['timestamp'], nullable: true },
     ],
     primaryKey: ['id'],
@@ -695,6 +699,7 @@ export const ALL_33_SCHEMA_TABLES: TableRequirement[] = [
       { column: 'actor_id', foreignTable: 'users', foreignColumn: 'id' },
       { column: 'target_user_id', foreignTable: 'users', foreignColumn: 'id' },
       { column: 'building_id', foreignTable: 'buildings', foreignColumn: 'id' },
+      { column: 'reviewed_by', foreignTable: 'users', foreignColumn: 'id' },
     ],
   },
   {

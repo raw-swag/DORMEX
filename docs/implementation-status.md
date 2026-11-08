@@ -22,6 +22,17 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 39: Governance & Authorization Redesign — Stage 2 Authorization & Governance Services**:
+  - **Deliverables Completed**:
+    - **Authoritative Database-Backed Actor Resolution**: Updated `extractActor` in `src/app.ts` to join `warden_appointments` and `deputy_appointments` and verify live appointment status (`ACTIVE`) on every request, failing closed against stale JWTs if revoked.
+    - **Downward-Only Hierarchy**: Implemented strict authorization invariants allowing Chief Warden full institutional appointment authority, Wardens building-scoped review authority over subordinate deputies, and prohibiting deputies from reviewing or overriding higher authority actions.
+    - **Governance Action Workflows & Building Boundaries**: Implemented `submitAction`, `reviewAction`, and `listActions` in `GovernanceService`, supported by dedicated REST endpoints (`/api/governance/actions`, `/api/governance/actions/:id/review`, `/api/governance/wardens`, `/api/governance/deputies`).
+    - Added dedicated test suite `tests/governance_hierarchy_workflow.test.ts` (7 tests).
+  - **Verification Metrics**:
+    - 279/279 automated tests passing across 28 test files (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server build (`npm run build:server` / `tsc`, with 0 test files emitted to `dist`).
+    - Clean client build (`npm run build:client` / `vite build`).
 - [x] **Phase 38: Governance & Authorization Redesign — Stage 1 Database Foundation**:
   - **Deliverables Completed**:
     - **Institutional Governance Singleton**: Built `institutional_governance` table (`singleton_id = 1`) tracking active Chief Warden `chief_warden_user_id` and enforced singleton invariants with `ON DELETE RESTRICT`. Added partial unique index `uq_single_active_super_admin` on `user_roles`.
