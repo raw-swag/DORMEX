@@ -43,21 +43,45 @@ export interface DemoSessionRecord {
 }
 
 export class DeviceAuthService {
-  public static readonly APPROVED_ORIGINS = [
-    'https://dormex-sit.vercel.app',
-    'https://dormex-api-s4qq.onrender.com',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-  ];
+  public static getApprovedOrigins(): string[] {
+    const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_ORIGIN || '')
+      .split(',')
+      .map(o => o.trim())
+      .filter(Boolean);
 
-  public static readonly APPROVED_RP_IDS = [
-    'dormex-sit.vercel.app',
-    'dormex-api-s4qq.onrender.com',
-    'localhost',
-    '127.0.0.1',
-  ];
+    return Array.from(new Set([
+      'https://dormex-sit.vercel.app',
+      'https://dormex-api-s4qq.onrender.com',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      ...configuredOrigins
+    ]));
+  }
+
+  public static getApprovedRpIds(): string[] {
+    const configuredRpIds = (process.env.WEBAUTHN_RP_IDS || '')
+      .split(',')
+      .map(r => r.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set([
+      'dormex-sit.vercel.app',
+      'dormex-api-s4qq.onrender.com',
+      'localhost',
+      '127.0.0.1',
+      ...configuredRpIds
+    ]));
+  }
+
+  public static get APPROVED_ORIGINS(): string[] {
+    return DeviceAuthService.getApprovedOrigins();
+  }
+
+  public static get APPROVED_RP_IDS(): string[] {
+    return DeviceAuthService.getApprovedRpIds();
+  }
 
   private db: DatabaseService;
   // Ephemeral challenge storage with TTL
@@ -140,11 +164,7 @@ export class DeviceAuthService {
   }
 
   public getExpectedRPIDs(hostname?: string): string[] {
-    const list = new Set<string>();
-    list.add('dormex-sit.vercel.app');
-    list.add('dormex-api-s4qq.onrender.com');
-    list.add('localhost');
-    list.add('127.0.0.1');
+    const list = new Set<string>(DeviceAuthService.getApprovedRpIds());
     if (hostname) {
       const clean = hostname.split(':')[0].toLowerCase();
       if (clean) list.add(clean);

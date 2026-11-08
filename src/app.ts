@@ -1,3 +1,4 @@
+import { getServerConfig } from './config/index.js';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
@@ -40,7 +41,18 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   await runMigrations(database);
   await seedDatabase(database);
 
-  await app.register(cors, { origin: true });
+    const serverConfig = getServerConfig(!!db?.isInMemory || !!database?.isInMemory);
+  await app.register(cors, {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (serverConfig.isDevelopment || serverConfig.isTest) return cb(null, true);
+      if (serverConfig.corsAllowedOrigins.includes(origin)) {
+        return cb(null, true);
+      }
+      return cb(new Error('CORS_POLICY_VIOLATION: Origin not allowed by CORS policy'), false);
+    },
+    credentials: true,
+  });
   await app.register(cookie);
 
   const effectiveJwtSecret = jwtSecret || 'dormex-super-secure-jwt-signing-key-2026';

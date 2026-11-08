@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.23.0] - 2026-11-08
+
+### Added
+- **Centralized Configuration & Secret Validation Engine**: Added src/config/index.ts with strict schema validation, fail-fast production error reporting, and safe diagnostic output.
+- **Comprehensive Environment & Secrets Guide**: Created docs/environment-and-secrets.md detailing backend Render variables, frontend Vercel boundaries, rotation runbooks, and immutable constants.
+- **Configuration Security Test Suite**: Created 	ests/environment_and_secret_management.test.ts with 13 comprehensive security tests.
+
+### Changed
+- **CORS Origin Hardening**: Migrated src/app.ts from permissive origin: true to strict allowlist origin verification using CORS_ALLOWED_ORIGINS in production.
+- **WebAuthn Dynamic Configuration**: Supported WEBAUTHN_RP_IDS and dynamic origin resolution in DeviceAuthService.
+- **Safe Diagnostics**: Exposed getSafeConfigDiagnostics which reports boolean states without printing credentials or connection strings.
+- **Documentation & Templates**: Updated .env.example with clean Render PostgreSQL references and removed obsolete Neon text.
+
 ## [2.22.0] - 2026-11-08
 
 - **Phase 2 Governance & Authorization Redesign (Stage 4: Release Readiness & Verification)**:
