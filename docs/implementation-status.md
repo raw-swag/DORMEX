@@ -22,6 +22,15 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 35: Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
+  - **Deliverables Completed**:
+    - Upgraded `scripts/seed-hosted-demo.ts` with `--dry-run` inspection mode and explicit credential preservation for existing canonical accounts (`DEMO-001`, `ADM001`, etc.).
+    - Ensured existing accounts are verified and preserved without modifying their passwords or identities.
+    - Added automated unit tests in `tests/hosted-demo-seed.test.ts` to assert that dry-run mode performs 0 database writes and existing password hashes are preserved.
+  - **Verification Metrics**:
+    - 230/230 automated tests passing across 22 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
 - [x] **Phase 34: 18 Database-Backed Demo Accounts & Grouped Dynamic Presentation**:
   - **Deliverables Completed**:
     - Expanded canonical demo account directory to exactly 18 accounts: 10 Students (`DEMO-001`..`DEMO-010`), 5 Hostel Office staff (`OFF001`..`OFF005`), and 3 Administrative staff (`ADM001`..`ADM003`).

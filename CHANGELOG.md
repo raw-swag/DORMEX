@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.16.0] - 2026-11-08
+
+- **Feat(provisioning): Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
+  - **Non-Destructive Password Preservation**:
+    - Enhanced `scripts/seed-hosted-demo.ts` so that existing accounts (`DEMO-001`, `ADM001`, etc.) never have their password hashes, full names, or emails silently overwritten.
+    - Existing records are safely detected, marked `[PRESERVED]`, and maintained intact.
+  - **Dry-Run Inspection Mode (`--dry-run` / `DRY_RUN=true`)**:
+    - Added `--dry-run` flag to execute read-only audits against any target database.
+    - Produces a clear provisioning breakdown (`[PRESERVED]` vs `[TO CREATE]`) without committing SQL writes.
+  - **Automated Verification**:
+    - Added comprehensive unit and integration tests in `tests/hosted-demo-seed.test.ts` for dry-run mode and credential preservation.
+    - Verified 100% test pass rate across 22 test suites (230/230 tests passing).
+    - Verified clean TypeScript compilation (`0` errors) and clean client build.
+
+---
+
 ## [2.15.0] - 2026-11-08
 
 - **Feat(demo): 18 Database-Backed Demo Accounts & Grouped Dynamic Presentation**:

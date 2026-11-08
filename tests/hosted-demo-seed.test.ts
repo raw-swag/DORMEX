@@ -151,6 +151,55 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
       expect(officeUser.rows[0].id).toBe('usr_office');
     });
 
+    it('supports dry-run mode and inspects records without performing any database writes', async () => {
+      const dbCheck = await db.query('SELECT current_database();');
+      const actualDb = dbCheck.rows[0].current_database;
+      const config = {
+        ...validStagingConfig,
+        expectedDbName: actualDb,
+        databaseUrl: `postgresql://user:pass@ep-test-staging.ap-southeast-1.aws.neon.tech/${actualDb}`,
+        dryRun: true,
+      };
+
+      const result = await executeHostedDemoSeed(db, config);
+      expect(result.success).toBe(true);
+      expect(result.dryRun).toBe(true);
+      expect(result.actions.length).toBe(38); // 8 staff + 30 students
+      expect(result.actions.every((a) => a.action === 'CREATE')).toBe(true);
+
+      // Verify no users were written to the database
+      const count = await db.query('SELECT COUNT(*) as count FROM users');
+      expect(parseInt(count.rows[0].count, 10)).toBe(0);
+    });
+
+    it('preserves existing user credentials and passwords without overwriting', async () => {
+      const dbCheck = await db.query('SELECT current_database();');
+      const actualDb = dbCheck.rows[0].current_database;
+
+      // Pre-insert DEMO-001 with custom password hash
+      const customHash = 'custom_persisted_hash_demo1';
+      await db.query(
+        `INSERT INTO users (id, college_id, email, full_name, password_hash)
+         VALUES ('usr_demo_001', 'DEMO-001', 'demo.001@college.edu', 'Aarav Sharma', $1)`,
+        [customHash]
+      );
+
+      const config = {
+        ...validStagingConfig,
+        expectedDbName: actualDb,
+        databaseUrl: `postgresql://user:pass@ep-test-staging.ap-southeast-1.aws.neon.tech/${actualDb}`,
+        dryRun: false,
+      };
+
+      const result = await executeHostedDemoSeed(db, config);
+      expect(result.success).toBe(true);
+      expect(result.preservedAccountsCount).toBeGreaterThanOrEqual(1);
+
+      // Verify DEMO-001 password hash was preserved intact
+      const userRes = await db.query("SELECT password_hash FROM users WHERE college_id = 'DEMO-001'");
+      expect(userRes.rows[0].password_hash).toBe(customHash);
+    });
+
     it('is completely idempotent on repeated runs and does not create duplicate users', async () => {
       const dbCheck = await db.query('SELECT current_database();');
       const actualDb = dbCheck.rows[0].current_database;
