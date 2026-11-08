@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.25.0] - 2026-11-08
+
+### Added
+- **RoomChangeTab Component**: Extracted 48-hour room change request submission and status tracking into modular src/client/components/allocation/RoomChangeTab.tsx.
+- **MobileInspectorBottomSheet Component**: Modularized room berth inspector drawer in src/client/components/allocation/MobileInspectorBottomSheet.tsx.
+- **AdminRoomChangeRequestsTable Component**: Extracted room change request review table into src/client/components/admin/AdminRoomChangeRequestsTable.tsx.
+- **AddCustomRoomModal Component**: Extracted architectural custom room addition modal into src/client/components/editor/AddCustomRoomModal.tsx.
+
+### Changed
+- Decomposed StudentAllocationView.tsx, AdminDashboard.tsx, and FloorPlanEditor.tsx into cohesive submodules, preserving server-authoritative room allocation and appointment invariants.
+
 ## [2.24.0] - 2026-11-08
 
 ### Added

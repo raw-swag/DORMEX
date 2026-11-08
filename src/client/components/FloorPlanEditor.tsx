@@ -1,3 +1,4 @@
+import { AddCustomRoomModal } from './editor/AddCustomRoomModal.js';
 import React, { useState, useEffect } from 'react';
 import { apiFetch, useAuth } from '../context/AuthContext.js';
 import { 
@@ -1229,122 +1230,21 @@ export const FloorPlanEditor: React.FC = () => {
       </div>
 
       {/* Add Custom Room Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-[#07203C]/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-[#E2E6E8]">
-            <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#07203C]">Add New Room to Architectural Layout</h3>
-                <p className="text-[11px] text-[#74777E]">Configures room bounds and creates matching seat inventory.</p>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-[#74777E] hover:text-[#07203C] text-xs font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateRoom} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-[#181C1E] block mb-1">Room Number (e.g. 273)</label>
-                <input
-                  type="text"
-                  required
-                  value={newRoomNum}
-                  onChange={(e) => setNewRoomNum(e.target.value)}
-                  placeholder="e.g. 273"
-                  className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-[#181C1E] block mb-1">Corridor Wing</label>
-                <select
-                  value={newRoomWing}
-                  onChange={(e) => setNewRoomWing(e.target.value as any)}
-                  className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
-                >
-                  <option value="North Wing">North Wing Corridor</option>
-                  <option value="South Wing">South Wing Corridor</option>
-                  <option value="East Wing">East Wing Extension</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-[#181C1E] block mb-1">Capacity Configuration</label>
-                <select
-                  value={newRoomType}
-                  onChange={(e) => setNewRoomType(e.target.value as any)}
-                  className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
-                >
-                  <option value="1">Type 1 — Single Bed (Seat A)</option>
-                  <option value="2">Type 2 — Double Bed (Seats A, B)</option>
-                  <option value="3">Type 3 — Triple Bed (Seats A, B, C)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-[#181C1E] block mb-1">X Coordinate</label>
-                  <input
-                    type="number"
-                    value={newRoomX}
-                    onChange={(e) => setNewRoomX(parseInt(e.target.value, 10) || 0)}
-                    className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#181C1E] block mb-1">Y Coordinate</label>
-                  <input
-                    type="number"
-                    value={newRoomY}
-                    onChange={(e) => setNewRoomY(parseInt(e.target.value, 10) || 0)}
-                    className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-[#181C1E] block mb-1">Width (px)</label>
-                  <input
-                    type="number"
-                    value={newRoomWidth}
-                    onChange={(e) => setNewRoomWidth(parseInt(e.target.value, 10) || 50)}
-                    className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#181C1E] block mb-1">Height (px)</label>
-                  <input
-                    type="number"
-                    value={newRoomHeight}
-                    onChange={(e) => setNewRoomHeight(parseInt(e.target.value, 10) || 30)}
-                    className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E6E8]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-3.5 py-1.5 text-xs text-[#74777E] rounded-lg hover:text-[#07203C]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-sm"
-                >
-                  Create & Place Room
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddCustomRoomModal
+        show={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        newRoomNum={newRoomNum}
+        setNewRoomNum={setNewRoomNum}
+        newRoomWing={newRoomWing}
+        setNewRoomWing={setNewRoomWing}
+        newRoomType={newRoomType}
+        setNewRoomType={setNewRoomType}
+        newRoomWidth={newRoomWidth}
+        setNewRoomWidth={setNewRoomWidth}
+        newRoomHeight={newRoomHeight}
+        setNewRoomHeight={setNewRoomHeight}
+        onSubmit={handleCreateRoom}
+      />
     </div>
   );
 };

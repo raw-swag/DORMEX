@@ -1,3 +1,4 @@
+import { AdminRoomChangeRequestsTable } from './admin/AdminRoomChangeRequestsTable.js';
 import React, { useState, useEffect } from 'react';
 import { apiFetch, useAuth } from '../context/AuthContext.js';
 import { 
@@ -1170,86 +1171,10 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* 48-Hour Room Change Review Table */}
-        <div className="bg-white p-5 rounded-xl border border-[#DFE3E5] shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-[#DFE3E5] pb-3">
-            <div>
-              <h2 className="text-xs font-bold text-[#07203C] uppercase tracking-wider flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-[#016A62]" />
-                Official 48-Hour Room-Change Requests Inbox
-              </h2>
-              <p className="text-[11px] text-[#44474D] mt-0.5">
-                Review and approve or reject atomic seat transfers requested during the 48-hour post-allocation period.
-              </p>
-            </div>
-            <span className="text-xs font-bold bg-[#FAF4E6] text-[#9C7A2E] border border-[#D4B779] px-2.5 py-1 rounded">
-              {roomChangeRequests.length} Total Requests
-            </span>
-          </div>
-
-          {roomChangeRequests.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[#181C1E]">
-                <thead className="bg-[#F0F4F6] text-[11px] uppercase font-bold text-[#44474D] border-b border-[#DFE3E5] tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-4">Student</th>
-                    <th className="py-2.5 px-4">Current Allocation</th>
-                    <th className="py-2.5 px-4">Target Room</th>
-                    <th className="py-2.5 px-4">Reason</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4 text-right">Administrative Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DFE3E5]">
-                  {roomChangeRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-[#F0F4F6]">
-                      <td className="py-2.5 px-4 font-bold text-[#07203C]">
-                        {req.student_name} <span className="text-[10px] font-mono text-[#74777E] font-normal">({req.usn})</span>
-                      </td>
-                      <td className="py-2.5 px-4 font-mono">
-                        Room {req.current_room_number} (Seat {req.current_seat_label})
-                      </td>
-                      <td className="py-2.5 px-4 font-mono font-bold text-[#016A62]">
-                        Room {req.target_room_number}
-                      </td>
-                      <td className="py-2.5 px-4 text-[#44474D] max-w-xs truncate" title={req.reason}>
-                        {req.reason}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          req.status === 'APPROVED' ? 'bg-[#9DEFE3] text-[#005049]' : (req.status === 'REJECTED' ? 'bg-[#FFDAD6] text-[#93000A]' : 'bg-[#FAF4E6] text-[#9C7A2E]')
-                        }`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right space-x-2">
-                        {req.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => handleReviewRoomChange(req.id, 'APPROVED')}
-                              className="px-2.5 py-1 bg-[#016A62] hover:bg-[#005049] text-white font-bold rounded text-[11px] shadow-xs"
-                            >
-                              Approve Move
-                            </button>
-                            <button
-                              onClick={() => handleReviewRoomChange(req.id, 'REJECTED')}
-                              className="px-2.5 py-1 bg-[#E5E9EB] hover:bg-[#DFE3E5] text-[#181C1E] font-semibold rounded text-[11px]"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-4 text-center text-xs text-[#74777E] bg-[#F0F4F6] rounded-lg">
-              No room change requests currently pending.
-            </div>
-          )}
-        </div>
+        <AdminRoomChangeRequestsTable
+          requests={roomChangeRequests}
+          onReview={handleReviewRoomChange}
+        />
       </div>
 
       {/* SECTION 5: AUDIT TRAIL SLIDE-OUT DRAWER */}
