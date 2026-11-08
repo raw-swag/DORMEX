@@ -88,7 +88,9 @@ export const DEFAULT_RP_IDS = [
  * Throws explicit, safe errors with zero secret disclosure if mandatory production configuration is missing.
  */
 export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemoryDb: boolean = false): ServerConfig {
-  const rawEnv = (env.NODE_ENV || 'development').trim().toLowerCase();
+  // Detect Render cloud environment automatically (Render sets RENDER=true or IS_RENDER=true)
+  const isRenderEnvironment = env.RENDER === 'true' || !!env.IS_RENDER;
+  const rawEnv = (env.NODE_ENV || (isRenderEnvironment ? 'production' : 'development')).trim().toLowerCase();
   const validEnvs: AppEnvironment[] = ['development', 'test', 'staging', 'production'];
   
   if (!validEnvs.includes(rawEnv as AppEnvironment)) {
@@ -107,7 +109,7 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
   }
 
   // Host: Render requires binding to 0.0.0.0 in production; local dev defaults to 127.0.0.1
-  const host = env.HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
+  const host = env.HOST || (isProduction || isRenderEnvironment ? '0.0.0.0' : '127.0.0.1');
 
   // 2. Database validation
   const dbUrl = env.DATABASE_URL ? env.DATABASE_URL.trim() : undefined;
