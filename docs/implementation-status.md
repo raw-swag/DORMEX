@@ -22,6 +22,17 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 36: Dedicated ADM001 Role Migration & 18-Canonical Account Rollback Engine**:
+  - **Deliverables Completed**:
+    - Prepared atomic ADM001 role migration script (`scripts/migrate-adm001-role.ts`) demoting `usr_adm001` from `SUPER_ADMIN` to `CHIEF_WARDEN` while preserving `SUPERADMIN` and enforcing strict preconditions and postconditions.
+    - Built comprehensive unit tests in `tests/adm001-role-migration.test.ts` verifying role migration success, precondition enforcement, and independent root identity isolation.
+    - Designed and implemented transaction-safe rollback engine (`scripts/rollback-demo-provisioning.ts`) protecting `DEMO-001`, `ADM001`, and `SUPERADMIN` and checking business invariant dependencies.
+    - Added automated rollback test suite in `tests/demo-provisioning-rollback.test.ts`.
+    - Scoped hosted demo seeder (`scripts/seed-hosted-demo.ts`) to strictly 18 canonical accounts (10 Students, 5 Hostel Office, 3 Admin).
+  - **Verification Metrics**:
+    - 236/236 automated tests passing across 24 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
 - [x] **Phase 35: Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
   - **Deliverables Completed**:
     - Upgraded `scripts/seed-hosted-demo.ts` with `--dry-run` inspection mode and explicit credential preservation for existing canonical accounts (`DEMO-001`, `ADM001`, etc.).

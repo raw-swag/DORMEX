@@ -48,20 +48,20 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
   };
 
   describe('1. Staging-Only Guard & Environmental Verification', () => {
-    it('refuses to execute if DORMEX_APP_ENV is not staging (e.g. production or undefined)', () => {
+    it('refuses to execute if DORMEX_APP_ENV is not staging or production (e.g. invalid or undefined)', () => {
       expect(() =>
         validateHostedDemoSafeguards({
           ...validStagingConfig,
-          appEnv: 'production',
+          appEnv: 'invalid_env',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*DORMEX_APP_ENV must be explicitly set to 'staging'/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*DORMEX_APP_ENV must be explicitly set to 'staging' or 'production'/);
 
       expect(() =>
         validateHostedDemoSafeguards({
           ...validStagingConfig,
           appEnv: undefined,
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*DORMEX_APP_ENV must be explicitly set to 'staging'/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*DORMEX_APP_ENV must be explicitly set to 'staging' or 'production'/);
     });
 
     it('refuses to execute if ENABLE_HOSTED_DEMO_SEED is not true', () => {
@@ -70,34 +70,34 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
           ...validStagingConfig,
           enableFlag: 'false',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*ENABLE_HOSTED_DEMO_SEED must be explicitly set to 'true'/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*ENABLE_HOSTED_DEMO_SEED must be explicitly set to 'true'/);
     });
 
-    it('refuses to execute if EXPECTED_STAGING_DB_NAME is missing', () => {
+    it('refuses to execute if EXPECTED_DB_NAME is missing', () => {
       expect(() =>
         validateHostedDemoSafeguards({
           ...validStagingConfig,
           expectedDbName: '',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*EXPECTED_STAGING_DB_NAME must be explicitly specified/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*EXPECTED_DB_NAME must be explicitly specified/);
     });
 
-    it('refuses to execute if EXPECTED_STAGING_DB_HOST is missing', () => {
+    it('refuses to execute if EXPECTED_DB_HOST is missing', () => {
       expect(() =>
         validateHostedDemoSafeguards({
           ...validStagingConfig,
           expectedDbHost: '',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*EXPECTED_STAGING_DB_HOST must be explicitly specified/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*EXPECTED_DB_HOST must be explicitly specified/);
     });
 
-    it('refuses to execute if actual DATABASE_URL hostname does not match EXPECTED_STAGING_DB_HOST', () => {
+    it('refuses to execute if actual DATABASE_URL hostname does not match EXPECTED_DB_HOST', () => {
       expect(() =>
         validateHostedDemoSafeguards({
           ...validStagingConfig,
           databaseUrl: 'postgresql://produser:prodpass@ep-production-primary.aws.neon.tech/dormex_staging',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*DATABASE_URL hostname.*does not match.*EXPECTED_STAGING_DB_HOST/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*DATABASE_URL hostname does not match.*EXPECTED_DB_HOST/);
     });
 
     it('refuses to execute if confirmation is not CONFIRM_SEED_HOSTED_DEMO', () => {
@@ -106,10 +106,10 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
           ...validStagingConfig,
           confirmation: 'yes',
         })
-      ).toThrowError(/STAGING_GUARD_VIOLATION.*HOSTED_DEMO_CONFIRMATION must equal 'CONFIRM_SEED_HOSTED_DEMO'/);
+      ).toThrowError(/SAFEGUARD_VIOLATION.*HOSTED_DEMO_CONFIRMATION must equal 'CONFIRM_SEED_HOSTED_DEMO'/);
     });
 
-    it('refuses execution if connected database current_database() does not match EXPECTED_STAGING_DB_NAME', async () => {
+    it('refuses execution if connected database current_database() does not match EXPECTED_DB_NAME', async () => {
       const dbCheck = await db.query('SELECT current_database();');
       const actualDb = dbCheck.rows[0].current_database;
 
@@ -119,12 +119,12 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
           expectedDbName: 'mismatched_database_name',
           databaseUrl: `postgresql://user:pass@ep-test-staging.ap-southeast-1.aws.neon.tech/mismatched_database_name`,
         })
-      ).rejects.toThrowError(/STAGING_GUARD_VIOLATION.*Connected database name.*does not match/);
+      ).rejects.toThrowError(/SAFEGUARD_VIOLATION.*Connected database name.*does not match/);
     });
   });
 
   describe('2. Account Creation, Idempotency & Collision Protection', () => {
-    it('seeds all 30 student demo accounts and staff demo accounts atomically', async () => {
+    it('seeds exactly 10 student demo accounts and 8 staff demo accounts atomically (18 Canonical Demo Accounts)', async () => {
       const dbCheck = await db.query('SELECT current_database();');
       const actualDb = dbCheck.rows[0].current_database;
 
@@ -136,11 +136,11 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
 
       expect(result.success).toBe(true);
       expect(result.seededStaffCount).toBe(8);
-      expect(result.seededStudentsCount).toBe(30);
+      expect(result.seededStudentsCount).toBe(10);
 
       // Verify users in database
       const userCount = await db.query("SELECT COUNT(*) as count FROM users WHERE college_id LIKE 'DEMO-%'");
-      expect(parseInt(userCount.rows[0].count, 10)).toBe(30);
+      expect(parseInt(userCount.rows[0].count, 10)).toBe(10);
 
       const adminUser = await db.query("SELECT * FROM users WHERE college_id = 'ADM001'");
       expect(adminUser.rows.length).toBe(1);
@@ -164,7 +164,7 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
       const result = await executeHostedDemoSeed(db, config);
       expect(result.success).toBe(true);
       expect(result.dryRun).toBe(true);
-      expect(result.actions.length).toBe(38); // 8 staff + 30 students
+      expect(result.actions.length).toBe(18); // Exactly 8 staff + 10 students
       expect(result.actions.every((a) => a.action === 'CREATE')).toBe(true);
 
       // Verify no users were written to the database
@@ -274,7 +274,7 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
       }
     });
 
-    it('authenticates representative student demo accounts (DEMO-001 -> password1, DEMO-029 -> password29, DEMO-030 -> password30) and rejects wrong passwords', async () => {
+    it('authenticates canonical student demo accounts (DEMO-001 -> password1, DEMO-010 -> password10) and rejects wrong passwords', async () => {
       // 1. DEMO-001 -> password1
       const s1 = await fastifyApp.inject({
         method: 'POST',
@@ -286,25 +286,16 @@ describe('DORMEX Hosted Staging Demo Accounts Seeding & Safeguards Suite', () =>
       expect(s1Body.session.role).toBe('STUDENT');
       expect(s1Body.session.collegeId).toBe('DEMO-001');
 
-      // 2. DEMO-029 -> password29
-      const s29 = await fastifyApp.inject({
+      // 2. DEMO-010 -> password10
+      const s10 = await fastifyApp.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { identifier: 'DEMO-029', password: 'password29' },
+        payload: { identifier: 'DEMO-010', password: 'password10' },
       });
-      expect(s29.statusCode).toBe(200);
-      expect(s29.json().session.collegeId).toBe('DEMO-029');
+      expect(s10.statusCode).toBe(200);
+      expect(s10.json().session.collegeId).toBe('DEMO-010');
 
-      // 3. DEMO-030 -> password30
-      const s30 = await fastifyApp.inject({
-        method: 'POST',
-        url: '/api/auth/login',
-        payload: { identifier: 'DEMO-030', password: 'password30' },
-      });
-      expect(s30.statusCode).toBe(200);
-      expect(s30.json().session.collegeId).toBe('DEMO-030');
-
-      // 4. Rejection of incorrect password
+      // 3. Rejection of incorrect password
       const wrongPw = await fastifyApp.inject({
         method: 'POST',
         url: '/api/auth/login',

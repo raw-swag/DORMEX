@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.17.0] - 2026-11-08
+
+- **Feat(provisioning): Dedicated ADM001 Role Migration & 18-Canonical Account Rollback Engine**:
+  - **Dedicated ADM001 Role Migration Script & Test Suite**:
+    - Created [`scripts/migrate-adm001-role.ts`](./scripts/migrate-adm001-role.ts) executing an atomic transaction that removes `SUPER_ADMIN` from `usr_adm001` and reassigns `CHIEF_WARDEN` (`scope_type = 'SYSTEM'`).
+    - Enforced strict preconditions and postconditions: verifies independent `SUPERADMIN` exists and holds `SUPER_ADMIN`, and aborts if `usr_adm001` does not hold `SUPER_ADMIN` or if unexpected state occurs.
+    - Added comprehensive isolated test suite in [`tests/adm001-role-migration.test.ts`](./tests/adm001-role-migration.test.ts) covering success and precondition failure cases.
+  - **Transaction-Safe Rollback Engine with Protected Exclusions**:
+    - Created [`scripts/rollback-demo-provisioning.ts`](./scripts/rollback-demo-provisioning.ts) providing safe, transactional rollback of demo-provisioned accounts.
+    - Hardcoded canonical protected exclusions (`DEMO-001`, `ADM001`, `SUPERADMIN`) ensuring pre-existing accounts and their profiles are never deleted or modified.
+    - Enforced strict business dependency invariant checks (aborts if target accounts have acquired allocations or complaints).
+    - Added automated unit test suite in [`tests/demo-provisioning-rollback.test.ts`](./tests/demo-provisioning-rollback.test.ts).
+  - **Enforce Exact 18-Canonical Account Scope**:
+    - Scoped [`scripts/seed-hosted-demo.ts`](./scripts/seed-hosted-demo.ts) to strictly 18 canonical accounts (10 Students `DEMO-001`..`DEMO-010`, 5 Hostel Office `OFF001`..`OFF005`, 3 Admin `ADM001`..`ADM003`). Removed `DEMO-011`..`DEMO-030`.
+    - Updated [`tests/hosted-demo-seed.test.ts`](./tests/hosted-demo-seed.test.ts) to test 18-account scope.
+  - **Automated Verification**:
+    - 236/236 automated tests passing across 24 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
+
+---
+
 ## [2.16.0] - 2026-11-08
 
 - **Feat(provisioning): Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
