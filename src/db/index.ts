@@ -219,7 +219,7 @@ export function getDatabaseService(forceMemory: boolean = false): DatabaseServic
 
   const isProduction = process.env.NODE_ENV === 'production';
   if (isProduction && !process.env.DATABASE_URL && !forceMemory) {
-    throw new Error('FATAL_DATABASE_CONFIG: Production requires an externally supplied DATABASE_URL (Neon PostgreSQL)');
+    throw new Error('FATAL_DATABASE_CONFIG: Production requires an externally supplied DATABASE_URL (PostgreSQL)');
   }
 
   if (forceMemory || process.env.NODE_ENV === 'test' || (!process.env.DATABASE_URL && !isProduction)) {
