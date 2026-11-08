@@ -2,6 +2,7 @@ export type SystemRole =
   | 'STUDENT'
   | 'PROCTOR'
   | 'WARDEN'
+  | 'DEPUTY_WARDEN'
   | 'CHIEF_WARDEN'
   | 'HOSTEL_OFFICE'
   | 'SUPER_ADMIN';
@@ -66,6 +67,15 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'cycle.view',
   ],
   WARDEN: [
+    'inventory.view',
+    'inventory.manage',
+    'cycle.view',
+    'complaint.manage',
+    'complaint.view_private',
+    'room_change.review',
+    'audit.view',
+  ],
+  DEPUTY_WARDEN: [
     'inventory.view',
     'inventory.manage',
     'cycle.view',
@@ -162,8 +172,8 @@ export function can(
     return true;
   }
 
-  // 4. Warden: Scope is strictly constrained to their assigned building
-  if (actor.role === 'WARDEN') {
+  // 4. Warden & Deputy Warden: Scope is strictly constrained to their assigned building
+  if (actor.role === 'WARDEN' || actor.role === 'DEPUTY_WARDEN') {
     if (actor.scope_type === 'BUILDING' && resource?.building_id) {
       return actor.scope_id === resource.building_id;
     }
@@ -209,6 +219,7 @@ export const VALID_SYSTEM_ROLES = new Set<string>([
   'STUDENT',
   'PROCTOR',
   'WARDEN',
+  'DEPUTY_WARDEN',
   'CHIEF_WARDEN',
   'HOSTEL_OFFICE',
   'SUPER_ADMIN',
@@ -237,6 +248,10 @@ export const ROLE_SCOPE_COMPATIBILITY_MATRIX: Record<
   WARDEN: {
     allowedScopes: ['BUILDING'],
     requiresScopeId: true, // A warden must be assigned to an explicit building
+  },
+  DEPUTY_WARDEN: {
+    allowedScopes: ['BUILDING'],
+    requiresScopeId: true, // A deputy warden must be assigned to an explicit building
   },
   PROCTOR: {
     allowedScopes: ['SYSTEM'],
@@ -307,10 +322,10 @@ export function assertRoleCompatibility(rows: UserRoleRecord[]): void {
   // If user only has one distinct role name (or multiple identical rows)
   if (distinctRoleNames.length === 1) {
     const singleRole = distinctRoleNames[0];
-    if (singleRole === 'WARDEN' && distinctRecords.length > 1) {
-      // Multiple building assignments for a single Warden must be rejected (no ambiguous collapsing)
+    if ((singleRole === 'WARDEN' || singleRole === 'DEPUTY_WARDEN') && distinctRecords.length > 1) {
+      // Multiple building assignments for a single Warden/Deputy Warden must be rejected (no ambiguous collapsing)
       throw new Error(
-        'AUTHORIZATION_CONFLICT: Contradictory building scopes detected for WARDEN. A single warden cannot be assigned to multiple disjoint buildings simultaneously without explicit administrative consolidation.'
+        `AUTHORIZATION_CONFLICT: Contradictory building scopes detected for ${singleRole}. An administrator cannot be assigned to multiple disjoint buildings simultaneously without explicit administrative consolidation.`
       );
     }
     return;
@@ -320,7 +335,7 @@ export function assertRoleCompatibility(rows: UserRoleRecord[]): void {
   const hasStudent = distinctRoleNames.includes('STUDENT');
   const hasSuperAdmin = distinctRoleNames.includes('SUPER_ADMIN');
   const hasStaff = distinctRoleNames.some((r) =>
-    ['CHIEF_WARDEN', 'HOSTEL_OFFICE', 'WARDEN', 'PROCTOR'].includes(r)
+    ['CHIEF_WARDEN', 'HOSTEL_OFFICE', 'WARDEN', 'DEPUTY_WARDEN', 'PROCTOR'].includes(r)
   );
 
   if (hasStudent && (hasSuperAdmin || hasStaff)) {

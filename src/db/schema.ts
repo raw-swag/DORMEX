@@ -85,6 +85,12 @@ CREATE TABLE IF NOT EXISTS buildings (
     name TEXT NOT NULL,
     gender_designation TEXT NOT NULL, -- 'MALE', 'FEMALE', 'COED'
     total_floors INT NOT NULL DEFAULT 4,
+    lifecycle_status TEXT NOT NULL DEFAULT 'PROPOSED', -- 'PROPOSED', 'APPROVED', 'ACTIVE', 'INACTIVE'
+    proposed_by TEXT REFERENCES users(id),
+    proposed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by TEXT REFERENCES users(id),
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    review_notes TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -457,6 +463,87 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_device_slots_active_cred
     ON device_registration_slots (credential_id) 
     WHERE credential_id IS NOT NULL AND is_revoked = FALSE;
 
+-- ============================================================================
+-- INSTITUTIONAL GOVERNANCE & HIERARCHY SCHEMA (Stage 1)
+-- ============================================================================
+
+-- 1. Institutional Governance Singleton Table
+CREATE TABLE IF NOT EXISTS institutional_governance (
+    singleton_id INT PRIMARY KEY DEFAULT 1 CHECK (singleton_id = 1),
+    chief_warden_user_id TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    transition_reason TEXT NOT NULL
+);
+
+-- 2. Warden Appointments Table
+CREATE TABLE IF NOT EXISTS warden_appointments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    building_id TEXT NOT NULL REFERENCES buildings(id) ON DELETE RESTRICT,
+    appointed_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    appointment_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (appointment_status IN ('ACTIVE', 'REVOKED', 'EXPIRED')),
+    effective_from TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    revocation_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_warden_appt_composite UNIQUE (id, building_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_active_warden_user
+    ON warden_appointments (user_id)
+    WHERE appointment_status = 'ACTIVE';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_active_building_warden
+    ON warden_appointments (building_id)
+    WHERE appointment_status = 'ACTIVE';
+
+-- 3. Deputy Appointments Table
+CREATE TABLE IF NOT EXISTS deputy_appointments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    building_id TEXT NOT NULL REFERENCES buildings(id) ON DELETE RESTRICT,
+    supervisor_warden_appt_id TEXT NOT NULL,
+    appointed_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    appointment_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (appointment_status IN ('ACTIVE', 'REVOKED', 'EXPIRED')),
+    effective_from TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    revocation_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_deputy_supervisor_composite
+        FOREIGN KEY (supervisor_warden_appt_id, building_id)
+        REFERENCES warden_appointments(id, building_id)
+        ON DELETE RESTRICT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_active_deputy_user
+    ON deputy_appointments (user_id)
+    WHERE appointment_status = 'ACTIVE';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_single_active_deputy_per_warden
+    ON deputy_appointments (supervisor_warden_appt_id)
+    WHERE appointment_status = 'ACTIVE';
+
+-- 4. Governance Actions & Action Events Ledger
+CREATE TABLE IF NOT EXISTS governance_actions (
+    id TEXT PRIMARY KEY,
+    action_type TEXT NOT NULL, -- 'APPOINT_WARDEN', 'REVOKE_WARDEN', 'APPOINT_DEPUTY', 'REVOKE_DEPUTY', 'TRANSFER_SUPER_ADMIN', etc.
+    actor_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    target_user_id TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    building_id TEXT REFERENCES buildings(id) ON DELETE RESTRICT,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS governance_action_events (
+    id TEXT PRIMARY KEY,
+    action_id TEXT NOT NULL REFERENCES governance_actions(id) ON DELETE RESTRICT,
+    event_type TEXT NOT NULL,
+    details_json TEXT NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
 
 `;
 
@@ -508,6 +595,18 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
     await db.query(`DROP INDEX IF EXISTS uq_student_profiles_pool_priority`);
   } catch (err) {
     // Ignore if already applied
+  }
+
+  // Ensure building lifecycle_status column exists
+  try {
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS lifecycle_status TEXT NOT NULL DEFAULT 'PROPOSED'`);
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS proposed_by TEXT REFERENCES users(id)`);
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS proposed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`);
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS reviewed_by TEXT REFERENCES users(id)`);
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE`);
+    await db.query(`ALTER TABLE buildings ADD COLUMN IF NOT EXISTS review_notes TEXT`);
+  } catch (err) {
+    // Ignore if already present
   }
 
   const statements = SCHEMA_SQL

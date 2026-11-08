@@ -5,7 +5,7 @@ import {
   assertRoleCompatibility,
   ROLE_SCOPE_COMPATIBILITY_MATRIX,
   UserRoleRecord,
-} from './policy.js';
+} from '../src/auth/policy.js';
 
 describe('Role & Scope Compatibility and Invariant Validation', () => {
   it('accepts canonical institutional role-to-scope pairs', () => {

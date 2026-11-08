@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-11-07
+Last Updated: 2026-11-08
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,20 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 38: Governance & Authorization Redesign — Stage 1 Database Foundation**:
+  - **Deliverables Completed**:
+    - **Institutional Governance Singleton**: Built `institutional_governance` table (`singleton_id = 1`) tracking active Chief Warden `chief_warden_user_id` and enforced singleton invariants with `ON DELETE RESTRICT`. Added partial unique index `uq_single_active_super_admin` on `user_roles`.
+    - **Warden & Deputy Warden Relational Appointments**: Created `warden_appointments` with partial unique indexes `uq_active_warden_user` and `uq_active_building_warden`. Created `deputy_appointments` with composite FK `(supervisor_warden_appt_id, building_id)` and partial unique index `uq_single_active_deputy_per_warden` (1:1 deputy cardinality).
+    - **Cross-Role Exclusivity & Candidate Locking**: Implemented `GovernanceService` using row-level locking (`SELECT FOR UPDATE`) on candidate users and buildings to prevent concurrent cross-role appointment races.
+    - **Cascading Revocation**: Implemented atomic cascading revocation ensuring that revoking a supervising Warden revokes subordinate Deputies immediately.
+    - **Building Proposal & Lifecycle Governance**: Added `lifecycle_status` (`PROPOSED`, `APPROVED`, `ACTIVE`, `INACTIVE`) and audit fields to `buildings`. Enforced environment allowlist: BVB block defaults to `ACTIVE` in test/development, and `PROPOSED` in production/staging.
+    - **Audit & Governance Action Ledger**: Created `governance_actions` and `governance_action_events` recording structured audit trails and action metadata.
+    - Added dedicated test suite `tests/warden_hierarchy_governance.test.ts` (14 tests).
+  - **Verification Metrics**:
+    - 272/272 automated tests passing across 27 test files (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server build (`npm run build:server` / `tsc`, with 0 test files emitted to `dist`).
+    - Clean client build (`npm run build:client` / `vite build`).
 - [x] **Phase 37: Security & Provenance Hardening (SEC-01 through SEC-04 Remediation)**:
   - **Deliverables Completed**:
     - **SEC-01 (Fail-Closed Multi-Role Authorization)**: Implemented `assertRoleCompatibility` in `src/auth/policy.ts` to strictly reject incompatible combinations (such as `STUDENT` coexisting with administrative roles, or `SUPER_ADMIN` mixed with ordinary roles).

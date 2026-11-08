@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.19.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 1: Database Foundation)**:
+  - **Institutional Governance Singleton**:
+    - Introduced `institutional_governance` singleton table (`singleton_id = 1` check constraint) tracking the sole active Chief Warden (`chief_warden_user_id`).
+    - Enforced atomic leadership transfer and protected Chief Warden deletion via `ON DELETE RESTRICT`.
+    - Added partial unique index `uq_single_active_super_admin` ensuring exactly 1 active `SUPER_ADMIN` system assignment.
+  - **Warden & Deputy Warden Appointments**:
+    - Created `warden_appointments` with `uq_active_warden_user` and `uq_active_building_warden` partial unique indexes.
+    - Created `deputy_appointments` with composite foreign key `(supervisor_warden_appt_id, building_id) REFERENCES warden_appointments(id, building_id)` and `uq_single_active_deputy_per_warden` (1:1 cardinality).
+    - Implemented cross-role exclusivity in `GovernanceService` with row-level user locking (`SELECT FOR UPDATE`), preventing simultaneous Warden + Deputy appointments.
+    - Implemented atomic cascading revocation from supervising Warden to subordinate Deputy.
+  - **Building Proposal & Lifecycle Governance**:
+    - Added `lifecycle_status` (`PROPOSED`, `APPROVED`, `ACTIVE`, `INACTIVE`) and proposal/review audit columns on `buildings`.
+    - Implemented environment allowlist: BVB block defaults to `ACTIVE` in development/test, and `PROPOSED` in production/staging until officially reviewed.
+    - Prohibited Warden appointments to `PROPOSED` buildings.
+  - **Audit & Governance Action Ledger**:
+    - Created `governance_actions` and `governance_action_events` recording structured audit trails and action metadata.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/warden_hierarchy_governance.test.ts` (14 tests).
+    - 272/272 automated tests passing across 27 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
 ## [2.18.0] - 2026-11-08
 
 - **Security & Provenance Hardening (SEC-01 through SEC-04 Remediation)**:
