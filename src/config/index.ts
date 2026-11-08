@@ -125,16 +125,20 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
   );
   const isSsl = env.PG_SSL === 'true' || isCloudOrSslUrl;
 
-  // Render internal private network hosts (dpg-* with internal domain or without .render.com) use private certs
+  // Render internal private network hosts use private certs.
+  // Fail-closed: Must parse successfully as a valid URL, hostname must be non-empty,
+  // must start with "dpg-", must NOT end with ".render.com", and must either be a single-label
+  // internal hostname (dpg-xxx) or end with ".internal".
   let isRenderInternal = false;
   if (dbUrl) {
     try {
       const parsedUrl = new URL(dbUrl);
-      const host = parsedUrl.hostname.toLowerCase();
-      // Only treat host as Render internal if hostname begins with dpg- and does NOT end with .render.com
-      isRenderInternal = host.startsWith('dpg-') && !host.endsWith('.render.com');
+      let host = parsedUrl.hostname.trim().toLowerCase();
+      if (host.endsWith('.')) host = host.slice(0, -1);
+      const isInternalPattern = /^dpg-[a-z0-9]+(-[a-z0-9]+)*(\.internal)?$/.test(host);
+      isRenderInternal = isInternalPattern && !host.endsWith('.render.com');
     } catch {
-      isRenderInternal = dbUrl.includes('dpg-') && !dbUrl.includes('.render.com');
+      isRenderInternal = false;
     }
   }
   const rejectUnauthorized = env.PG_SSL_REJECT_UNAUTHORIZED === 'false' || isRenderInternal

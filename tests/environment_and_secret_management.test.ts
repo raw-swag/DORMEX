@@ -116,36 +116,91 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       expect(devCfg.corsAllowedOrigins).toContain('http://localhost:5173');
     });
 
-    it('verifies TLS behavior for internal vs external vs third-party database hosts', () => {
-      // 1. Render internal host (hostname starts with dpg- and does not end with .render.com)
-      const internalCfg = loadServerConfig({
+    it('verifies fail-closed TLS behavior for internal, external, and adversarial host variations', () => {
+      const baseEnv = {
         NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a/dormex_db',
         JWT_SECRET: 'a'.repeat(32),
         COOKIE_SECRET: 'b'.repeat(32),
-      });
-      expect(internalCfg.database.isRenderInternal).toBe(true);
-      expect(internalCfg.database.rejectUnauthorized).toBe(false);
+      };
 
-      // 2. Render external host (ends with .render.com)
+      // 1. Genuine Render internal database hostname (single-label dpg-xxx)
+      const internalCfg1 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a/dormex_db',
+      });
+      expect(internalCfg1.database.isRenderInternal).toBe(true);
+      expect(internalCfg1.database.rejectUnauthorized).toBe(false);
+
+      // 2. Genuine Render internal hostname with .internal suffix
+      const internalCfg2 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a.internal/dormex_db',
+      });
+      expect(internalCfg2.database.isRenderInternal).toBe(true);
+      expect(internalCfg2.database.rejectUnauthorized).toBe(false);
+
+      // 3. Genuine Render external database hostname (ends with .render.com -> MUST verify CA)
       const externalCfg = loadServerConfig({
-        NODE_ENV: 'production',
+        ...baseEnv,
         DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a.oregon-postgres.render.com/dormex_db',
-        JWT_SECRET: 'a'.repeat(32),
-        COOKIE_SECRET: 'b'.repeat(32),
       });
       expect(externalCfg.database.isRenderInternal).toBe(false);
       expect(externalCfg.database.rejectUnauthorized).toBe(true);
 
-      // 3. Unrelated host that contains dpg- in path or query
-      const spoofCfg = loadServerConfig({
-        NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://user:pass@my-custom-host.com/dpg-db',
-        JWT_SECRET: 'a'.repeat(32),
-        COOKIE_SECRET: 'b'.repeat(32),
+      // 4. Adversarial subdomain: dpg-attacker.example.com
+      const subdomCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-attacker.example.com/dormex_db',
       });
-      expect(spoofCfg.database.isRenderInternal).toBe(false);
-      expect(spoofCfg.database.rejectUnauthorized).toBe(true);
+      expect(subdomCfg.database.isRenderInternal).toBe(false);
+      expect(subdomCfg.database.rejectUnauthorized).toBe(true);
+
+      // 5. Adversarial domain: dpg-attacker.com
+      const domainCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-attacker.com/dormex_db',
+      });
+      expect(domainCfg.database.isRenderInternal).toBe(false);
+      expect(domainCfg.database.rejectUnauthorized).toBe(true);
+
+      // 6. Adversarial path: attacker.com/dpg-db
+      const pathCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@attacker.com/dpg-db',
+      });
+      expect(pathCfg.database.isRenderInternal).toBe(false);
+      expect(pathCfg.database.rejectUnauthorized).toBe(true);
+
+      // 7. Adversarial query: attacker.com?host=dpg-db
+      const queryCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@attacker.com/db?host=dpg-db',
+      });
+      expect(queryCfg.database.isRenderInternal).toBe(false);
+      expect(queryCfg.database.rejectUnauthorized).toBe(true);
+
+      // 8. Ordinary third-party PostgreSQL hostname (e.g., aws, supabase, neon)
+      const thirdPartyCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@db.my-university.edu:5432/dormex_db',
+      });
+      expect(thirdPartyCfg.database.isRenderInternal).toBe(false);
+      expect(thirdPartyCfg.database.rejectUnauthorized).toBe(true);
+
+      // 9. Hostname with uppercase or trailing-dot variation
+      const trailingDotCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@DPG-DBNJEQRL550S73FCR1LG-A./dormex_db',
+      });
+      expect(trailingDotCfg.database.isRenderInternal).toBe(true);
+      expect(trailingDotCfg.database.rejectUnauthorized).toBe(false);
+
+      // 10. Malformed unparseable URL -> fails closed (never gets internal exemption)
+      const malformedCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'not-a-valid-url-with-dpg-internal',
+      });
+      expect(malformedCfg.database.isRenderInternal).toBe(false);
     });
 
     it('defaults local development host to 127.0.0.1', () => {

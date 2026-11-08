@@ -198,11 +198,15 @@ export class DeviceAuthService {
    * Determine expected origin from request
    */
   public getExpectedOrigin(req: any): string {
+    const approved = DeviceAuthService.getApprovedOrigins();
     const origin = req.headers['origin'] || req.headers['Origin'] || req.headers['referer'] || req.headers['Referer'];
     if (origin && typeof origin === 'string') {
       try {
         const u = new URL(origin);
-        return `${u.protocol}//${u.host}`;
+        const candidate = `${u.protocol}//${u.host}`;
+        if (approved.includes(candidate)) {
+          return candidate;
+        }
       } catch {
         // ignore malformed
       }
@@ -211,11 +215,21 @@ export class DeviceAuthService {
     const xForwardedProto = req.headers['x-forwarded-proto'] || 'https';
     if (xForwardedHost && typeof xForwardedHost === 'string') {
       const cleanFwd = xForwardedHost.split(',')[0].trim();
-      return `${xForwardedProto}://${cleanFwd}`;
+      const candidate = `${xForwardedProto}://${cleanFwd}`;
+      if (approved.includes(candidate)) {
+        return candidate;
+      }
     }
-    const host = req.headers['host'] || 'localhost:3000';
-    const proto = req.headers['x-forwarded-proto'] || 'http';
-    return `${proto}://${host}`;
+    const host = req.headers['host'];
+    if (host && typeof host === 'string') {
+      const proto = req.headers['x-forwarded-proto'] || 'http';
+      const candidate = `${proto}://${host}`;
+      if (approved.includes(candidate)) {
+        return candidate;
+      }
+    }
+    // Fail-closed fallback: return the primary approved production origin
+    return approved[0] || 'https://dormex-sit.vercel.app';
   }
 
   /**

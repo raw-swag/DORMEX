@@ -33,14 +33,16 @@ export class PostgresDatabaseService implements DatabaseService {
     const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
     // TLS configuration: Render internal database uses private self-signed certificates
-    // Only apply the internal exemption when the hostname strictly starts with dpg- and does not end with .render.com
+    // Fail-closed: Must parse successfully as a valid URL, hostname must match strict internal pattern
     let isRenderInternal = false;
     try {
       const parsedUrl = new URL(connStr);
-      const host = parsedUrl.hostname.toLowerCase();
-      isRenderInternal = host.startsWith('dpg-') && !host.endsWith('.render.com');
+      let host = parsedUrl.hostname.trim().toLowerCase();
+      if (host.endsWith('.')) host = host.slice(0, -1);
+      const isInternalPattern = /^dpg-[a-z0-9]+(-[a-z0-9]+)*(\.internal)?$/.test(host);
+      isRenderInternal = isInternalPattern && !host.endsWith('.render.com');
     } catch {
-      isRenderInternal = connStr.includes('dpg-') && !connStr.includes('.render.com');
+      isRenderInternal = false;
     }
 
     const rejectUnauthorized = process.env.PG_SSL_REJECT_UNAUTHORIZED === 'false' || isRenderInternal

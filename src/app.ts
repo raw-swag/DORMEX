@@ -53,7 +53,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     },
     credentials: true,
   });
-  await app.register(cookie);
+  await app.register(cookie, {
+    secret: serverConfig.auth.cookieSecret || 'dormex-cookie-fallback-secret-2026',
+  });
 
   const effectiveJwtSecret = jwtSecret || 'dormex-super-secure-jwt-signing-key-2026';
   await app.register(fastifyJwt, {
