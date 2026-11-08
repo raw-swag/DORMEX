@@ -191,3 +191,74 @@ export function can(
 
   return true;
 }
+
+export interface UserRoleRecord {
+  id: string;
+  college_id: string;
+  full_name?: string;
+  role_name: string;
+  scope_type: string;
+  scope_id?: string | null;
+  profile_id?: string | null;
+}
+
+/**
+ * Deterministic role hierarchy rank (lower number = higher authoritative precedence).
+ * Super Admin > Chief Warden > Hostel Office > Warden > Proctor > Student
+ */
+export const ROLE_HIERARCHY_RANK: Record<string, number> = {
+  SUPER_ADMIN: 1,
+  CHIEF_WARDEN: 2,
+  HOSTEL_OFFICE: 3,
+  WARDEN: 4,
+  PROCTOR: 5,
+  STUDENT: 6,
+};
+
+/**
+ * Resolves a single authoritative AuthActor deterministically from a user's database role records.
+ * Invariants:
+ * 1. Throws if no role assignments exist.
+ * 2. If multiple roles are assigned, sorts deterministically by canonical institutional precedence:
+ *    SUPER_ADMIN > CHIEF_WARDEN > HOSTEL_OFFICE > WARDEN > PROCTOR > STUDENT.
+ * 3. Scope precedence: If same role is assigned with different scopes, SYSTEM takes precedence over BUILDING or STUDENT.
+ * 4. Ensures no accidental privilege loss or undefined role selection.
+ */
+export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
+  if (!rows || rows.length === 0) {
+    throw new Error('UNAUTHORIZED: No active role assignments found for user');
+  }
+
+  // Sort rows deterministically: highest privilege rank first, then SYSTEM scope first, then role ID
+  const sorted = [...rows].sort((a, b) => {
+    const rankA = ROLE_HIERARCHY_RANK[a.role_name] ?? 99;
+    const rankB = ROLE_HIERARCHY_RANK[b.role_name] ?? 99;
+    if (rankA !== rankB) return rankA - rankB;
+
+    // Scope tie-breaker: SYSTEM (0) > BUILDING (1) > STUDENT (2)
+    const scopeRank = (s: string) => (s === 'SYSTEM' ? 0 : s === 'BUILDING' ? 1 : 2);
+    const scopeA = scopeRank(a.scope_type);
+    const scopeB = scopeRank(b.scope_type);
+    if (scopeA !== scopeB) return scopeA - scopeB;
+
+    return (a.id || '').localeCompare(b.id || '');
+  });
+
+  const primary = sorted[0];
+
+  const validScopeType = (
+    primary.scope_type === 'SYSTEM' || primary.scope_type === 'BUILDING' || primary.scope_type === 'STUDENT'
+      ? primary.scope_type
+      : 'SYSTEM'
+  ) as 'SYSTEM' | 'BUILDING' | 'STUDENT';
+
+  return {
+    id: primary.id,
+    college_id: primary.college_id,
+    full_name: primary.full_name,
+    role: primary.role_name as SystemRole,
+    scope_type: validScopeType,
+    scope_id: primary.scope_id || null,
+    student_profile_id: primary.profile_id || null,
+  };
+}

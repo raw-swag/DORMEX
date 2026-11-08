@@ -22,8 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Enforce Exact 18-Canonical Account Scope**:
     - Scoped [`scripts/seed-hosted-demo.ts`](./scripts/seed-hosted-demo.ts) to strictly 18 canonical accounts (10 Students `DEMO-001`..`DEMO-010`, 5 Hostel Office `OFF001`..`OFF005`, 3 Admin `ADM001`..`ADM003`). Removed `DEMO-011`..`DEMO-030`.
     - Updated [`tests/hosted-demo-seed.test.ts`](./tests/hosted-demo-seed.test.ts) to test 18-account scope.
-  - **Automated Verification**:
-    - 236/236 automated tests passing across 24 test suites (100% pass rate).
+- **Strict Rollback Batch Isolation**:
+    - Enhanced `scripts/rollback-demo-provisioning.ts` to strictly reject execution without explicit, validated `batchId` or `batchUserIds` (minimum 8 chars matching `batch_<identifier>`).
+    - Eliminates any accidental fallback to deleting all matching demo accounts.
+    - Added comprehensive regression tests in `tests/demo-provisioning-rollback.test.ts` verifying omitted, empty, malformed, and cross-batch identifiers fail safely without writes.
+  - **Deterministic Multi-Role Actor Resolution**:
+    - Implemented `resolveAuthoritativeActor` in `src/auth/policy.ts` with institutional role precedence (`SUPER_ADMIN` > `CHIEF_WARDEN` > `HOSTEL_OFFICE` > `WARDEN` > `PROCTOR` > `STUDENT`) and scope tie-breaker (`SYSTEM` > `BUILDING` > `STUDENT`).
+    - Updated `extractActor` in `src/app.ts` to resolve multi-role records deterministically, eliminating undefined row selection.
+    - Added dedicated test suite in `tests/multi-role-actor-resolution.test.ts` covering unit and end-to-end Fastify authorization resolution.
+  - **Complete Server & Client Build Verification**:
+    - Verified server compilation with `tsc` (0 errors).
+    - Verified client production build with `vite build` (clean bundle).
+    - 244/244 automated tests passing across 25 test suites (100% pass rate).
     - 0 TypeScript compiler errors (`npm run typecheck`).
     - Clean production client build (`npm run build:client`).
 

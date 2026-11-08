@@ -19,7 +19,7 @@ import { StudentAdmissionService } from './student/admissionService.js';
 import { MessMenuService } from './operations/messMenuService.js';
 import { AuthService } from './auth/service.js';
 import { DeviceAuthService } from './auth/deviceAuthService.js';
-import { AuthActor } from './auth/policy.js';
+import { AuthActor, resolveAuthoritativeActor } from './auth/policy.js';
 
 export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -178,16 +178,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       throw new Error('UNAUTHORIZED: Invalid credentials');
     }
 
-    const row = userRes.rows[0];
-    return {
-      id: row.id,
-      college_id: row.college_id,
-      full_name: row.full_name,
-      role: row.role_name,
-      scope_type: row.scope_type,
-      scope_id: row.scope_id,
-      student_profile_id: row.profile_id,
-    };
+    return resolveAuthoritativeActor(userRes.rows);
   };
 
   // Liveness probe (process is running and event loop is responding; does NOT depend on PostgreSQL)

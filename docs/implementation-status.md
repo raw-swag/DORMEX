@@ -29,10 +29,13 @@ Repository Status: Active Development (Modular Monolith)
     - Designed and implemented transaction-safe rollback engine (`scripts/rollback-demo-provisioning.ts`) protecting `DEMO-001`, `ADM001`, and `SUPERADMIN` and checking business invariant dependencies.
     - Added automated rollback test suite in `tests/demo-provisioning-rollback.test.ts`.
     - Scoped hosted demo seeder (`scripts/seed-hosted-demo.ts`) to strictly 18 canonical accounts (10 Students, 5 Hostel Office, 3 Admin).
+- Implemented strict batch isolation in `scripts/rollback-demo-provisioning.ts` requiring explicit, validated batch identifiers and preventing cross-batch deletion.
+    - Implemented deterministic multi-role resolution (`resolveAuthoritativeActor`) in `src/auth/policy.ts` and `src/app.ts`.
+    - Added test coverage in `tests/demo-provisioning-rollback.test.ts` (7/7 tests) and `tests/multi-role-actor-resolution.test.ts` (3/3 tests).
   - **Verification Metrics**:
-    - 236/236 automated tests passing across 24 test suites (100% pass rate).
-    - 0 TypeScript compiler errors (`npm run typecheck`).
-    - Clean production client build (`npm run build:client`).
+    - 244/244 automated tests passing across 25 test suites (100% pass rate).
+    - Clean server build (`npm run build:server` / `tsc`).
+    - Clean client build (`npm run build:client` / `vite build`).
 - [x] **Phase 35: Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
   - **Deliverables Completed**:
     - Upgraded `scripts/seed-hosted-demo.ts` with `--dry-run` inspection mode and explicit credential preservation for existing canonical accounts (`DEMO-001`, `ADM001`, etc.).

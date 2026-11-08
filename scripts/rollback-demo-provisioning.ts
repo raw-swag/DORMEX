@@ -1,6 +1,7 @@
 import { DatabaseService } from '../src/db/index.js';
 
 export interface RollbackOptions {
+  batchId?: string;
   batchUserIds?: string[];
   safeExclusions?: string[];
   dryRun?: boolean;
@@ -9,6 +10,7 @@ export interface RollbackOptions {
 export interface RollbackResult {
   success: boolean;
   dryRun: boolean;
+  batchId?: string;
   deletedUsersCount: number;
   deletedProfilesCount: number;
   deletedRolesCount: number;
@@ -23,43 +25,114 @@ export const CANONICAL_PROTECTED_COLLEGE_IDS = [
 ];
 
 /**
+ * Validates whether a provided batch identifier is syntactically and semantically valid.
+ * Supported format: batch_<alphanumeric> or batch_<timestamp>_<uuid>
+ */
+export function isValidBatchId(batchId: string): boolean {
+  if (!batchId || typeof batchId !== 'string') return false;
+  const trimmed = batchId.trim();
+  return /^batch_[a-zA-Z0-9_\-]+$/.test(trimmed) && trimmed.length >= 8;
+}
+
+/**
  * Safely rolls back provisioned demo accounts in isolated/controlled environments.
+ * - STRICT BATCH ISOLATION: Refuses execution unless an explicit, valid batchId or validated batchUserIds is provided.
+ * - NEVER falls back to deleting all demo accounts.
  * - Enforces pre-existing account protection (CANONICAL_PROTECTED_COLLEGE_IDS).
  * - Refuses rollback if any targeted account has active allocations, payments, complaints, or accords.
- * - Executes in a transaction.
+ * - Executes transactionally.
  */
 export async function executeDemoProvisioningRollback(
   db: DatabaseService,
-  options: RollbackOptions = {}
+  options: RollbackOptions
 ): Promise<RollbackResult> {
   const protectedIds = options.safeExclusions || CANONICAL_PROTECTED_COLLEGE_IDS;
   const isDryRun = !!options.dryRun;
 
+  // 1. Strict Batch Validation
+  const hasBatchId = typeof options.batchId === 'string' && options.batchId.trim().length > 0;
+  const hasBatchUserIds = Array.isArray(options.batchUserIds) && options.batchUserIds.length > 0;
+
+  if (!hasBatchId && !hasBatchUserIds) {
+    throw new Error(
+      'ROLLBACK_REFUSED: Explicit batch identification is required. Rollback cannot execute without a valid batchId or batchUserIds to prevent accidental mass deletion.'
+    );
+  }
+
+  if (hasBatchId && !isValidBatchId(options.batchId!)) {
+    throw new Error(
+      `ROLLBACK_REFUSED: Malformed batchId '${options.batchId}'. Expected format: 'batch_<identifier>' (minimum 8 characters).`
+    );
+  }
+
+  if (hasBatchUserIds && options.batchUserIds!.some((id) => !id || typeof id !== 'string' || id.trim().length === 0)) {
+    throw new Error('ROLLBACK_REFUSED: batchUserIds array contains empty or invalid user identifiers.');
+  }
+
   const runWithClient = async (client: any) => {
     const q = client.query.bind(client);
 
-    // 1. Identify users to roll back
-    let usersQuery = `
-      SELECT u.id, u.college_id 
-      FROM users u
-      WHERE (u.college_id LIKE 'DEMO-%' OR u.college_id LIKE 'OFF00%' OR u.college_id IN ('ADM002', 'ADM003'))
-        AND u.college_id NOT IN (${protectedIds.map((_, i) => `$${i + 1}`).join(', ')})
-    `;
-    let params: any[] = [...protectedIds];
+    let targetUserIds: string[] = [];
+    let targetCollegeIds: string[] = [];
 
-    if (options.batchUserIds && options.batchUserIds.length > 0) {
-      usersQuery += ` AND u.id IN (${options.batchUserIds.map((_, i) => `$${params.length + i + 1}`).join(', ')})`;
-      params.push(...options.batchUserIds);
+    // Path A: Batch ID lookup via persistent audit trail
+    if (hasBatchId) {
+      const cleanBatchId = options.batchId!.trim();
+
+      const auditRes = await q(
+        `SELECT DISTINCT target_id FROM audit_logs WHERE correlation_id = $1 AND target_type = 'USER'`,
+        [cleanBatchId]
+      );
+
+      const auditedUserIds: string[] = auditRes.rows.map((r: any) => r.target_id);
+
+      if (hasBatchUserIds) {
+        if (auditedUserIds.length > 0) {
+          const auditedSet = new Set(auditedUserIds);
+          for (const uid of options.batchUserIds!) {
+            if (!auditedSet.has(uid)) {
+              throw new Error(
+                `ROLLBACK_REFUSED: Provided user ID '${uid}' does not belong to provisioning batch '${cleanBatchId}'. Cross-batch deletion rejected.`
+              );
+            }
+          }
+        }
+        targetUserIds = [...options.batchUserIds!];
+      } else {
+        targetUserIds = auditedUserIds;
+      }
+
+      if (targetUserIds.length === 0) {
+        throw new Error(
+          `ROLLBACK_REFUSED: No user records found matching batch identifier '${cleanBatchId}'. Rollback aborted without writes.`
+        );
+      }
+    } else {
+      // Path B: Direct validated batchUserIds
+      targetUserIds = [...new Set(options.batchUserIds!.map((id) => id.trim()))];
     }
 
-    const targetUsersRes = await q(usersQuery, params);
-    const targetUserIds: string[] = targetUsersRes.rows.map((r: any) => r.id);
-    const targetCollegeIds: string[] = targetUsersRes.rows.map((r: any) => r.college_id);
+    // 2. Fetch user records and enforce protected exclusions
+    const resolvedUsers: { id: string; college_id: string }[] = [];
+    for (const uid of targetUserIds) {
+      const uRes = await q(`SELECT u.id, u.college_id FROM users u WHERE u.id = $1`, [uid]);
+      if (uRes.rows.length > 0) {
+        const u = uRes.rows[0];
+        if (protectedIds.includes(u.college_id)) {
+          throw new Error(
+            `ROLLBACK_REFUSED: Target user '${u.college_id}' (${u.id}) is a protected canonical identity and cannot be deleted.`
+          );
+        }
+        resolvedUsers.push(u);
+        targetCollegeIds.push(u.college_id);
+      }
+    }
 
-    if (targetUserIds.length === 0) {
+    if (resolvedUsers.length === 0) {
       return {
         success: true,
         dryRun: isDryRun,
+        batchId: options.batchId,
         deletedUsersCount: 0,
         deletedProfilesCount: 0,
         deletedRolesCount: 0,
@@ -67,9 +140,11 @@ export async function executeDemoProvisioningRollback(
       };
     }
 
-    // 2. Safety Invariant Check: Verify no dependent business entities have accumulated
-    // A: Allocations
-    for (const uid of targetUserIds) {
+    const resolvedUserIds: string[] = resolvedUsers.map((u) => u.id);
+
+    // 3. Safety Invariant Check: Verify no dependent business entities have accumulated
+    for (const uid of resolvedUserIds) {
+      // Allocations
       const allocCheck = await q(
         `SELECT COUNT(*)::int as count FROM allocations WHERE student_id IN (
           SELECT id FROM student_profiles WHERE user_id = $1
@@ -82,7 +157,7 @@ export async function executeDemoProvisioningRollback(
         );
       }
 
-      // B: Complaints
+      // Complaints
       const compCheck = await q(
         `SELECT COUNT(*)::int as count FROM complaints WHERE author_id = $1`,
         [uid]
@@ -98,24 +173,23 @@ export async function executeDemoProvisioningRollback(
       return {
         success: true,
         dryRun: true,
-        deletedUsersCount: targetUserIds.length,
+        batchId: options.batchId,
+        deletedUsersCount: resolvedUserIds.length,
         deletedProfilesCount: targetCollegeIds.filter((c) => c.startsWith('DEMO-')).length,
-        deletedRolesCount: targetUserIds.length,
+        deletedRolesCount: resolvedUserIds.length,
         preservedExclusions: protectedIds,
       };
     }
 
-    // 3. Perform atomic cascaded deletion in reverse foreign-key order
-    let deletedAccordCount = 0;
+    // 4. Perform atomic cascaded deletion in reverse foreign-key order
     let deletedProfileCount = 0;
     let deletedRolesCount = 0;
     let deletedUsersCount = 0;
 
-    for (const uid of targetUserIds) {
+    for (const uid of resolvedUserIds) {
       const spRes = await q(`SELECT id FROM student_profiles WHERE user_id = $1`, [uid]);
       for (const sp of spRes.rows) {
-        const delAccord = await q(`DELETE FROM terms_acknowledgements WHERE student_id = $1`, [sp.id]);
-        deletedAccordCount += delAccord.rowCount || delAccord.rows?.length || 0;
+        await q(`DELETE FROM terms_acknowledgements WHERE student_id = $1`, [sp.id]);
       }
 
       const delProfile = await q(`DELETE FROM student_profiles WHERE user_id = $1`, [uid]);
@@ -131,6 +205,7 @@ export async function executeDemoProvisioningRollback(
     return {
       success: true,
       dryRun: false,
+      batchId: options.batchId,
       deletedUsersCount,
       deletedProfilesCount: deletedProfileCount,
       deletedRolesCount,
