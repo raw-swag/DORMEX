@@ -22,6 +22,18 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 37: Security & Provenance Hardening (SEC-01 through SEC-04 Remediation)**:
+  - **Deliverables Completed**:
+    - **SEC-01 (Fail-Closed Multi-Role Authorization)**: Implemented `assertRoleCompatibility` in `src/auth/policy.ts` to strictly reject incompatible combinations (such as `STUDENT` coexisting with administrative roles, or `SUPER_ADMIN` mixed with ordinary roles).
+    - **SEC-02 (Role/Scope Compatibility Invariants)**: Added `ROLE_SCOPE_COMPATIBILITY_MATRIX` and `validateRoleScopeCompatibility` in `src/auth/policy.ts` enforcing institutional scope requirements (`SYSTEM` for Super Admin/Chief Warden/Hostel Office/Proctor, `BUILDING` with valid `scope_id` for Warden, `STUDENT` for Student). Rejects conflicting multi-building assignments.
+    - **SEC-03 (Persistent Provisioning Batch Provenance)**: Enhanced `scripts/seed-hosted-demo.ts` to generate unpredictable random batch IDs and write audit trail records in `audit_logs` (`correlation_id = batchId`, `action = 'PROVISION_USER'`) within the same database transaction.
+    - **SEC-04 (Strict Rollback Ownership)**: Hardened `scripts/rollback-demo-provisioning.ts` to enforce that batch deletions resolve through verified `audit_logs` correlation IDs, reject cross-batch user IDs, and enforce protected canonical identities (`DEMO-001`, `ADM001`, `SUPERADMIN`).
+    - Added comprehensive unit testing in `src/auth/policy.test.ts` (6 tests) and integration testing in `tests/multi-role-actor-resolution.test.ts` (11 tests).
+  - **Verification Metrics**:
+    - 258/258 automated tests passing across 26 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server build (`npm run build:server` / `tsc`).
+    - Clean client build (`npm run build:client` / `vite build`).
 - [x] **Phase 36: Dedicated ADM001 Role Migration & 18-Canonical Account Rollback Engine**:
   - **Deliverables Completed**:
     - Prepared atomic ADM001 role migration script (`scripts/migrate-adm001-role.ts`) demoting `usr_adm001` from `SUPER_ADMIN` to `CHIEF_WARDEN` while preserving `SUPERADMIN` and enforcing strict preconditions and postconditions.

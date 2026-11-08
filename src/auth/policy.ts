@@ -203,61 +203,169 @@ export interface UserRoleRecord {
 }
 
 /**
- * Deterministic role hierarchy rank (lower number = higher authoritative precedence).
- * Super Admin > Chief Warden > Hostel Office > Warden > Proctor > Student
+ * Supported institutional roles
  */
-export const ROLE_HIERARCHY_RANK: Record<string, number> = {
-  SUPER_ADMIN: 1,
-  CHIEF_WARDEN: 2,
-  HOSTEL_OFFICE: 3,
-  WARDEN: 4,
-  PROCTOR: 5,
-  STUDENT: 6,
+export const VALID_SYSTEM_ROLES = new Set<string>([
+  'STUDENT',
+  'PROCTOR',
+  'WARDEN',
+  'CHIEF_WARDEN',
+  'HOSTEL_OFFICE',
+  'SUPER_ADMIN',
+]);
+
+/**
+ * SEC-02: Policy-Backed Role/Scope Compatibility Matrix
+ * Defines the allowed scope types and whether a non-empty scope_id is required.
+ */
+export const ROLE_SCOPE_COMPATIBILITY_MATRIX: Record<
+  SystemRole,
+  { allowedScopes: ('SYSTEM' | 'BUILDING' | 'STUDENT')[]; requiresScopeId: boolean }
+> = {
+  SUPER_ADMIN: {
+    allowedScopes: ['SYSTEM'],
+    requiresScopeId: false,
+  },
+  CHIEF_WARDEN: {
+    allowedScopes: ['SYSTEM'],
+    requiresScopeId: false,
+  },
+  HOSTEL_OFFICE: {
+    allowedScopes: ['SYSTEM'],
+    requiresScopeId: false,
+  },
+  WARDEN: {
+    allowedScopes: ['BUILDING'],
+    requiresScopeId: true, // A warden must be assigned to an explicit building
+  },
+  PROCTOR: {
+    allowedScopes: ['SYSTEM'],
+    requiresScopeId: false,
+  },
+  STUDENT: {
+    allowedScopes: ['STUDENT'],
+    requiresScopeId: false,
+  },
 };
+
+/**
+ * Validates that a role and scope assignment strictly complies with institutional policy (SEC-02).
+ */
+export function validateRoleScopeCompatibility(
+  roleName: string,
+  scopeType: string,
+  scopeId?: string | null
+): void {
+  if (!VALID_SYSTEM_ROLES.has(roleName)) {
+    throw new Error(`ROLE_SCOPE_INCOMPATIBLE: Unrecognized or invalid institutional role '${roleName}'.`);
+  }
+
+  const role = roleName as SystemRole;
+  const config = ROLE_SCOPE_COMPATIBILITY_MATRIX[role];
+
+  if (!config.allowedScopes.includes(scopeType as any)) {
+    throw new Error(
+      `ROLE_SCOPE_INCOMPATIBLE: Role '${role}' cannot be assigned scope '${scopeType}'. Allowed scopes: [${config.allowedScopes.join(', ')}].`
+    );
+  }
+
+  if (config.requiresScopeId && (!scopeId || typeof scopeId !== 'string' || scopeId.trim().length === 0)) {
+    throw new Error(
+      `ROLE_SCOPE_INCOMPATIBLE: Role '${role}' requires a non-empty building scope_id.`
+    );
+  }
+}
+
+/**
+ * SEC-01: Validates role compatibility across all assigned roles for a single user.
+ * Enforces Fail-Closed security:
+ * 1. STUDENT must never coexist with administrative or staff roles.
+ * 2. SUPER_ADMIN must never coexist with ordinary roles.
+ * 3. Administrative roles cannot coexist if contradictory (e.g. WARDEN + CHIEF_WARDEN).
+ * 4. Contradictory building assignments for WARDEN are rejected.
+ */
+export function assertRoleCompatibility(rows: UserRoleRecord[]): void {
+  if (!rows || rows.length === 0) {
+    throw new Error('UNAUTHORIZED: No active role assignments found for user.');
+  }
+
+  // 1. Verify every single role/scope pair individually
+  for (const row of rows) {
+    validateRoleScopeCompatibility(row.role_name, row.scope_type, row.scope_id);
+  }
+
+  // Deduplicate identical role assignments (idempotent duplicate rows)
+  const uniqueRolePairs = new Map<string, UserRoleRecord>();
+  for (const row of rows) {
+    const key = `${row.role_name}:${row.scope_type}:${row.scope_id || ''}`;
+    uniqueRolePairs.set(key, row);
+  }
+
+  const distinctRecords = Array.from(uniqueRolePairs.values());
+  const distinctRoleNames = Array.from(new Set(distinctRecords.map((r) => r.role_name)));
+
+  // If user only has one distinct role name (or multiple identical rows)
+  if (distinctRoleNames.length === 1) {
+    const singleRole = distinctRoleNames[0];
+    if (singleRole === 'WARDEN' && distinctRecords.length > 1) {
+      // Multiple building assignments for a single Warden must be rejected (no ambiguous collapsing)
+      throw new Error(
+        'AUTHORIZATION_CONFLICT: Contradictory building scopes detected for WARDEN. A single warden cannot be assigned to multiple disjoint buildings simultaneously without explicit administrative consolidation.'
+      );
+    }
+    return;
+  }
+
+  // Multiple distinct role names present: evaluate institutional incompatibility
+  const hasStudent = distinctRoleNames.includes('STUDENT');
+  const hasSuperAdmin = distinctRoleNames.includes('SUPER_ADMIN');
+  const hasStaff = distinctRoleNames.some((r) =>
+    ['CHIEF_WARDEN', 'HOSTEL_OFFICE', 'WARDEN', 'PROCTOR'].includes(r)
+  );
+
+  if (hasStudent && (hasSuperAdmin || hasStaff)) {
+    throw new Error(
+      `AUTHORIZATION_CONFLICT: Incompatible role assignments detected. Student accounts cannot coexist with administrative roles (${distinctRoleNames.join(', ')}). Authentication refused.`
+    );
+  }
+
+  if (hasSuperAdmin && (hasStudent || hasStaff)) {
+    throw new Error(
+      `AUTHORIZATION_CONFLICT: Incompatible role assignments detected. Root SUPER_ADMIN identity cannot coexist with ordinary operational roles (${distinctRoleNames.join(', ')}). Authentication refused.`
+    );
+  }
+
+  // Any other combination of distinct institutional roles is also contradictory in the single-actor model
+  throw new Error(
+    `AUTHORIZATION_CONFLICT: Incompatible role assignments detected (${distinctRoleNames.join(', ')}). Accounts must hold a single unambiguous institutional role.`
+  );
+}
 
 /**
  * Resolves a single authoritative AuthActor deterministically from a user's database role records.
  * Invariants:
  * 1. Throws if no role assignments exist.
- * 2. If multiple roles are assigned, sorts deterministically by canonical institutional precedence:
- *    SUPER_ADMIN > CHIEF_WARDEN > HOSTEL_OFFICE > WARDEN > PROCTOR > STUDENT.
- * 3. Scope precedence: If same role is assigned with different scopes, SYSTEM takes precedence over BUILDING or STUDENT.
- * 4. Ensures no accidental privilege loss or undefined role selection.
+ * 2. Validates role/scope compatibility for every record (SEC-02).
+ * 3. Enforces strict fail-closed role compatibility (SEC-01).
+ * 4. Preserves exact role-to-scope binding without arbitrary privilege escalation.
  */
 export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
   if (!rows || rows.length === 0) {
-    throw new Error('UNAUTHORIZED: No active role assignments found for user');
+    throw new Error('UNAUTHORIZED: No active role assignments found for user.');
   }
 
-  // Sort rows deterministically: highest privilege rank first, then SYSTEM scope first, then role ID
-  const sorted = [...rows].sort((a, b) => {
-    const rankA = ROLE_HIERARCHY_RANK[a.role_name] ?? 99;
-    const rankB = ROLE_HIERARCHY_RANK[b.role_name] ?? 99;
-    if (rankA !== rankB) return rankA - rankB;
+  // Enforce fail-closed compatibility check across all records
+  assertRoleCompatibility(rows);
 
-    // Scope tie-breaker: SYSTEM (0) > BUILDING (1) > STUDENT (2)
-    const scopeRank = (s: string) => (s === 'SYSTEM' ? 0 : s === 'BUILDING' ? 1 : 2);
-    const scopeA = scopeRank(a.scope_type);
-    const scopeB = scopeRank(b.scope_type);
-    if (scopeA !== scopeB) return scopeA - scopeB;
-
-    return (a.id || '').localeCompare(b.id || '');
-  });
-
-  const primary = sorted[0];
-
-  const validScopeType = (
-    primary.scope_type === 'SYSTEM' || primary.scope_type === 'BUILDING' || primary.scope_type === 'STUDENT'
-      ? primary.scope_type
-      : 'SYSTEM'
-  ) as 'SYSTEM' | 'BUILDING' | 'STUDENT';
+  // The records are guaranteed compatible and homogeneous
+  const primary = rows[0];
 
   return {
     id: primary.id,
     college_id: primary.college_id,
     full_name: primary.full_name,
     role: primary.role_name as SystemRole,
-    scope_type: validScopeType,
+    scope_type: primary.scope_type as 'SYSTEM' | 'BUILDING' | 'STUDENT',
     scope_id: primary.scope_id || null,
     student_profile_id: primary.profile_id || null,
   };

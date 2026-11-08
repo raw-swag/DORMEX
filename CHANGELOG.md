@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.18.0] - 2026-11-08
+
+- **Security & Provenance Hardening (SEC-01 through SEC-04 Remediation)**:
+  - **SEC-01: Fail-Closed Multi-Role Authorization & Precedence Matrix**:
+    - Replaced permissive highest-rank role selection with strict role compatibility validation in `src/auth/policy.ts` (`assertRoleCompatibility`).
+    - Enforced that `STUDENT` cannot coexist with administrative roles (`SUPER_ADMIN`, `CHIEF_WARDEN`, `HOSTEL_OFFICE`, `WARDEN`).
+    - Enforced that `SUPER_ADMIN` cannot coexist with ordinary administrative roles on the same identity.
+    - Prevents accidental or intentional privilege escalation across role boundaries.
+  - **SEC-02: Role/Scope Compatibility Invariants**:
+    - Added `ROLE_SCOPE_COMPATIBILITY_MATRIX` and `validateRoleScopeCompatibility` in `src/auth/policy.ts`.
+    - Enforced institutional scoping rules: `SUPER_ADMIN`, `CHIEF_WARDEN`, `HOSTEL_OFFICE`, and `PROCTOR` require `SYSTEM` scope; `WARDEN` requires `BUILDING` scope with a valid `scope_id`; `STUDENT` requires `STUDENT` scope.
+    - Rejects ambiguous multi-building scopes for wardens without arbitrary scope collapse.
+    - Returns safe generic authorization rejections (`401 Unauthorized`) in Fastify `extractActor` without leaking internal authorization metadata.
+  - **SEC-03: Persistent Provisioning Batch Provenance**:
+    - Updated `scripts/seed-hosted-demo.ts` to generate unpredictable cryptographically random batch identifiers (`batch_<timestamp>_<randomHex>`).
+    - Persisted batch provenance records in `audit_logs` (`action = 'PROVISION_USER'`, `correlation_id = batchId`, `target_id = userId`) within the same database transaction as user creation.
+    - Pre-existing accounts (`DEMO-001`, `ADM001`, `SUPERADMIN`) are explicitly preserved and never relabeled with new batch metadata.
+  - **SEC-04: Strict Rollback Ownership & Dependency Verification**:
+    - Updated `scripts/rollback-demo-provisioning.ts` to require verified provenance via `audit_logs` correlation ID when executing batch rollbacks.
+    - Rejects caller-supplied user IDs that do not belong to the audited batch.
+    - Enforces protected identity exclusions (`DEMO-001`, `ADM001`, `SUPERADMIN`) and halts with safe rollback rejection if active allocations or complaints exist.
+  - **Automated Verification**:
+    - Added comprehensive unit test suite in `src/auth/policy.test.ts` (6 tests).
+    - Expanded end-to-end integration test suite in `tests/multi-role-actor-resolution.test.ts` (11 tests).
+    - 258/258 automated tests passing across 26 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server and client production builds.
+
+---
+
 ## [2.17.0] - 2026-11-08
 
 - **Feat(provisioning): Dedicated ADM001 Role Migration & 18-Canonical Account Rollback Engine**:

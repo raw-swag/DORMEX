@@ -1,6 +1,7 @@
 import { DatabaseService, getDatabaseService } from '../src/db/index.js';
 import { AuthService } from '../src/auth/service.js';
 import readline from 'readline';
+import crypto from 'crypto';
 
 /**
  * Expected Synthetic Demo Names matching syntheticNames in seed.ts
@@ -35,6 +36,7 @@ export interface HostedDemoAccountAction {
 
 export interface HostedDemoSeedResult {
   success: boolean;
+  batchId?: string;
   dryRun: boolean;
   seededStudentsCount: number;
   seededStaffCount: number;
@@ -165,6 +167,9 @@ export async function executeHostedDemoSeed(
   const actions: HostedDemoAccountAction[] = [];
 
   const runWithClient = async (client: any) => {
+    // SEC-03: Generate a unique unpredictable batch identifier for persistent provenance
+    const batchId = 'batch_' + Date.now() + '_' + crypto.randomBytes(6).toString('hex');
+    const newlyCreatedUserIds: string[] = [];
     // 1. Verify expected roles exist before attempting account creation
     const roleRes = await client.query(
       `SELECT id, name FROM roles WHERE name IN ('STUDENT', 'CHIEF_WARDEN', 'HOSTEL_OFFICE', 'WARDEN')`
@@ -323,6 +328,7 @@ export async function executeHostedDemoSeed(
              ON CONFLICT (id) DO NOTHING`,
             [`ur_${staff.id}`, staff.id, staff.roleId, staff.scopeType, staff.scopeId]
           );
+          newlyCreatedUserIds.push(staff.id);
         }
       }
       seededStaffCount++;
@@ -386,6 +392,7 @@ export async function executeHostedDemoSeed(
              VALUES ($1, $2, $3, $4, $5)`,
             [userId, collegeId, email, fullName, studentHash]
           );
+          newlyCreatedUserIds.push(userId);
 
           // Ensure user role
           await client.query(
@@ -454,9 +461,22 @@ export async function executeHostedDemoSeed(
       seededStudentsCount++;
     }
 
+    // SEC-03: Persist batch provenance in audit_logs for every newly created user
+    if (!isDryRun && newlyCreatedUserIds.length > 0) {
+      for (const uid of newlyCreatedUserIds) {
+        const auditLogId = 'aud_prov_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+        await client.query(
+          `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, reason, correlation_id)
+           VALUES ($1, $2, 'PROVISION_USER', 'USER', $3, 'Canonical demo account provisioned via seed-hosted-demo', $4)`,
+          [auditLogId, uid, uid, batchId]
+        );
+      }
+    }
+
     return {
       success: true,
       dryRun: isDryRun,
+      batchId: isDryRun ? undefined : batchId,
       seededStudentsCount,
       seededStaffCount,
       preservedAccountsCount,
