@@ -79,7 +79,7 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
     tables: [],
     customChecks: async (client) => {
       // 1. Assert official institutional roles exist in roles table
-      const expectedRoles = ['STUDENT', 'PROCTOR', 'WARDEN', 'CHIEF_WARDEN', 'HOSTEL_OFFICE', 'SUPER_ADMIN'];
+      const expectedRoles = ['STUDENT', 'PROCTOR', 'WARDEN', 'DEPUTY_WARDEN', 'CHIEF_WARDEN', 'HOSTEL_OFFICE', 'SUPER_ADMIN'];
       for (const role of expectedRoles) {
         const res = await client.query(`SELECT 1 FROM roles WHERE name = $1`, [role]);
         if (res.rows.length === 0) {
@@ -92,6 +92,74 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       if (termsRes.rows.length === 0) {
         throw new Error(`SCHEMA_VERIFICATION_FAILED: Published version 1 Terms & Conditions document is missing.`);
       }
+    },
+  },
+  {
+    id: '20261108_005_warden_hierarchy',
+    name: 'Hostel governance hierarchy, warden appointments, and building lifecycle schema',
+    tables: ALL_33_SCHEMA_TABLES.filter((t) =>
+      [
+        'institutional_governance',
+        'warden_appointments',
+        'deputy_appointments',
+        'governance_actions',
+        'governance_action_events',
+      ].includes(t.tableName)
+    ),
+    customChecks: async (client) => {
+      // 1. Reconcile ADM001 as the sole active Chief Warden (SUPER_ADMIN)
+      const adm001User = await client.query(`SELECT id FROM users WHERE college_id = 'ADM001'`);
+      if (adm001User.rows.length > 0) {
+        const adm001Id = adm001User.rows[0].id;
+
+        // Ensure DEPUTY_WARDEN role exists in roles
+        await client.query(`
+          INSERT INTO roles (id, name, description)
+          VALUES ('role_deputy_warden', 'DEPUTY_WARDEN', 'Deputy Building Warden')
+          ON CONFLICT (id) DO NOTHING;
+        `);
+
+        // Reconcile institutional_governance singleton
+        await client.query(`
+          INSERT INTO institutional_governance (singleton_id, chief_warden_user_id, updated_by, transition_reason)
+          VALUES (1, $1, $1, 'Stage 1 Institutional Governance Migration Bootstrap')
+          ON CONFLICT (singleton_id) DO UPDATE
+          SET chief_warden_user_id = EXCLUDED.chief_warden_user_id,
+              updated_by = EXCLUDED.updated_by,
+              updated_at = CURRENT_TIMESTAMP,
+              transition_reason = EXCLUDED.transition_reason;
+        `, [adm001Id]);
+
+        // Demote/retire usr_super_admin if present so only ADM001 holds SUPER_ADMIN
+        await client.query(`
+          DELETE FROM user_roles
+          WHERE user_id = 'usr_super_admin' AND role_id = 'role_super_admin';
+        `);
+
+        // Grant ADM001 SUPER_ADMIN
+        const superAdminRoleRes = await client.query(`SELECT id FROM roles WHERE name = 'SUPER_ADMIN'`);
+        if (superAdminRoleRes.rows.length > 0) {
+          const saRoleId = superAdminRoleRes.rows[0].id;
+          await client.query(`
+            INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+            VALUES ($1, $2, $3, 'SYSTEM', NULL)
+            ON CONFLICT (id) DO UPDATE SET role_id = EXCLUDED.role_id, scope_type = 'SYSTEM', scope_id = NULL;
+          `, [`ur_${adm001Id}`, adm001Id, saRoleId]);
+        }
+      }
+
+      // 2. Resolve default building lifecycle for BVB block according to environment allowlist
+      const env = process.env.NODE_ENV || 'development';
+      const appEnv = process.env.DORMEX_APP_ENV;
+      const isTestEnv = env === 'test' && (!appEnv || appEnv === 'test');
+      const isDevEnv = env === 'development' && (!appEnv || appEnv === 'development' || appEnv === 'local');
+      const targetLifecycle = (isTestEnv || isDevEnv) ? 'ACTIVE' : 'PROPOSED';
+
+      await client.query(`
+        UPDATE buildings
+        SET lifecycle_status = $1
+        WHERE code = 'BVB' AND lifecycle_status = 'PROPOSED';
+      `, [targetLifecycle]);
     },
   },
 ];
@@ -141,13 +209,16 @@ export async function verifyTableStructure(
   );
 
   // Check if __pgmem_is_column_nullable helper exists in memory test adapter
+  // IMPORTANT: Do NOT execute on real PostgreSQL within an active transaction block as it aborts the transaction!
   let isPgMem = false;
-  try {
-    const testFn = await client.query(`SELECT __pgmem_is_column_nullable('users', 'id') as res`);
-    if (testFn && testFn.rows) {
-      isPgMem = true;
-    }
-  } catch {}
+  if ((client as any).isInMemory || (client as any).adapter) {
+    try {
+      const testFn = await client.query(`SELECT __pgmem_is_column_nullable('users', 'id') as res`);
+      if (testFn && testFn.rows) {
+        isPgMem = true;
+      }
+    } catch {}
+  }
 
   const foundCols = new Map<string, { type: string; isNullable: boolean }>();
   for (const row of colsRes.rows) {

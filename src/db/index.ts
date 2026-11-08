@@ -17,7 +17,7 @@ export interface DatabaseService {
 import dotenv from 'dotenv';
 dotenv.config();
 
-class PostgresDatabaseService implements DatabaseService {
+export class PostgresDatabaseService implements DatabaseService {
   public isInMemory = false;
   private pool: Pool;
 
@@ -159,14 +159,17 @@ class MemoryDatabaseService implements DatabaseService {
 
   async getClient() {
     const client = await this.adapter.connect();
+    (client as any).isInMemory = true;
     return {
       query: <T extends QueryResultRow = any>(text: string, params?: any[]) => client.query(text, params),
       release: () => client.release(),
+      isInMemory: true,
     };
   }
 
   async transaction<T>(fn: (client: {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
+    isInMemory?: boolean;
   }) => Promise<T>): Promise<T> {
     // Chain transaction executions to emulate PostgreSQL serial/atomic transaction locks
     let releaseLock: () => void = () => {};
@@ -178,6 +181,7 @@ class MemoryDatabaseService implements DatabaseService {
 
     await previousLock;
     const client = await this.adapter.connect();
+    (client as any).isInMemory = true;
     let backupState: any = null;
     try {
       backupState = this.db.backup();

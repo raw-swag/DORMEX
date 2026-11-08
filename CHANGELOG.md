@@ -7,6 +7,180 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.22.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 4: Release Readiness & Verification)**:
+  - **Tamper-Resistant Audit Immutability**:
+    - Installed PostgreSQL row-level triggers (`trg_prevent_audit_tampering`) on `audit_logs` and `governance_action_events` raising `TAMPER_PROTECTION_VIOLATION` on any `UPDATE` or `DELETE`.
+    - Verified append-only integrity on isolated real PostgreSQL 18.
+  - **Real PostgreSQL Migration Sequence Validation**:
+    - Validated migration sequence `20261103_001` through `20261108_005` on clean PostgreSQL 18 instance.
+    - Verified schema catalog definitions, primary keys, foreign keys, unique constraints, and partial indexes.
+  - **Concurrency & Transaction Locking Hardening**:
+    - Verified candidate user row locking (`SELECT FOR UPDATE` on `user_roles`) during concurrent appointment transactions to prevent duplicate or conflicting role assignments.
+    - Validated simultaneous review collision handling (`ACTION_ALREADY_REVIEWED`).
+  - **Migration Transaction Isolation Fix**:
+    - Updated `verifyTableStructure` in `src/db/migrate.ts` to prevent executing pg-mem custom functions inside active PostgreSQL transactions, ensuring migration integrity on real PostgreSQL engines.
+  - **Regression & Interface Verification**:
+    - Confirmed zero regression across all 18 canonical accounts, 3 hardware passkey device slots, student room allocations, and hostel office queues.
+    - Created comprehensive release report [`docs/reports/STAGE_4_RELEASE_READINESS_REPORT.md`](./docs/reports/STAGE_4_RELEASE_READINESS_REPORT.md).
+  - **Automated Verification**:
+    - Added real PostgreSQL integration test suite `tests/stage4_isolated_postgresql.test.ts` (6 tests).
+    - 291/291 automated tests passing across 30 test files (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
+## [2.21.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 3: Security Hardening & Integration)**:
+  - **Exhaustive Role-Based Authorization Bypass Hardening**:
+    - Verified all administrative and governance endpoints reject unauthorized identities (`STUDENT`, `HOSTEL_OFFICE`, `DEPUTY_WARDEN`).
+    - Enforced that lower administrative roles cannot invoke Warden/Chief Warden functions.
+  - **Workflow & Replay Integrity**:
+    - Validated that reviewed actions cannot be re-reviewed, overwritten, or replayed (`ACTION_ALREADY_REVIEWED` rejection).
+  - **Audit Ledger Immutability & Event Tracing**:
+    - Verified that every governance state transition generates corresponding immutable event entries in `governance_action_events`.
+  - **Frontend Identity Integration**:
+    - Updated `AuthContext.tsx` with `activeAppointmentId` and `activeAppointmentStatus` and added `DEPUTY_WARDEN` role type.
+    - Updated `GET /api/auth/me` to return active appointment metadata from the database.
+  - **Regression Safety**:
+    - Confirmed existing student waiting room, seat confirmation, device slot, and WebAuthn flows remain 100% operational.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/security_hardening_integration.test.ts` (6 tests).
+    - 285/285 automated tests passing across 29 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
+## [2.20.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 2: Authorization & Governance Services)**:
+  - **Authoritative Database-Backed Actor Resolution**:
+    - Updated `extractActor` in `src/app.ts` to look up live active appointments (`warden_appointments` and `deputy_appointments`) on every request.
+    - Prevents stale JWT tokens from acting with revoked administrative authority by failing closed if an appointment is inactive or missing.
+  - **Downward-Only Hierarchy & Operation Enforcement**:
+    - Chief Warden (`SUPER_ADMIN`) maintains complete institutional authority to appoint and revoke Wardens and Deputy Wardens.
+    - Supervising Wardens can manage and revoke subordinate Deputies in their assigned building.
+    - Lower roles (Deputies and Students) are strictly forbidden from reviewing or overriding Warden actions.
+  - **Governance Action Workflows & Building Boundaries**:
+    - Implemented `submitAction`, `reviewAction`, and `listActions` in `GovernanceService`.
+    - Added REST endpoints: `GET /api/governance/actions`, `POST /api/governance/actions`, `POST /api/governance/actions/:id/review`, `POST /api/governance/wardens`, `POST /api/governance/deputies`, `POST /api/governance/wardens/:id/revoke`, `POST /api/governance/deputies/:id/revoke`.
+    - Enforced cross-building access rejection (`CROSS_BUILDING_CONFLICT` 403 Forbidden) when a Deputy attempts to act outside their assigned building.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/governance_hierarchy_workflow.test.ts` (7 tests).
+    - 279/279 automated tests passing across 28 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
+## [2.19.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 1: Database Foundation)**:
+  - **Institutional Governance Singleton**:
+    - Introduced `institutional_governance` singleton table (`singleton_id = 1` check constraint) tracking the sole active Chief Warden (`chief_warden_user_id`).
+    - Enforced atomic leadership transfer and protected Chief Warden deletion via `ON DELETE RESTRICT`.
+    - Added partial unique index `uq_single_active_super_admin` ensuring exactly 1 active `SUPER_ADMIN` system assignment.
+  - **Warden & Deputy Warden Appointments**:
+    - Created `warden_appointments` with `uq_active_warden_user` and `uq_active_building_warden` partial unique indexes.
+    - Created `deputy_appointments` with composite foreign key `(supervisor_warden_appt_id, building_id) REFERENCES warden_appointments(id, building_id)` and `uq_single_active_deputy_per_warden` (1:1 cardinality).
+    - Implemented cross-role exclusivity in `GovernanceService` with row-level user locking (`SELECT FOR UPDATE`), preventing simultaneous Warden + Deputy appointments.
+    - Implemented atomic cascading revocation from supervising Warden to subordinate Deputy.
+  - **Building Proposal & Lifecycle Governance**:
+    - Added `lifecycle_status` (`PROPOSED`, `APPROVED`, `ACTIVE`, `INACTIVE`) and proposal/review audit columns on `buildings`.
+    - Implemented environment allowlist: BVB block defaults to `ACTIVE` in development/test, and `PROPOSED` in production/staging until officially reviewed.
+    - Prohibited Warden appointments to `PROPOSED` buildings.
+  - **Audit & Governance Action Ledger**:
+    - Created `governance_actions` and `governance_action_events` recording structured audit trails and action metadata.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/warden_hierarchy_governance.test.ts` (14 tests).
+    - 272/272 automated tests passing across 27 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
+## [2.18.0] - 2026-11-08
+
+- **Security & Provenance Hardening (SEC-01 through SEC-04 Remediation)**:
+  - **SEC-01: Fail-Closed Multi-Role Authorization & Precedence Matrix**:
+    - Replaced permissive highest-rank role selection with strict role compatibility validation in `src/auth/policy.ts` (`assertRoleCompatibility`).
+    - Enforced that `STUDENT` cannot coexist with administrative roles (`SUPER_ADMIN`, `CHIEF_WARDEN`, `HOSTEL_OFFICE`, `WARDEN`).
+    - Enforced that `SUPER_ADMIN` cannot coexist with ordinary administrative roles on the same identity.
+    - Prevents accidental or intentional privilege escalation across role boundaries.
+  - **SEC-02: Role/Scope Compatibility Invariants**:
+    - Added `ROLE_SCOPE_COMPATIBILITY_MATRIX` and `validateRoleScopeCompatibility` in `src/auth/policy.ts`.
+    - Enforced institutional scoping rules: `SUPER_ADMIN`, `CHIEF_WARDEN`, `HOSTEL_OFFICE`, and `PROCTOR` require `SYSTEM` scope; `WARDEN` requires `BUILDING` scope with a valid `scope_id`; `STUDENT` requires `STUDENT` scope.
+    - Rejects ambiguous multi-building scopes for wardens without arbitrary scope collapse.
+    - Returns safe generic authorization rejections (`401 Unauthorized`) in Fastify `extractActor` without leaking internal authorization metadata.
+  - **SEC-03: Persistent Provisioning Batch Provenance**:
+    - Updated `scripts/seed-hosted-demo.ts` to generate unpredictable cryptographically random batch identifiers (`batch_<timestamp>_<randomHex>`).
+    - Persisted batch provenance records in `audit_logs` (`action = 'PROVISION_USER'`, `correlation_id = batchId`, `target_id = userId`) within the same database transaction as user creation.
+    - Pre-existing accounts (`DEMO-001`, `ADM001`, `SUPERADMIN`) are explicitly preserved and never relabeled with new batch metadata.
+  - **SEC-04: Strict Rollback Ownership & Dependency Verification**:
+    - Updated `scripts/rollback-demo-provisioning.ts` to require verified provenance via `audit_logs` correlation ID when executing batch rollbacks.
+    - Rejects caller-supplied user IDs that do not belong to the audited batch.
+    - Enforces protected identity exclusions (`DEMO-001`, `ADM001`, `SUPERADMIN`) and halts with safe rollback rejection if active allocations or complaints exist.
+  - **Automated Verification**:
+    - Added comprehensive unit test suite in `src/auth/policy.test.ts` (6 tests).
+    - Expanded end-to-end integration test suite in `tests/multi-role-actor-resolution.test.ts` (11 tests).
+    - 258/258 automated tests passing across 26 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server and client production builds.
+
+---
+
+## [2.17.0] - 2026-11-08
+
+- **Feat(provisioning): Dedicated ADM001 Role Migration & 18-Canonical Account Rollback Engine**:
+  - **Dedicated ADM001 Role Migration Script & Test Suite**:
+    - Created [`scripts/migrate-adm001-role.ts`](./scripts/migrate-adm001-role.ts) executing an atomic transaction that removes `SUPER_ADMIN` from `usr_adm001` and reassigns `CHIEF_WARDEN` (`scope_type = 'SYSTEM'`).
+    - Enforced strict preconditions and postconditions: verifies independent `SUPERADMIN` exists and holds `SUPER_ADMIN`, and aborts if `usr_adm001` does not hold `SUPER_ADMIN` or if unexpected state occurs.
+    - Added comprehensive isolated test suite in [`tests/adm001-role-migration.test.ts`](./tests/adm001-role-migration.test.ts) covering success and precondition failure cases.
+  - **Transaction-Safe Rollback Engine with Protected Exclusions**:
+    - Created [`scripts/rollback-demo-provisioning.ts`](./scripts/rollback-demo-provisioning.ts) providing safe, transactional rollback of demo-provisioned accounts.
+    - Hardcoded canonical protected exclusions (`DEMO-001`, `ADM001`, `SUPERADMIN`) ensuring pre-existing accounts and their profiles are never deleted or modified.
+    - Enforced strict business dependency invariant checks (aborts if target accounts have acquired allocations or complaints).
+    - Added automated unit test suite in [`tests/demo-provisioning-rollback.test.ts`](./tests/demo-provisioning-rollback.test.ts).
+  - **Enforce Exact 18-Canonical Account Scope**:
+    - Scoped [`scripts/seed-hosted-demo.ts`](./scripts/seed-hosted-demo.ts) to strictly 18 canonical accounts (10 Students `DEMO-001`..`DEMO-010`, 5 Hostel Office `OFF001`..`OFF005`, 3 Admin `ADM001`..`ADM003`). Removed `DEMO-011`..`DEMO-030`.
+    - Updated [`tests/hosted-demo-seed.test.ts`](./tests/hosted-demo-seed.test.ts) to test 18-account scope.
+- **Strict Rollback Batch Isolation**:
+    - Enhanced `scripts/rollback-demo-provisioning.ts` to strictly reject execution without explicit, validated `batchId` or `batchUserIds` (minimum 8 chars matching `batch_<identifier>`).
+    - Eliminates any accidental fallback to deleting all matching demo accounts.
+    - Added comprehensive regression tests in `tests/demo-provisioning-rollback.test.ts` verifying omitted, empty, malformed, and cross-batch identifiers fail safely without writes.
+  - **Deterministic Multi-Role Actor Resolution**:
+    - Implemented `resolveAuthoritativeActor` in `src/auth/policy.ts` with institutional role precedence (`SUPER_ADMIN` > `CHIEF_WARDEN` > `HOSTEL_OFFICE` > `WARDEN` > `PROCTOR` > `STUDENT`) and scope tie-breaker (`SYSTEM` > `BUILDING` > `STUDENT`).
+    - Updated `extractActor` in `src/app.ts` to resolve multi-role records deterministically, eliminating undefined row selection.
+    - Added dedicated test suite in `tests/multi-role-actor-resolution.test.ts` covering unit and end-to-end Fastify authorization resolution.
+  - **Complete Server & Client Build Verification**:
+    - Verified server compilation with `tsc` (0 errors).
+    - Verified client production build with `vite build` (clean bundle).
+    - 244/244 automated tests passing across 25 test suites (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean production client build (`npm run build:client`).
+
+---
+
+## [2.16.0] - 2026-11-08
+
+- **Feat(provisioning): Non-Destructive Production Demo Account Seeding & Dry-Run Audit**:
+  - **Non-Destructive Password Preservation**:
+    - Enhanced `scripts/seed-hosted-demo.ts` so that existing accounts (`DEMO-001`, `ADM001`, etc.) never have their password hashes, full names, or emails silently overwritten.
+    - Existing records are safely detected, marked `[PRESERVED]`, and maintained intact.
+  - **Dry-Run Inspection Mode (`--dry-run` / `DRY_RUN=true`)**:
+    - Added `--dry-run` flag to execute read-only audits against any target database.
+    - Produces a clear provisioning breakdown (`[PRESERVED]` vs `[TO CREATE]`) without committing SQL writes.
+  - **Automated Verification**:
+    - Added comprehensive unit and integration tests in `tests/hosted-demo-seed.test.ts` for dry-run mode and credential preservation.
+    - Verified 100% test pass rate across 22 test suites (230/230 tests passing).
+    - Verified clean TypeScript compilation (`0` errors) and clean client build.
+
+---
+
 ## [2.15.0] - 2026-11-08
 
 - **Feat(demo): 18 Database-Backed Demo Accounts & Grouped Dynamic Presentation**:

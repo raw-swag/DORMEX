@@ -30,6 +30,7 @@ describe('DORMEX First Administrator Bootstrap & Migration Reconciliation Suite'
       ['role_student', 'STUDENT', 'Student resident'],
       ['role_proctor', 'PROCTOR', 'Faculty proctor'],
       ['role_warden', 'WARDEN', 'Building Warden'],
+      ['role_deputy_warden', 'DEPUTY_WARDEN', 'Deputy Building Warden'],
       ['role_chief_warden', 'CHIEF_WARDEN', 'Chief Warden across all hostels'],
       ['role_hostel_office', 'HOSTEL_OFFICE', 'Hostel Office Administrator'],
       ['role_super_admin', 'SUPER_ADMIN', 'Super Administrator with system override'],

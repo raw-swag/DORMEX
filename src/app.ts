@@ -19,7 +19,8 @@ import { StudentAdmissionService } from './student/admissionService.js';
 import { MessMenuService } from './operations/messMenuService.js';
 import { AuthService } from './auth/service.js';
 import { DeviceAuthService } from './auth/deviceAuthService.js';
-import { AuthActor } from './auth/policy.js';
+import { GovernanceService } from './auth/governanceService.js';
+import { AuthActor, resolveAuthoritativeActor } from './auth/policy.js';
 
 export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -103,6 +104,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const authService = new AuthService(database);
   const deviceAuthService = new DeviceAuthService(database);
   (app as any).deviceAuthService = deviceAuthService;
+  const governanceService = new GovernanceService(database);
+  (app as any).governanceService = governanceService;
 
   // Helper auth extractor (enforces cryptographically signed JWT tokens, with test/dev compatibility)
   const extractActor = async (req: any): Promise<AuthActor> => {
@@ -164,12 +167,18 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     }
 
     // 5. Canonical database actor lookup and mapping
+    // Load live role, active appointment, and building binding directly from database
     const userRes = await database.query(
-      `SELECT u.id, u.college_id, u.full_name, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
+      `SELECT u.id, u.college_id, u.full_name, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id,
+              COALESCE(wa.id, da.id) as active_appointment_id,
+              COALESCE(wa.appointment_status, da.appointment_status) as active_appointment_status,
+              da.supervisor_warden_appt_id
        FROM users u
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
        LEFT JOIN student_profiles sp ON u.id = sp.user_id
+       LEFT JOIN warden_appointments wa ON u.id = wa.user_id AND wa.appointment_status = 'ACTIVE'
+       LEFT JOIN deputy_appointments da ON u.id = da.user_id AND da.appointment_status = 'ACTIVE'
        WHERE u.id = $1`,
       [userId]
     );
@@ -178,16 +187,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       throw new Error('UNAUTHORIZED: Invalid credentials');
     }
 
-    const row = userRes.rows[0];
-    return {
-      id: row.id,
-      college_id: row.college_id,
-      full_name: row.full_name,
-      role: row.role_name,
-      scope_type: row.scope_type,
-      scope_id: row.scope_id,
-      student_profile_id: row.profile_id,
-    };
+    return resolveAuthoritativeActor(userRes.rows);
   };
 
   // Liveness probe (process is running and event loop is responding; does NOT depend on PostgreSQL)
@@ -300,6 +300,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         scopeType: actor.scope_type,
         scopeId: actor.scope_id,
         profileId: actor.student_profile_id,
+        activeAppointmentId: actor.active_appointment_id || null,
+        activeAppointmentStatus: actor.active_appointment_status || null,
       });
     } catch (err: any) {
       return reply.code(401).send({ error: err.message });
@@ -1508,6 +1510,185 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send(result);
     } catch (err: any) {
       return reply.code(400).send({ error: err.message || 'Reset failed' });
+    }
+  });
+
+  // ============================================================================
+  // GOVERNANCE HIERARCHY & ACTION ENDPOINTS (Stage 2)
+  // ============================================================================
+
+  // List governance actions: GET /api/governance/actions
+  app.get('/api/governance/actions', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const buildingId = req.query?.building_id as string | undefined;
+
+      const actions = await governanceService.listActions(actor, buildingId);
+      return reply.send({ actions });
+    } catch (err: any) {
+      const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.includes('CONFLICT') ? 403 : 400;
+      return reply.code(status).send({ error: err.message });
+    }
+  });
+
+  // Submit governance action: POST /api/governance/actions
+  app.post('/api/governance/actions', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { action_type, target_user_id, building_id, reason, details } = (req.body || {}) as any;
+
+      if (!action_type || !reason) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: action_type and reason are required' });
+      }
+
+      const actionId = await governanceService.submitAction({
+        actor,
+        actionType: action_type,
+        targetUserId: target_user_id,
+        buildingId: building_id,
+        reason,
+        details,
+      });
+
+      return reply.code(201).send({ success: true, action_id: actionId });
+    } catch (err: any) {
+      const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.includes('CONFLICT') ? 403 : 400;
+      return reply.code(status).send({ error: err.message });
+    }
+  });
+
+  // Review governance action: POST /api/governance/actions/:id/review
+  app.post('/api/governance/actions/:id/review', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const actionId = req.params.id;
+      const { decision, review_notes } = (req.body || {}) as any;
+
+      if (!decision || (decision !== 'APPROVED' && decision !== 'REJECTED')) {
+        return reply.code(400).send({ error: 'INVALID_DECISION: decision must be APPROVED or REJECTED' });
+      }
+
+      await governanceService.reviewAction({
+        actor,
+        actionId,
+        decision,
+        reviewNotes: review_notes || '',
+      });
+
+      return reply.send({ success: true, action_id: actionId, status: decision });
+    } catch (err: any) {
+      const status = err.message?.startsWith('UNAUTHORIZED')
+        ? 401
+        : err.message?.includes('CONFLICT') || err.message?.includes('HIERARCHY_VIOLATION')
+        ? 403
+        : 400;
+      return reply.code(status).send({ error: err.message });
+    }
+  });
+
+  // Appoint Warden: POST /api/governance/wardens
+  app.post('/api/governance/wardens', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only Chief Warden (SUPER_ADMIN) can appoint Wardens' });
+      }
+
+      const { user_id, building_id, reason } = (req.body || {}) as any;
+      if (!user_id || !building_id || !reason) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: user_id, building_id, and reason are required' });
+      }
+
+      const apptId = await governanceService.appointWarden({
+        userId: user_id,
+        buildingId: building_id,
+        appointedBy: actor.id,
+        reason,
+      });
+
+      return reply.code(201).send({ success: true, appointment_id: apptId });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  // Appoint Deputy Warden: POST /api/governance/deputies
+  app.post('/api/governance/deputies', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only Chief Warden (SUPER_ADMIN) can appoint Deputy Wardens' });
+      }
+
+      const { user_id, building_id, supervisor_warden_appt_id, reason } = (req.body || {}) as any;
+      if (!user_id || !building_id || !supervisor_warden_appt_id || !reason) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: user_id, building_id, supervisor_warden_appt_id, and reason are required' });
+      }
+
+      const apptId = await governanceService.appointDeputy({
+        userId: user_id,
+        buildingId: building_id,
+        supervisorWardenApptId: supervisor_warden_appt_id,
+        appointedBy: actor.id,
+        reason,
+      });
+
+      return reply.code(201).send({ success: true, appointment_id: apptId });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  // Revoke Warden: POST /api/governance/wardens/:id/revoke
+  app.post('/api/governance/wardens/:id/revoke', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (actor.role !== 'SUPER_ADMIN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only Chief Warden (SUPER_ADMIN) can revoke Wardens' });
+      }
+
+      const appointmentId = req.params.id;
+      const { reason } = (req.body || {}) as any;
+      if (!reason) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: reason is required' });
+      }
+
+      await governanceService.revokeWarden({
+        appointmentId,
+        revokedBy: actor.id,
+        reason,
+      });
+
+      return reply.send({ success: true, appointment_id: appointmentId, status: 'REVOKED' });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  // Revoke Deputy: POST /api/governance/deputies/:id/revoke
+  app.post('/api/governance/deputies/:id/revoke', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const appointmentId = req.params.id;
+      const { reason } = (req.body || {}) as any;
+      if (!reason) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: reason is required' });
+      }
+
+      // Chief Warden (SUPER_ADMIN) or Supervising Warden for their building can revoke Deputy
+      if (actor.role !== 'SUPER_ADMIN' && actor.role !== 'WARDEN') {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only Chief Warden or Supervising Warden can revoke Deputy' });
+      }
+
+      await governanceService.revokeDeputy({
+        appointmentId,
+        revokedBy: actor.id,
+        reason,
+      });
+
+      return reply.send({ success: true, appointment_id: appointmentId, status: 'REVOKED' });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
     }
   });
 
