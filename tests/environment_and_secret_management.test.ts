@@ -235,6 +235,28 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       expect(cfg.isProduction).toBe(false);
       expect(cfg.host).toBe('127.0.0.1');
     });
+
+    it('automatically detects Render environment (RENDER=true) to bind 0.0.0.0 and require production secrets', () => {
+      // Render automatically supplies RENDER=true and PORT
+      expect(() => {
+        loadServerConfig({
+          RENDER: 'true',
+          PORT: '10000',
+        });
+      }).toThrow(/FATAL_DATABASE_CONFIG: Production requires an externally supplied DATABASE_URL/);
+
+      const renderCfg = loadServerConfig({
+        RENDER: 'true',
+        PORT: '10000',
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        JWT_SECRET: 'a'.repeat(32),
+        COOKIE_SECRET: 'b'.repeat(32),
+      });
+      expect(renderCfg.isProduction).toBe(true);
+      expect(renderCfg.env).toBe('production');
+      expect(renderCfg.host).toBe('0.0.0.0');
+      expect(renderCfg.port).toBe(10000);
+    });
   });
 
   describe('2. Secret Redaction & Safe Diagnostics', () => {
