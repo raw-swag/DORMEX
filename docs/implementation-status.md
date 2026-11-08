@@ -22,6 +22,10 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 44: Full-Stack Architecture Modularization & Scalability Review**:
+  - **Centralized API Client**: Created src/client/api/client.ts consolidating scattered fetch calls into domain clients (AuthApiClient, InventoryApiClient, GovernanceApiClient, etc.).
+  - **System Architecture Guide**: Overhauled docs/system_design.md detailing domain boundaries, 10k-student scaling paths, and hardware device slot invariants.
+  - **Testing**: Added src/client/api/client.test.ts with 4 tests, passing 100% across all 33 test files.
 - [x] **Phase 43: Environment Configuration & Secret Management Hardening**:
   - **Centralized Configuration Engine**: Created src/config/index.ts with strict type validation, fail-fast production error reporting, and safe diagnostic output.
   - **CORS & Origin Hardening**: Migrated from permissive origin: true to strict allowlist origin verification using CORS_ALLOWED_ORIGINS in production.

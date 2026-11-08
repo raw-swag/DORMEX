@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.24.0] - 2026-11-08
+
+### Added
+- **Centralized Frontend API Client Infrastructure**: Created src/client/api/client.ts offering typed requestJson, structured ApiError propagation, and domain clients.
+- **API Client Test Suite**: Added src/client/api/client.test.ts testing header injection, 204 response handling, error wrapping, and route dispatching.
+- **System Architecture & Scalability Specification**: Overhauled docs/system_design.md detailing domain boundaries, 10k-student database scaling strategies, and hardware device slot invariants.
+
 ## [2.23.0] - 2026-11-08
 
 ### Added
