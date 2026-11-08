@@ -1,3 +1,4 @@
+import { getServerConfig } from '../config/index.js';
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { newDb, IMemoryDb } from 'pg-mem';
 
@@ -27,8 +28,8 @@ export class PostgresDatabaseService implements DatabaseService {
       throw new Error('FATAL_DATABASE_CONFIG: DATABASE_URL must be provided for PostgreSQL connection');
     }
 
-    // Auto-enable SSL for Neon or cloud PostgreSQL (sslmode=require, -pooler, or neon.tech) or if PG_SSL=true
-    const isNeonOrCloud = connStr.includes('neon.tech') || connStr.includes('sslmode=require') || connStr.includes('-pooler');
+    // Auto-enable SSL for cloud PostgreSQL (sslmode=require, -pooler, or neon.tech) or if PG_SSL=true
+    const isNeonOrCloud = connStr.includes('sslmode=require') || connStr.includes('-pooler');
     const isSsl = process.env.PG_SSL === 'true' || isNeonOrCloud;
 
     // TLS configuration: Render internal database uses private self-signed certificates

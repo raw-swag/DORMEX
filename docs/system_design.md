@@ -1,541 +1,103 @@
-# College Hostel Allocation System — System Design
+# DORMEX Full-Stack Architecture, Modularization & Scalability Specification
 
-## 1. Context
+## 1. Executive System Map
 
-Actors:
+DORMEX is architected as a **Modular Relational Monolith**. It balances server-authoritative institutional invariants with a responsive, offline-tolerant mobile client.
 
-```text
-Student
-Proctor
-Warden
-Chief Warden
-Hostel Office
-Super Admin
+```mermaid
+flowchart TD
+    subgraph Client_Layer["Frontend Client Architecture (src/client)"]
+        UI_Shell["App Shell & Navigation (MobileBottomNav / AppLayout)"]
+        State_Ctx["AuthContext & PWAInstallContext"]
+        API_Layer["Centralized API Client (src/client/api/client.ts)"]
+        Views["Domain Feature Views (Allocation, Complaints, Registry, Governance)"]
+        UI_Shell --> State_Ctx
+        Views --> API_Layer
+        API_Layer --> State_Ctx
+    end
+
+    subgraph Transport_Layer["API Gateway & Reverse Proxy"]
+        Vercel_Rewrite["vercel.json (/api/* rewrite)"]
+        Fastify_App["Fastify HTTP Core (src/app.ts & src/server.ts)"]
+        Vercel_Rewrite --> Fastify_App
+    end
+
+    subgraph Backend_Modules["Modular Monolith Domains (src/)"]
+        Auth_Mod["Auth & Policy (src/auth/)<br/>- RBAC Actor Resolution<br/>- WebAuthn Hardware Binding (3 Slots)"]
+        Gov_Mod["Institutional Governance (src/auth/governanceService.ts)<br/>- Singleton Chief Warden<br/>- Downward Authority Cascades"]
+        Alloc_Mod["Allocation Engine (src/allocation/)<br/>- Turn Scheduling & FIFO Slots<br/>- Atomic Seat Reservations"]
+        Inv_Mod["Inventory & Maps (src/inventory/)<br/>- Wings, CAD SVG Telemetry"]
+        Ops_Mod["Operations (src/operations/ & src/notifications/)<br/>- Complaints Desk<br/>- Mess Menus & Noticeboard"]
+        Config_Mod["Runtime Config (src/config/)<br/>- Type-Safe Environment Validation"]
+    end
+
+    subgraph Database_Layer["PostgreSQL Relational Core (src/db)"]
+        PG_Pool["PostgresDatabaseService (pg.Pool)"]
+        PG_Invariants["Relational Integrity & Partial Unique Indexes<br/>- Row-Level Immutability Triggers<br/>- Multi-Role Constraints"]
+    end
+
+    API_Layer -->|HTTPS (Relative /api/*)| Vercel_Rewrite
+    Fastify_App --> Auth_Mod
+    Fastify_App --> Gov_Mod
+    Fastify_App --> Alloc_Mod
+    Fastify_App --> Inv_Mod
+    Fastify_App --> Ops_Mod
+    Auth_Mod --> PG_Pool
+    Gov_Mod --> PG_Pool
+    Alloc_Mod --> PG_Pool
+    Inv_Mod --> PG_Pool
+    Ops_Mod --> PG_Pool
+    PG_Pool --> PG_Invariants
 ```
 
-Core domains:
-
-```text
-Identity
-Student Registry
-Eligibility
-Priority
-Inventory
-Allocation
-Wishlist
-Recommendation
-Occupancy
-Complaints
-Room Change
-Notifications
-Audit
-```
-
-## 2. Deployment
-
-Recommended initial topology:
-
-```text
-Internet / College Network
-          |
-       Nginx/Caddy
-          |
-     Backend App
-          |
-   PostgreSQL/MySQL
-          |
-       Backups
-```
-
-Keep the deployment small. Add Redis only after measurement shows a real need.
-
-## 3. Data model
-
-### Identity
-
-```text
-users
-roles
-user_roles
-role_scopes
-sessions
-```
-
-### Students
-
-```text
-students
-student_academic_records
-student_hostel_profiles
-eligibility_groups
-quota_types
-priority_assignments
-```
-
-### Inventory
-
-```text
-buildings
-floors
-rooms
-seats
-room_eligibility
-room_maps
-```
-
-Relationships:
-
-```text
-building 1:N floor
-floor 1:N room
-room 1:N seat
-```
-
-### Allocation
-
-```text
-allocation_cycles
-allocation_pools
-allocation_rules
-waiting_room_entries
-booking_sessions
-allocations
-allocation_history
-```
-
-### Preferences
-
-```text
-seat_preferences
-recommendations
-```
-
-### Complaints
-
-```text
-complaints
-complaint_confirmations
-complaint_votes
-complaint_assignments
-```
-
-### Other
-
-```text
-room_change_requests
-notifications
-outbox_events
-audit_logs
-```
-
-## 4. Important constraints
-
-Enforce at the database/application boundary:
-
-```text
-one current allocation per seat per cycle
-one current allocation per student per cycle
-one active booking session per student/cycle
-one active global turn per allocation pool
-```
-
-Use unique/partial indexes or equivalent transactions supported by the selected database.
-
-## 5. Waiting-room indexing
-
-Important indexes:
-
-```text
-waiting_room_entries(cycle_id, status, priority_number)
-waiting_room_entries(cycle_id, entered_at)
-```
-
-This lets the system efficiently find the next eligible participant.
-
-## 6. Booking session
-
-```text
-booking_sessions
-----------------
-id
-cycle_id
-student_id
-turn_sequence
-status
-started_at
-expires_at
-created_at
-```
-
-Statuses:
-
-```text
-PENDING
-ACTIVE
-CONFIRMED
-EXPIRED
-CANCELLED
-```
-
-The client countdown is never the authority.
-
-## 7. Allocation transaction
-
-```text
-BEGIN
-
-verify cycle is active
-verify session belongs to actor
-verify session ACTIVE
-verify current server time < expires_at
-verify student eligibility
-verify requested room/seat is eligible
-lock/check seat
-verify seat still available
-create allocation
-invalidate preference/recommendation state
-write audit/outbox data
-COMMIT
-```
-
-If another transaction has already taken the seat, the request returns a deterministic conflict.
-
-## 8. Wishlist storage
-
-A preference record may contain:
-
-```text
-id
-cycle_id
-student_id
-room_id
-seat_id
-target_student_id / target_priority
-rank
-status
-created_at
-updated_at
-```
-
-The physical seat must remain:
-
-```text
-AVAILABLE
-```
-
-while merely wishlisted.
-
-When allocated:
-
-```text
-seat → OCCUPIED
-preference → INVALIDATED
-related recommendation → INVALIDATED
-```
-
-## 9. Recommendation state machine
-
-```text
-CREATED
-  ├── ACCEPTED
-  │     ├── FULFILLED
-  │     └── INVALIDATED
-  ├── REJECTED
-  └── INVALIDATED
-```
-
-There is no transition to another recommendation.
-
-## 10. Priority-aware resolution
-
-Example:
-
-```text
-Seat B → target Priority 20
-```
-
-Priority 8 may claim B because:
-
-```text
-8 < 20
-```
-
-After Priority 8 confirms:
-
-```text
-B = 8
-target 20 = invalid
-recommendation = invalid
-```
-
-A lower-priority student does not gain a right to displace the targeted priority.
-
-## 11. Read models
-
-Do not use one table per user.
-
-Useful projections:
-
-### Student
-
-```text
-student_dashboard_projection
-student_id
-cycle_id
-priority
-eligibility_status
-allocation_status
-building_id
-room_id
-seat_id
-roommate_summary
-complaint_summary
-notification_summary
-updated_at
-```
-
-### Building
-
-```text
-building_occupancy_projection
-building_id
-total_seats
-occupied_seats
-available_seats
-blocked_seats
-updated_at
-```
-
-### Proctor
-
-```text
-proctor_student_projection
-proctor_id
-student_id
-year
-building_id
-room_id
-seat_id
-```
-
-These are derived performance structures, not sources of truth.
-
-## 12. Outbox
-
-For events such as allocation confirmation:
-
-```text
-transaction
-  ↓
-source-of-truth mutation
-  +
-outbox event
-  ↓
-background worker
-  ├── notification
-  └── read-model update
-```
-
-This prevents notification failure from invalidating an otherwise successful allocation.
-
-## 13. Map architecture
-
-Store map metadata rather than hardcoding the entire map in application code.
-
-Possible data:
-- floor;
-- room ID;
-- logical coordinates;
-- room geometry;
-- seat positions;
-- labels;
-- availability state.
-
-Static geometry can be cached aggressively. Dynamic occupancy must come from current state/read models.
-
-## 14. Authorization pipeline
-
-```text
-Authenticate
-  ↓
-Identify actor
-  ↓
-Resolve role
-  ↓
-Resolve scope
-  ↓
-Resolve target resource
-  ↓
-Authorize action
-  ↓
-Execute
-```
-
-This is essential for preventing IDOR and privilege escalation.
-
-## 15. API style
-
-Prefer business operations:
-
-```text
-POST /allocation-cycles/{id}/join
-POST /booking-sessions/{id}/confirm-seat
-POST /seats/{id}/wishlist
-POST /recommendations/{id}/respond
-POST /complaints
-POST /room-change-requests
-POST /admin/allocations/{id}/force-move
-```
-
-Avoid generic row mutation endpoints.
-
-## 16. Error model
-
-Useful domain errors:
-
-```text
-TURN_EXPIRED
-NOT_YOUR_TURN
-SEAT_UNAVAILABLE
-SEAT_NOT_ELIGIBLE
-CYCLE_CLOSED
-ALLOCATION_ALREADY_EXISTS
-INSUFFICIENT_SCOPE
-RECOMMENDATION_INVALID
-```
-
-## 17. Concurrency
-
-Allocation concurrency is deliberately controlled:
-
-```text
-many waiting
-   ↓
-one active chooser
-   ↓
-short transaction
-```
-
-This protects a low-end server while making the hardest race condition—same-seat contention—small and deterministic.
-
-Normal browsing remains concurrent and uses read models/indexes.
-
-## 18. Security layers
-
-```text
-TLS
- ↓
-Authentication
- ↓
-Session security
- ↓
-Role authorization
- ↓
-Scope authorization
- ↓
-Object-level authorization
- ↓
-Input validation
- ↓
-Transaction integrity
- ↓
-Database constraints
- ↓
-Audit
-```
-
-Test specifically for:
-- IDOR;
-- privilege escalation;
-- altered student IDs;
-- altered priority;
-- altered room IDs;
-- altered expiry;
-- replayed confirmation;
-- stale sessions;
-- unauthorized publication;
-- unauthorized override;
-- complaint privacy leakage.
-
-## 19. Backup/recovery
-
-Provide:
-- scheduled database backups;
-- retention;
-- restoration tests;
-- allocation-history retention;
-- audit-log retention.
-
-The source-of-truth database must be sufficient to reconstruct derived state.
-
-## 20. Low-end server optimization
-
-Avoid:
-- microservices without need;
-- high-frequency polling;
-- full-hostel recalculation;
-- huge response payloads;
-- loading all students/rooms into memory;
-- synchronous notification fan-out.
-
-Prefer:
-- indexed SQL;
-- compact responses;
-- pagination;
-- static assets;
-- short transactions;
-- read models;
-- background jobs;
-- controlled allocation concurrency.
-
-## 21. Failure behavior
-
-### Same seat race
-Exactly one transaction succeeds.
-
-### Browser timer manipulation
-No effect.
-
-### Expired browser
-Server rejects.
-
-### Changed priority
-Server rejects/ignores client value.
-
-### Wrong building for Warden
-Scope check rejects.
-
-### Private complaint access
-Object-level check rejects.
-
-### Recommendation seat taken
-Recommendation invalidated automatically.
-
-### Target chooses another seat
-Recommendation becomes obsolete.
-
-### Concurrent pools in cycle
-Pools must have disjoint seat inventory. Any intersection fails validation before cycle start.
-
-### Seat confirmation advance
-Immediate turn advance signals next student queue turn without waiting out the full 2-minute booking window.
-
-### Super Admin override
-Recorded with reason and before/after state.
-
-## 22. Architectural separation
-
-```text
-AUTHORITATIVE
-  normalized transactional database
-
-DERIVED
-  dashboard/occupancy/read models
-
-EPHEMERAL
-  active sessions
-  queue presence
-  short-lived cache
-```
-
-This separation is the foundation for both correctness and performance.
+---
+
+## 2. Backend Architecture & Domain Modularization
+
+### A. Core Domain Responsibilities
+1. **`src/auth` (Authentication, Policy & Hardware Authorization)**:
+   - Server-authoritative actor resolution (`resolveAuthoritativeActor`). Resolves database roles, appointments, and building scopes per request.
+   - WebAuthn hardware device assertion: Strictly restricts hardware authentication to predefined slots `SLOT_01`, `SLOT_02`, and `SLOT_03`.
+2. **`src/auth/governanceService` (Institutional Governance)**:
+   - Anchored to the `institutional_governance` singleton (`singleton_id = 1`).
+   - Enforces downward-only authority cascades: Supervising Wardens manage Deputy Wardens within their assigned building; Deputy Wardens cannot revoke or review Wardens; Chief Warden maintains institution-wide oversight.
+3. **`src/allocation` (Allocation & Turn Engine)**:
+   - Enforces server-authoritative turn scheduling and atomic seat confirmation. Client clocks are untrusted.
+4. **`src/config` (Runtime Configuration)**:
+   - Evaluates `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, and allowed CORS origins at startup. Fails fast with safe diagnostics that never print secrets.
+
+---
+
+## 3. Frontend Architecture & Client Infrastructure
+
+### A. Centralized API Layer (`src/client/api/client.ts`)
+Previously, direct `fetch` and `apiFetch` calls were scattered across components, resulting in duplicated error-handling logic and inconsistent response parsing. The new `requestJson` abstraction provides:
+- Uniform JSON header injection (`Accept`, `Content-Type`).
+- Structured `ApiError` hierarchy carrying HTTP status codes and backend error payloads.
+- Graceful handling of empty responses (`204 No Content`).
+- Modular domain clients: `AuthApiClient`, `InventoryApiClient`, `GovernanceApiClient`, `NotificationsApiClient`, and `MessMenuApiClient`.
+
+### B. Route & Navigation Contracts
+- Routes are organized into responsive, mobile-first workspaces.
+- Access to administrative consoles is gated on live JWT verification and server-authoritative actor roles (`/api/auth/me`).
+
+---
+
+## 4. Database Architecture & Scalability Assessment (10k Students / 100 Buildings)
+
+| Domain | Scalability Finding | Production Protection & Mitigation |
+| :--- | :--- | :--- |
+| **Turn Engine & Slots** | High write concurrency during turn advance | Relational locks (`SELECT FOR UPDATE`) on pool inventories and waiting room entries guarantee zero double-allocation. |
+| **Audit Ledger** | Rapidly growing event tables (`audit_logs`, `governance_action_events`) | Append-only triggers (`trg_prevent_audit_tampering`) guarantee tamper resistance. Recommended partitioning by academic year (`created_at`) when logs exceed 1M rows. |
+| **Building Telemetry** | 100+ SVG floor maps | Floor map geometry is stored as versioned JSON/SVG in `floor_maps` and cached per building, minimizing database roundtrips. |
+| **Connection Pooling** | Render managed PostgreSQL connection limits | `pg.Pool` configured with explicit timeouts (`PG_IDLE_TIMEOUT_MS`, `PG_CONNECTION_TIMEOUT_MS`) and default pool size (20 connections). |
+
+---
+
+## 5. Security Invariants Checklist
+
+- [x] Exactly three authorized hardware device slots (`SLOT_01`, `SLOT_02`, `SLOT_03`).
+- [x] Zero hard-coded credentials or fake demo modes in frontend bundles.
+- [x] All 18 canonical demo accounts provisioned and database-backed.
+- [x] Downward-only institutional governance hierarchy strictly enforced server-side.
+- [x] Immutable audit logs protected against `UPDATE` and `DELETE`.

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.25.0] - 2026-11-08
+
+### Added
+- **RoomChangeTab Component**: Extracted 48-hour room change request submission and status tracking into modular src/client/components/allocation/RoomChangeTab.tsx.
+- **MobileInspectorBottomSheet Component**: Modularized room berth inspector drawer in src/client/components/allocation/MobileInspectorBottomSheet.tsx.
+- **AdminRoomChangeRequestsTable Component**: Extracted room change request review table into src/client/components/admin/AdminRoomChangeRequestsTable.tsx.
+- **AddCustomRoomModal Component**: Extracted architectural custom room addition modal into src/client/components/editor/AddCustomRoomModal.tsx.
+
+### Changed
+- Decomposed StudentAllocationView.tsx, AdminDashboard.tsx, and FloorPlanEditor.tsx into cohesive submodules, preserving server-authoritative room allocation and appointment invariants.
+
+## [2.24.0] - 2026-11-08
+
+### Added
+- **Centralized Frontend API Client Infrastructure**: Created src/client/api/client.ts offering typed requestJson, structured ApiError propagation, and domain clients.
+- **API Client Test Suite**: Added src/client/api/client.test.ts testing header injection, 204 response handling, error wrapping, and route dispatching.
+- **System Architecture & Scalability Specification**: Overhauled docs/system_design.md detailing domain boundaries, 10k-student database scaling strategies, and hardware device slot invariants.
+
+## [2.23.0] - 2026-11-08
+
+### Added
+- **Centralized Configuration & Secret Validation Engine**: Added src/config/index.ts with strict schema validation, fail-fast production error reporting, and safe diagnostic output.
+- **Comprehensive Environment & Secrets Guide**: Created docs/environment-and-secrets.md detailing backend Render variables, frontend Vercel boundaries, rotation runbooks, and immutable constants.
+- **Configuration Security Test Suite**: Created 	ests/environment_and_secret_management.test.ts with 13 comprehensive security tests.
+
+### Changed
+- **CORS Origin Hardening**: Migrated src/app.ts from permissive origin: true to strict allowlist origin verification using CORS_ALLOWED_ORIGINS in production.
+- **WebAuthn Dynamic Configuration**: Supported WEBAUTHN_RP_IDS and dynamic origin resolution in DeviceAuthService.
+- **Safe Diagnostics**: Exposed getSafeConfigDiagnostics which reports boolean states without printing credentials or connection strings.
+- **Documentation & Templates**: Updated .env.example with clean Render PostgreSQL references and removed obsolete Neon text.
+
 ## [2.22.0] - 2026-11-08
 
 - **Phase 2 Governance & Authorization Redesign (Stage 4: Release Readiness & Verification)**:

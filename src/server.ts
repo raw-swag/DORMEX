@@ -1,9 +1,9 @@
+import { getServerConfig, getSafeConfigDiagnostics } from './config/index.js';
 import { buildApp } from './app.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
-const PORT = parseInt(process.env.PORT || '3000', 10);
-// Production must bind to 0.0.0.0 to accept traffic from Render proxy; local dev defaults to 127.0.0.1
-const HOST = process.env.HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
+const config = getServerConfig();
+const PORT = config.port;
+const HOST = config.host;
 
 async function start() {
   try {
