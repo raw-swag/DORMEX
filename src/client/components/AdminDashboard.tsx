@@ -1330,9 +1330,10 @@ export const AdminDashboard: React.FC = () => {
 
       {/* DUAL-WARDEN FORCE OVERRIDE MODAL DIALOG */}
       {forceModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden border border-[#DFE3E5] flex flex-col animate-fadeIn">
-            <div className="p-5 bg-[#203653] text-white flex items-center gap-3">
+        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white max-w-lg w-full rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden border-t sm:border border-[#DFE3E5] flex flex-col animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden mt-2 mb-1 shrink-0" />
+            <div className="p-4 sm:p-5 bg-[#203653] text-white flex items-center gap-3">
               <KeyRound className="w-5 h-5 text-[#84D5CA]" />
               <div>
                 <h3 className="text-sm font-bold text-white">Administrative Seat Allocation Override</h3>
@@ -1427,9 +1428,10 @@ export const AdminDashboard: React.FC = () => {
 
       {/* PUBLISH OFFICIAL ALLOTMENT MODAL */}
       {publishModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden border border-[#DFE3E5] flex flex-col animate-fadeIn">
-            <div className="p-5 bg-[#016A62] text-white flex items-center gap-3">
+        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white max-w-md w-full rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden border-t sm:border border-[#DFE3E5] flex flex-col animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden mt-2 mb-1 shrink-0" />
+            <div className="p-4 sm:p-5 bg-[#016A62] text-white flex items-center gap-3">
               <Globe className="w-5 h-5 text-[#9DEFE3]" />
               <div>
                 <h3 className="text-sm font-bold text-white">Publish Official Floor 2 List</h3>
@@ -1474,8 +1476,9 @@ export const AdminDashboard: React.FC = () => {
 
       {/* IN-PERSON ROOM CHANGE MODAL */}
       {showInPersonModal && (
-        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-3.5 border border-[#DFE3E5] shadow-2xl animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-3.5 border-t sm:border border-[#DFE3E5] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
             <div className="flex items-center justify-between border-b border-[#DFE3E5] pb-2.5">
               <h3 className="text-xs font-bold text-[#07203C] flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-[#016A62]" />
@@ -1621,8 +1624,9 @@ export const AdminDashboard: React.FC = () => {
 
       {/* CYCLE LIFECYCLE CONFIRMATION MODAL */}
       {cycleControlAction && (
-        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#DFE3E5] shadow-2xl animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#DFE3E5] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
             <div className="flex items-center gap-3 border-b border-[#DFE3E5] pb-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
                 cycleControlAction === 'START'

@@ -439,8 +439,10 @@ export const PortalSelectionView: React.FC = () => {
 
       {/* Forgot Password / Recovery Modal (Phase Five) */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#E2E6E8] shadow-2xl animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#E2E6E8] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            {/* Mobile Sheet Handle */}
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
             <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] text-[#1E7B54] flex items-center justify-center font-bold">

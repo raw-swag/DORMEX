@@ -265,8 +265,9 @@ export const ComplaintsView: React.FC = () => {
 
       {/* New Complaint Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-[#E2E6E8]">
+        <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
             <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
               <h3 className="text-sm font-bold text-[#203653] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[#2C8279]" />
@@ -375,8 +376,9 @@ export const ComplaintsView: React.FC = () => {
 
       {/* Staff Update & Assign Modal */}
       {selectedComplaint && (
-        <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl border border-[#E2E6E8]">
+        <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
             <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
               <div>
                 <h3 className="text-sm font-bold text-[#203653]">Manage Complaint #{selectedComplaint.id.slice(-6)}</h3>

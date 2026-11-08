@@ -29,9 +29,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setShowMoreMenu(false)}
         >
           <div
-            className="bg-white rounded-t-2xl border-t border-[#DFE3E5] p-5 shadow-2xl max-h-[80vh] overflow-y-auto space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+            className="bg-white rounded-t-3xl border-t border-[#DFE3E5] p-4 sm:p-5 shadow-2xl max-h-[80vh] overflow-y-auto space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Sheet Handle */}
+            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto -mt-1 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-2 border-b border-[#DFE3E5]">
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#07203C]">

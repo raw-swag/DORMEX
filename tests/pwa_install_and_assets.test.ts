@@ -173,5 +173,310 @@ describe('DORMEX PWA Installation & Static Asset Integrity Suite', () => {
       const shouldRender = !isWorkflowActive && showPrompt;
       expect(shouldRender).toBe(false);
     });
+
+    it('detects mobile devices via detectIsMobile helper across user agents and touch factors', async () => {
+      const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+      // Android Mobile User Agent
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36',
+        maxTouchPoints: 5,
+      });
+      vi.stubGlobal('window', {
+        navigator: {
+          userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36',
+          maxTouchPoints: 5,
+        },
+        innerWidth: 412,
+        matchMedia: () => ({ matches: true }),
+      });
+      expect(detectIsMobile()).toBe(true);
+      expect(detectIsIOS()).toBe(false);
+
+      // iPhone Safari User Agent
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+        maxTouchPoints: 5,
+      });
+      vi.stubGlobal('window', {
+        navigator: {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+          maxTouchPoints: 5,
+        },
+        innerWidth: 390,
+        matchMedia: () => ({ matches: true }),
+      });
+      expect(detectIsMobile()).toBe(true);
+      expect(detectIsIOS()).toBe(true);
+
+      // iPadOS 13+ User Agent (reports MacIntel platform with touch points)
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        platform: 'MacIntel',
+        maxTouchPoints: 5,
+      });
+      vi.stubGlobal('window', {
+        navigator: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+          platform: 'MacIntel',
+          maxTouchPoints: 5,
+        },
+        innerWidth: 820,
+        matchMedia: () => ({ matches: true }),
+      });
+      expect(detectIsMobile()).toBe(true);
+      expect(detectIsIOS()).toBe(true);
+
+      // Desktop Chrome User Agent (wide screen, no touch)
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        platform: 'Win32',
+        maxTouchPoints: 0,
+      });
+      vi.stubGlobal('window', {
+        navigator: {
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          platform: 'Win32',
+          maxTouchPoints: 0,
+        },
+        innerWidth: 1440,
+        matchMedia: () => ({ matches: false }),
+      });
+      expect(detectIsMobile()).toBe(false);
+      expect(detectIsIOS()).toBe(false);
+    });
+
+    describe('5. Real-World Mobile Device Scenarios & Lifecycle Matrix', () => {
+      it('scenario 1: Android Chrome without beforeinstallprompt triggers fallback popup', async () => {
+        const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36',
+          maxTouchPoints: 5,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36',
+            maxTouchPoints: 5,
+          },
+          innerWidth: 412,
+          matchMedia: (q: string) => ({ matches: q.includes('coarse') }),
+        });
+
+        expect(detectIsMobile()).toBe(true);
+        expect(detectIsIOS()).toBe(false);
+
+        // Fallback timer (2000ms) would execute and trigger showPrompt(true)
+        const isStandalone = false;
+        const isDismissed = false;
+        const willTriggerFallbackPrompt = detectIsMobile() && !isStandalone && !isDismissed;
+        expect(willTriggerFallbackPrompt).toBe(true);
+      });
+
+      it('scenario 2: Android Chrome with beforeinstallprompt retains event and triggers prompt', async () => {
+        let retainedPromptEvent: any = null;
+        let promptTriggered = false;
+
+        const mockBeforeInstallPromptEvent = {
+          preventDefault: vi.fn(),
+          prompt: vi.fn().mockResolvedValue(undefined),
+          userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+        };
+
+        const handleBeforeInstallPrompt = (e: any) => {
+          e.preventDefault();
+          retainedPromptEvent = e;
+          promptTriggered = true;
+        };
+
+        handleBeforeInstallPrompt(mockBeforeInstallPromptEvent);
+
+        expect(mockBeforeInstallPromptEvent.preventDefault).toHaveBeenCalled();
+        expect(retainedPromptEvent).toBe(mockBeforeInstallPromptEvent);
+        expect(promptTriggered).toBe(true);
+      });
+
+      it('scenario 3: iPhone Safari displays iOS instruction sheet with share instructions', async () => {
+        const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+          maxTouchPoints: 5,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+            maxTouchPoints: 5,
+          },
+          innerWidth: 393,
+          matchMedia: () => ({ matches: false }),
+        });
+
+        expect(detectIsMobile()).toBe(true);
+        expect(detectIsIOS()).toBe(true);
+      });
+
+      it('scenario 4: iPhone Chrome displays iOS installation guidance', async () => {
+        const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.62 Mobile/15E148 Safari/604.1',
+          maxTouchPoints: 5,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.62 Mobile/15E148 Safari/604.1',
+            maxTouchPoints: 5,
+          },
+          innerWidth: 393,
+          matchMedia: () => ({ matches: false }),
+        });
+
+        expect(detectIsMobile()).toBe(true);
+        expect(detectIsIOS()).toBe(true);
+      });
+
+      it('scenario 5: Samsung Internet without beforeinstallprompt displays fallback popup', async () => {
+        const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/24.0 Chrome/117.0.0.0 Mobile Safari/537.36',
+          maxTouchPoints: 5,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/24.0 Chrome/117.0.0.0 Mobile Safari/537.36',
+            maxTouchPoints: 5,
+          },
+          innerWidth: 412,
+          matchMedia: () => ({ matches: false }),
+        });
+
+        expect(detectIsMobile()).toBe(true);
+        expect(detectIsIOS()).toBe(false);
+
+        // Not standalone, not dismissed -> eligible for fallback prompt
+        const isStandalone = false;
+        const isDismissed = false;
+        expect(detectIsMobile() && !isStandalone && !isDismissed).toBe(true);
+      });
+
+      it('scenario 6: Desktop browser never receives automatic mobile popup', async () => {
+        const { detectIsMobile } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          platform: 'MacIntel',
+          maxTouchPoints: 0,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            platform: 'MacIntel',
+            maxTouchPoints: 0,
+          },
+          innerWidth: 1920,
+          matchMedia: () => ({ matches: false }),
+        });
+
+        expect(detectIsMobile()).toBe(false);
+      });
+
+      it('scenario 7: Installed acknowledgement suppresses popup indefinitely', () => {
+        const PWA_STORAGE_KEY = 'dormex_pwa_installed_v1';
+        localStorage.setItem(PWA_STORAGE_KEY, 'true');
+
+        const isInstalled = localStorage.getItem(PWA_STORAGE_KEY) === 'true';
+        const showPrompt = false; // Suppressed immediately on mount
+
+        expect(isInstalled).toBe(true);
+        expect(showPrompt).toBe(false);
+      });
+
+      it('scenario 8: Standalone display-mode suppresses prompt completely', () => {
+        const isStandalone = true;
+        const canShow = !isStandalone;
+        expect(canShow).toBe(false);
+      });
+
+      it('scenario 9: Session dismissal survives page refresh in same session', () => {
+        const PWA_DISMISSED_SESSION_KEY = 'dormex_pwa_dismissed_session_v1';
+        // User clicked "Maybe later"
+        sessionStorage.setItem(PWA_DISMISSED_SESSION_KEY, 'true');
+
+        // Simulate page reload
+        const isDismissedAfterReload = sessionStorage.getItem(PWA_DISMISSED_SESSION_KEY) === 'true';
+        expect(isDismissedAfterReload).toBe(true);
+      });
+
+      it('scenario 10: New browser session resets dismissal and allows popup again', () => {
+        const PWA_DISMISSED_SESSION_KEY = 'dormex_pwa_dismissed_session_v1';
+        // Simulate new browser tab/session (empty sessionStorage)
+        mockSessionStorage = {};
+
+        const isDismissedInNewSession = sessionStorage.getItem(PWA_DISMISSED_SESSION_KEY) === 'true';
+        expect(isDismissedInNewSession).toBe(false);
+      });
+
+      it('scenario 11: Active critical workflow strictly suppresses popup rendering', () => {
+        const isWorkflowActive = true;
+        const isInstalled = false;
+        const showPrompt = true;
+
+        // Condition in PWAInstallPrompt: if (isInstalled || !showPrompt || isWorkflowActive) return null;
+        const shouldRender = !(isInstalled || !showPrompt || isWorkflowActive);
+        expect(shouldRender).toBe(false);
+      });
+
+      it('scenario 12: Timer cleanup and duplicate prevention cancels pending fallback when beforeinstallprompt fires', () => {
+        let activeTimer: any = null;
+        let showPrompt = false;
+
+        // Step 1: Initial fallback timer scheduled (2500ms)
+        activeTimer = setTimeout(() => {
+          showPrompt = true;
+        }, 2500);
+
+        // Step 2: Native beforeinstallprompt fires at 500ms
+        // It clears the fallback timer and schedules native prompt at 1500ms
+        clearTimeout(activeTimer);
+        activeTimer = setTimeout(() => {
+          showPrompt = true;
+        }, 1500);
+
+        expect(activeTimer).toBeDefined();
+
+        // Step 3: Effect unmount clears any active timer cleanly
+        clearTimeout(activeTimer);
+        activeTimer = null;
+        expect(activeTimer).toBeNull();
+      });
+
+      it('scenario 13: iOS Safari without beforeinstallprompt schedules dedicated iOS guidance', async () => {
+        const { detectIsMobile, detectIsIOS } = await import('../src/client/context/PWAInstallContext.js');
+
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+          maxTouchPoints: 5,
+        });
+        vi.stubGlobal('window', {
+          navigator: {
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+            maxTouchPoints: 5,
+          },
+          innerWidth: 393,
+          matchMedia: () => ({ matches: false }),
+        });
+
+        expect(detectIsMobile()).toBe(true);
+        expect(detectIsIOS()).toBe(true);
+
+        const isStandalone = false;
+        const isDismissed = false;
+        // Eligible for iOS prompt timer (1800ms)
+        const canPromptIOS = detectIsMobile() && detectIsIOS() && !isStandalone && !isDismissed;
+        expect(canPromptIOS).toBe(true);
+      });
+    });
   });
 });

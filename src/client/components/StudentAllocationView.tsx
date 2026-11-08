@@ -1362,28 +1362,28 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           </div>
 
           {/* Dedicated Status Legend Section */}
-          <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-xs flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6 flex-wrap">
-              <span className="text-[11px] uppercase font-bold text-[#627084] tracking-wider">Status Legend:</span>
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#1E7B54] border border-[#166041]" />
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E2E6E8] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
+              <span className="text-[11px] uppercase font-bold text-[#627084] tracking-wider w-full sm:w-auto">Status Legend:</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-[#1E7B54] border border-[#166041] shrink-0" />
                 <span className="text-xs font-semibold text-[#1E7B54]">Available</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#E06A26] border border-[#b35118]" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-[#E06A26] border border-[#b35118] shrink-0" />
                 <span className="text-xs font-semibold text-[#E06A26]">Roommate Intent</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#C93B3B] border border-[#a12828]" />
-                <span className="text-xs font-semibold text-[#C93B3B]">Occupied / Blocked</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-[#C93B3B] border border-[#a12828] shrink-0" />
+                <span className="text-xs font-semibold text-[#C93B3B]">Occupied</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#1D63B8] border border-[#134887]" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-[#1D63B8] border border-[#134887] shrink-0" />
                 <span className="text-xs font-semibold text-[#1D63B8]">Active Selection</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-[#627084]">
+            <div className="text-[11px] text-[#627084] leading-tight">
               Roommate intent is non-binding until confirmed during an active turn.
             </div>
           </div>

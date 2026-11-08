@@ -12,6 +12,52 @@ export interface BeforeInstallPromptEvent extends Event {
 export const PWA_STORAGE_KEY = 'dormex_pwa_installed_v1';
 export const PWA_DISMISSED_SESSION_KEY = 'dormex_pwa_dismissed_session_v1';
 
+export function detectIsIOS(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent || '';
+  const isStandardIOS = /iPad|iPhone|iPod/i.test(ua) && !(window as any).MSStream;
+  // iPadOS 13+ reports as Macintosh in user agent but has touch points
+  const isIPadOS = window.navigator.platform === 'MacIntel' && (window.navigator.maxTouchPoints || 0) > 1;
+  return isStandardIOS || isIPadOS;
+}
+
+export function detectIsMobile(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // 1. Client hints API if available
+  const navAny = window.navigator as any;
+  if (navAny?.userAgentData?.mobile !== undefined) {
+    if (navAny.userAgentData.mobile === true) {
+      return true;
+    }
+  }
+
+  const ua = window.navigator.userAgent || '';
+
+  // 2. Standard mobile device user agents
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk|Kindle/i.test(ua);
+  if (isMobileUA) return true;
+
+  // 3. iPadOS 13+ (MacIntel with touch points)
+  if (window.navigator.platform === 'MacIntel' && (window.navigator.maxTouchPoints || 0) > 1) {
+    return true;
+  }
+
+  // 4. Coarse pointer (touchscreen devices) with reasonable mobile/tablet screen dimension
+  const hasTouch = 'ontouchstart' in window || (window.navigator.maxTouchPoints && window.navigator.maxTouchPoints > 0);
+  const isCoarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  if ((hasTouch || isCoarsePointer) && window.innerWidth <= 844) {
+    return true;
+  }
+
+  // 5. Responsive emulation viewport fallback (Chrome DevTools / Firefox responsive design mode)
+  if (window.innerWidth <= 640) {
+    return true;
+  }
+
+  return false;
+}
+
 interface PWAInstallContextType {
   canInstall: boolean;
   isInstallable: boolean;
@@ -67,13 +113,8 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     // 1. Device and browser capability detection
-    const userAgent = window.navigator.userAgent || '';
-    const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
-    // Check coarse pointer or touch support or narrow width
-    const hasTouch = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
-      (window.innerWidth <= 844 && Boolean(hasTouch)) ||
-      (window.innerWidth <= 640); // Also treat narrow viewport emulation (e.g. Chrome DevTools responsive mode) as mobile
+    const isIOSDevice = detectIsIOS();
+    const isMobileDevice = detectIsMobile();
 
     setIsIOS(isIOSDevice);
     setIsMobile(isMobileDevice);
@@ -104,20 +145,28 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
+    // If user already dismissed in this session, don't schedule popups
+    if (isDismissedForSession) {
+      return;
+    }
+
+    let promptTimer: NodeJS.Timeout | null = null;
+
     // 3. Listen for native beforeinstallprompt (Chromium / Android)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
       setDeferredPrompt(promptEvent);
 
-      if (!isDismissedForSession) {
-        const timer = setTimeout(() => {
-          if (!isDismissedForSession) {
-            setShowPrompt(true);
-          }
-        }, 1500);
-        return () => clearTimeout(timer);
+      // Trigger branded bottom sheet smoothly after short initial settling delay (1500ms)
+      // Clearing any pending fallback timer avoids duplicate scheduled prompts
+      if (promptTimer) {
+        clearTimeout(promptTimer);
+        promptTimer = null;
       }
+      promptTimer = setTimeout(() => {
+        setShowPrompt(true);
+      }, 1500);
     };
 
     // 4. Listen for appinstalled
@@ -128,34 +177,38 @@ export const PWAInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } catch {}
       setDeferredPrompt(null);
       setShowPrompt(false);
+      if (promptTimer) {
+        clearTimeout(promptTimer);
+        promptTimer = null;
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // 5. iOS Safari auto-guide
-    if (isIOSDevice && !isStandalone && !isDismissedForSession) {
-      const timer = setTimeout(() => {
-        if (!isDismissedForSession) {
-          setShowPrompt(true);
-        }
+    // 5. iOS Safari auto-guide:
+    // iOS Safari never fires beforeinstallprompt; schedule dedicated guidance after 1800ms
+    if (isIOSDevice) {
+      if (promptTimer) clearTimeout(promptTimer);
+      promptTimer = setTimeout(() => {
+        setShowPrompt(true);
       }, 1800);
-      return () => clearTimeout(timer);
-    }
-
-    // 6. Generic mobile fallback: on mobile device / mobile viewport when beforeinstallprompt
-    // hasn't fired yet or browser doesn't support it (e.g. Firefox Mobile, responsive inspection),
-    // show install banner shortly so user has clear manual guidance
-    if (!isIOSDevice && !isStandalone && !isDismissedForSession) {
-      const fallbackTimer = setTimeout(() => {
-        if (!isDismissedForSession) {
-          setShowPrompt(true);
-        }
+    } else {
+      // 6. Generic mobile fallback:
+      // On Android / mobile browsers where beforeinstallprompt does not fire
+      // (e.g. Samsung Internet without ambient badge, Firefox Mobile, Opera Mobile),
+      // schedule fallback guidance after 2500ms so native prompt has priority.
+      if (promptTimer) clearTimeout(promptTimer);
+      promptTimer = setTimeout(() => {
+        setShowPrompt(true);
       }, 2500);
-      return () => clearTimeout(fallbackTimer);
     }
 
     return () => {
+      if (promptTimer) {
+        clearTimeout(promptTimer);
+        promptTimer = null;
+      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
