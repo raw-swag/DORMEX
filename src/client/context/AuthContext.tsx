@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type Role = 'STUDENT' | 'PROCTOR' | 'WARDEN' | 'CHIEF_WARDEN' | 'HOSTEL_OFFICE' | 'SUPER_ADMIN';
+export type Role = 'STUDENT' | 'PROCTOR' | 'WARDEN' | 'DEPUTY_WARDEN' | 'CHIEF_WARDEN' | 'HOSTEL_OFFICE' | 'SUPER_ADMIN';
 
 export interface UserSession {
   userId: string;
@@ -10,6 +10,8 @@ export interface UserSession {
   scopeType: string;
   scopeId: string | null;
   profileId: string | null;
+  activeAppointmentId?: string | null;
+  activeAppointmentStatus?: string | null;
 }
 
 export const DEV_USERS: Record<string, UserSession> = {
@@ -175,6 +177,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               scopeType: data.scopeType,
               scopeId: data.scopeId,
               profileId: data.profileId,
+              activeAppointmentId: data.activeAppointmentId,
+              activeAppointmentStatus: data.activeAppointmentStatus,
             };
             setSession(restoredSession);
             if (!currentPortal) {

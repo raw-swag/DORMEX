@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.21.0] - 2026-11-08
+
+- **Phase 2 Governance & Authorization Redesign (Stage 3: Security Hardening & Integration)**:
+  - **Exhaustive Role-Based Authorization Bypass Hardening**:
+    - Verified all administrative and governance endpoints reject unauthorized identities (`STUDENT`, `HOSTEL_OFFICE`, `DEPUTY_WARDEN`).
+    - Enforced that lower administrative roles cannot invoke Warden/Chief Warden functions.
+  - **Workflow & Replay Integrity**:
+    - Validated that reviewed actions cannot be re-reviewed, overwritten, or replayed (`ACTION_ALREADY_REVIEWED` rejection).
+  - **Audit Ledger Immutability & Event Tracing**:
+    - Verified that every governance state transition generates corresponding immutable event entries in `governance_action_events`.
+  - **Frontend Identity Integration**:
+    - Updated `AuthContext.tsx` with `activeAppointmentId` and `activeAppointmentStatus` and added `DEPUTY_WARDEN` role type.
+    - Updated `GET /api/auth/me` to return active appointment metadata from the database.
+  - **Regression Safety**:
+    - Confirmed existing student waiting room, seat confirmation, device slot, and WebAuthn flows remain 100% operational.
+  - **Automated Verification**:
+    - Added dedicated test suite `tests/security_hardening_integration.test.ts` (6 tests).
+    - 285/285 automated tests passing across 29 test files (100% pass rate).
+    - 0 TypeScript errors (`npm run typecheck`).
+    - Clean server (`npm run build:server`) and client (`npm run build:client`) production builds.
+
+---
+
 ## [2.20.0] - 2026-11-08
 
 - **Phase 2 Governance & Authorization Redesign (Stage 2: Authorization & Governance Services)**:

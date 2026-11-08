@@ -300,6 +300,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         scopeType: actor.scope_type,
         scopeId: actor.scope_id,
         profileId: actor.student_profile_id,
+        activeAppointmentId: actor.active_appointment_id || null,
+        activeAppointmentStatus: actor.active_appointment_status || null,
       });
     } catch (err: any) {
       return reply.code(401).send({ error: err.message });

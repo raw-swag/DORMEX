@@ -22,6 +22,18 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Phase 40: Governance & Authorization Redesign — Stage 3 Security Hardening & Integration**:
+  - **Deliverables Completed**:
+    - **Role-Based Authorization Bypass Hardening**: Exhaustively verified that lower or mismatched roles (`STUDENT`, `HOSTEL_OFFICE`, `DEPUTY_WARDEN`) are rejected across all governance and appointment endpoints.
+    - **Workflow & Replay Integrity**: Validated that reviewed governance actions cannot be replayed or re-evaluated (`ACTION_ALREADY_REVIEWED`).
+    - **Audit Ledger Immutability & Event Tracing**: Confirmed append-only event logs in `governance_action_events` for submission, approval, and rejection lifecycles.
+    - **Frontend Identity Integration**: Updated `AuthContext.tsx` and `GET /api/auth/me` with `activeAppointmentId` and `activeAppointmentStatus`.
+    - Added dedicated test suite `tests/security_hardening_integration.test.ts` (6 tests).
+  - **Verification Metrics**:
+    - 285/285 automated tests passing across 29 test files (100% pass rate).
+    - 0 TypeScript compiler errors (`npm run typecheck`).
+    - Clean server build (`npm run build:server` / `tsc`, with 0 test files emitted to `dist`).
+    - Clean client build (`npm run build:client` / `vite build`).
 - [x] **Phase 39: Governance & Authorization Redesign — Stage 2 Authorization & Governance Services**:
   - **Deliverables Completed**:
     - **Authoritative Database-Backed Actor Resolution**: Updated `extractActor` in `src/app.ts` to join `warden_appointments` and `deputy_appointments` and verify live appointment status (`ACTIVE`) on every request, failing closed against stale JWTs if revoked.
