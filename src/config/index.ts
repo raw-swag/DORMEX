@@ -125,16 +125,33 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env, allowMemo
   );
   const isSsl = env.PG_SSL === 'true' || isCloudOrSslUrl;
 
-  // Render internal private network hosts (dpg-* with internal domain or without .render.com) use private certs
+  // PostgreSQL TLS configuration:
+  // Render internal managed database endpoints use private internal certificates.
+  // To eliminate spoofing or arbitrary "dpg-" hostname bypasses:
+  // 1. Explicit internal host binding via RENDER_INTERNAL_DB_HOST or trusted canonical internal host
+  // 2. Exact match against the authenticated Render private internal domain structure
+  // Any public domain (including dpg-*.com, dpg-*.example.com, or *.render.com) MUST retain strict CA verification.
   let isRenderInternal = false;
   if (dbUrl) {
     try {
       const parsedUrl = new URL(dbUrl);
-      const host = parsedUrl.hostname.toLowerCase();
-      // Only treat host as Render internal if hostname begins with dpg- and does NOT end with .render.com
-      isRenderInternal = host.startsWith('dpg-') && !host.endsWith('.render.com');
+      let host = parsedUrl.hostname.trim().toLowerCase();
+      if (host.endsWith('.')) host = host.slice(0, -1);
+
+      // Endpoint-specific TLS trust:
+      // The internal TLS exception is granted EXCLUSIVELY to the explicitly configured internal endpoint.
+      // Arbitrary hostnames or suffix patterns (e.g. *.render.internal, *.oregon-postgres.render.internal)
+      // are NEVER trusted by default to eliminate lookalike and rogue internal spoofing.
+      // Default: the production Render database instance ('dpg-dbnjeqrl550s73fcr1lg-a').
+      // Non-production or staging environments must explicitly configure RENDER_INTERNAL_DB_HOST.
+      const trustedInternalHost = env.RENDER_INTERNAL_DB_HOST
+        ? env.RENDER_INTERNAL_DB_HOST.trim().toLowerCase()
+        : 'dpg-dbnjeqrl550s73fcr1lg-a';
+
+      const isExactTrusted = host === trustedInternalHost || host === `${trustedInternalHost}.internal`;
+      isRenderInternal = isExactTrusted && !host.endsWith('.render.com');
     } catch {
-      isRenderInternal = dbUrl.includes('dpg-') && !dbUrl.includes('.render.com');
+      isRenderInternal = false;
     }
   }
   const rejectUnauthorized = env.PG_SSL_REJECT_UNAUTHORIZED === 'false' || isRenderInternal

@@ -116,36 +116,116 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       expect(devCfg.corsAllowedOrigins).toContain('http://localhost:5173');
     });
 
-    it('verifies TLS behavior for internal vs external vs third-party database hosts', () => {
-      // 1. Render internal host (hostname starts with dpg- and does not end with .render.com)
-      const internalCfg = loadServerConfig({
+    it('verifies fail-closed TLS behavior for internal, external, and adversarial host variations', () => {
+      const baseEnv = {
         NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a/dormex_db',
         JWT_SECRET: 'a'.repeat(32),
         COOKIE_SECRET: 'b'.repeat(32),
-      });
-      expect(internalCfg.database.isRenderInternal).toBe(true);
-      expect(internalCfg.database.rejectUnauthorized).toBe(false);
+      };
 
-      // 2. Render external host (ends with .render.com)
+      // 1. Legitimate configured Render internal database endpoint (dpg-dbnjeqrl550s73fcr1lg-a)
+      const internalCfg1 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a/dormex_db',
+      });
+      expect(internalCfg1.database.isRenderInternal).toBe(true);
+      expect(internalCfg1.database.rejectUnauthorized).toBe(false);
+
+      // 2. Legitimate configured Render internal endpoint with .internal suffix
+      const internalCfg2 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a.internal/dormex_db',
+      });
+      expect(internalCfg2.database.isRenderInternal).toBe(true);
+      expect(internalCfg2.database.rejectUnauthorized).toBe(false);
+
+      // 3. Legitimate external Render endpoint (*.render.com -> MUST strictly verify CA)
       const externalCfg = loadServerConfig({
-        NODE_ENV: 'production',
+        ...baseEnv,
         DATABASE_URL: 'postgresql://user:pass@dpg-dbnjeqrl550s73fcr1lg-a.oregon-postgres.render.com/dormex_db',
-        JWT_SECRET: 'a'.repeat(32),
-        COOKIE_SECRET: 'b'.repeat(32),
       });
       expect(externalCfg.database.isRenderInternal).toBe(false);
       expect(externalCfg.database.rejectUnauthorized).toBe(true);
 
-      // 3. Unrelated host that contains dpg- in path or query
-      const spoofCfg = loadServerConfig({
-        NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://user:pass@my-custom-host.com/dpg-db',
-        JWT_SECRET: 'a'.repeat(32),
-        COOKIE_SECRET: 'b'.repeat(32),
+      // 4. Adversarial lookalike: dpg-attacker (MUST NOT receive internal exemption)
+      const attackerLookalike1 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-attacker/dormex_db',
       });
-      expect(spoofCfg.database.isRenderInternal).toBe(false);
-      expect(spoofCfg.database.rejectUnauthorized).toBe(true);
+      expect(attackerLookalike1.database.isRenderInternal).toBe(false);
+      expect(attackerLookalike1.database.rejectUnauthorized).toBe(true);
+
+      // 5. Adversarial lookalike: dpg-malicious.internal (MUST NOT receive internal exemption)
+      const attackerLookalike2 = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-malicious.internal/dormex_db',
+      });
+      expect(attackerLookalike2.database.isRenderInternal).toBe(false);
+      expect(attackerLookalike2.database.rejectUnauthorized).toBe(true);
+
+      // 6. Adversarial subdomain: dpg-attacker.example.com
+      const subdomCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-attacker.example.com/dormex_db',
+      });
+      expect(subdomCfg.database.isRenderInternal).toBe(false);
+      expect(subdomCfg.database.rejectUnauthorized).toBe(true);
+
+      // 7. Adversarial domain: dpg-attacker.com
+      const domainCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@dpg-attacker.com/dormex_db',
+      });
+      expect(domainCfg.database.isRenderInternal).toBe(false);
+      expect(domainCfg.database.rejectUnauthorized).toBe(true);
+
+      // 8. Adversarial path: attacker.com/dpg-db
+      const pathCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@attacker.com/dpg-db',
+      });
+      expect(pathCfg.database.isRenderInternal).toBe(false);
+      expect(pathCfg.database.rejectUnauthorized).toBe(true);
+
+      // 9. Adversarial query: attacker.com?host=dpg-db
+      const queryCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@attacker.com/db?host=dpg-db',
+      });
+      expect(queryCfg.database.isRenderInternal).toBe(false);
+      expect(queryCfg.database.rejectUnauthorized).toBe(true);
+
+      // 10. Ordinary third-party PostgreSQL hostname (e.g., aws, supabase, neon)
+      const thirdPartyCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@db.my-university.edu:5432/dormex_db',
+      });
+      expect(thirdPartyCfg.database.isRenderInternal).toBe(false);
+      expect(thirdPartyCfg.database.rejectUnauthorized).toBe(true);
+
+      // 11. Legitimate configured internal endpoint with uppercase or trailing-dot variation
+      const trailingDotCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'postgresql://user:pass@DPG-DBNJEQRL550S73FCR1LG-A./dormex_db',
+      });
+      expect(trailingDotCfg.database.isRenderInternal).toBe(true);
+      expect(trailingDotCfg.database.rejectUnauthorized).toBe(false);
+
+      // 12. Malformed unparseable URL -> fails closed (never gets internal exemption)
+      const malformedCfg = loadServerConfig({
+        ...baseEnv,
+        DATABASE_URL: 'not-a-valid-url-with-dpg-internal',
+      });
+      expect(malformedCfg.database.isRenderInternal).toBe(false);
+
+      // 13. Dynamic explicit override via RENDER_INTERNAL_DB_HOST
+      const customInternalCfg = loadServerConfig({
+        ...baseEnv,
+        RENDER_INTERNAL_DB_HOST: 'dpg-custom-staging-db-01',
+        DATABASE_URL: 'postgresql://user:pass@dpg-custom-staging-db-01/dormex_db',
+      });
+      expect(customInternalCfg.database.isRenderInternal).toBe(true);
+      expect(customInternalCfg.database.rejectUnauthorized).toBe(false);
     });
 
     it('defaults local development host to 127.0.0.1', () => {
@@ -255,6 +335,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       process.env.CORS_ALLOWED_ORIGINS = 'https://approved-partner.edu';
       resetServerConfig();
 
+      process.env.INITIAL_ADMIN_HASH = 'test';
       const db = getDatabaseService(true);
       const app = await buildApp(db);
 
@@ -279,6 +360,157 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       });
       expect(resDenied.statusCode).toBe(500);
       expect(resDenied.body).toContain('CORS_POLICY_VIOLATION');
+
+      await app.close();
+    });
+
+    it('enforces strict CSRF defense across all 8 precedence and origin combination scenarios', async () => {
+      process.env.NODE_ENV = 'production';
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/dormex';
+      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env.COOKIE_SECRET = 'b'.repeat(32);
+      process.env.CORS_ALLOWED_ORIGINS = 'https://dormex-sit.vercel.app';
+      resetServerConfig();
+
+      process.env.INITIAL_ADMIN_HASH = 'test_hash';
+      const db = getDatabaseService(true);
+      const app = await buildApp(db);
+
+      const validToken = app.jwt.sign({ sub: 'usr_admin', role: 'STUDENT' });
+      const invalidToken = 'malformed.or.invalid.token';
+
+      // 1. Scenario 1: Valid cookie + invalid Bearer token + malicious Origin
+      // PreValidation CSRF hook rejects based on cookie presence; CORS rejects malicious Origin
+      const res1 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: 'https://evil-attacker.com',
+          authorization: `Bearer ${invalidToken}`,
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Attack 1' },
+      });
+      expect(res1.statusCode).toBe(500);
+      expect(res1.body).toContain('CORS_POLICY_VIOLATION');
+
+      // 2. Scenario 2: Valid cookie + arbitrary Authorization header + malicious Origin
+      const res2 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: 'https://evil-attacker.com',
+          authorization: 'Basic dXNlcjpwYXNz',
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Attack 2' },
+      });
+      expect(res2.statusCode).toBe(500);
+      expect(res2.body).toContain('CORS_POLICY_VIOLATION');
+
+      // 3. Scenario 3: Valid cookie + approved Origin
+      // Passes CSRF and CORS; reaches business logic
+      const res3 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: 'https://dormex-sit.vercel.app',
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Legitimate mutation' },
+      });
+      expect(res3.statusCode).toBe(403); // 403 from domain: Insufficient permissions for non-student
+      expect(res3.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+      expect(res3.body).not.toContain('CORS_POLICY_VIOLATION');
+
+      // 4. Scenario 4: Valid Bearer token without cookies
+      // Pure non-browser API client; passes CSRF
+      const res4 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          authorization: `Bearer ${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'M2M request' },
+      });
+      expect(res4.statusCode).toBe(403); // Reaches domain logic (insufficient permissions for non-student)
+      expect(res4.body).not.toContain('CSRF_PROTECTION_VIOLATION');
+
+      // 5. Scenario 5: Invalid Bearer token without cookies
+      // Fails fast at extractActor with 401
+      const res5 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          authorization: `Bearer ${invalidToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Bad token' },
+      });
+      expect(res5.statusCode).toBe(401);
+      expect(res5.body).toContain('UNAUTHORIZED');
+
+      // 6. Scenario 6: Valid cookie + missing Origin and Referer
+      // Blocked by preValidation CSRF hook
+      const res6 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'No origin header' },
+      });
+      expect(res6.statusCode).toBe(403);
+      expect(res6.body).toContain('CSRF_PROTECTION_VIOLATION: Missing origin or referer header');
+
+      // 7. Scenario 7: Valid cookie + malformed Origin
+      // Blocked by preValidation CSRF hook
+      const res7 = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: ':::not-a-valid-url:::',
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Malformed origin' },
+      });
+      expect(res7.statusCode).toBe(500);
+      expect(res7.body).toContain('CORS_POLICY_VIOLATION');
+
+      // 8. Scenario 8: Existing public authentication flows (Login) exempt from CSRF
+      const res8 = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        headers: {
+          origin: 'https://dormex-sit.vercel.app',
+          'content-type': 'application/json',
+        },
+        payload: { identifier: 'ADM001', password: 'wrong-password' },
+      });
+      // Permitted to reach login endpoint (fails at invalid password rather than CSRF)
+      expect(res8.statusCode).toBe(401);
+      expect(res8.body).toContain('Invalid credentials');
+
+      // Bonus Precedence Check: Invalid Bearer token MUST fail immediately even if valid cookie is present
+      const resPrecedence = await app.inject({
+        method: 'POST',
+        url: '/api/room-change-requests',
+        headers: {
+          origin: 'https://dormex-sit.vercel.app',
+          authorization: `Bearer ${invalidToken}`,
+          cookie: `token=${validToken}`,
+          'content-type': 'application/json',
+        },
+        payload: { targetRoomId: 'rm_202', reason: 'Precedence test' },
+      });
+      expect(resPrecedence.statusCode).toBe(401);
+      expect(resPrecedence.body).toContain('UNAUTHORIZED');
 
       await app.close();
     });

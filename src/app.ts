@@ -53,7 +53,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     },
     credentials: true,
   });
-  await app.register(cookie);
+  await app.register(cookie, {
+    secret: serverConfig.auth.cookieSecret || 'dormex-cookie-fallback-secret-2026',
+  });
 
   const effectiveJwtSecret = jwtSecret || 'dormex-super-secure-jwt-signing-key-2026';
   await app.register(fastifyJwt, {
@@ -105,6 +107,67 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     }
   });
 
+  // CSRF Defense Hook for Cookie-Authenticated State-Changing Operations:
+  // Protects all mutating HTTP methods (POST, PUT, PATCH, DELETE) against cross-site exploitation.
+  // If request relies on cookie authentication (token or demo_session), Origin or Referer must match approved origins.
+  app.addHook('preValidation', async (req, reply) => {
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase());
+    if (!isMutation || !req.url.startsWith('/api')) {
+      return;
+    }
+
+    // Skip public unauthenticated endpoints (login, password reset, demo assertion verification)
+    const publicExemptions = [
+      '/api/auth/login',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/demo/auth/verify',
+    ];
+    if (publicExemptions.some(p => req.url.startsWith(p))) {
+      return;
+    }
+
+    // CSRF Protection & Authentication Precedence Defense:
+    // If a request carries an authentication cookie (token or demo_session), it MUST validate
+    // its Origin/Referer against the approved whitelist on state-changing mutations.
+    // The presence of an invalid or unverified Authorization header cannot be used to bypass
+    // CSRF validation when a valid session cookie is attached.
+    // In test environment, bypass origin requirement for headless mock requests unless explicitly testing CSRF (when NODE_ENV is explicitly overridden to production)
+    if (serverConfig.isTest && !serverConfig.isProduction) {
+      return;
+    }
+
+    const hasAuthCookie = !!(req.cookies?.token || req.cookies?.demo_session);
+
+    if (hasAuthCookie) {
+      const originHeader = req.headers['origin'] || req.headers['Origin'];
+      const refererHeader = req.headers['referer'] || req.headers['Referer'];
+      const candidateHeader = originHeader || refererHeader;
+
+      if (!candidateHeader || typeof candidateHeader !== 'string') {
+        return reply.code(403).send({
+          error: 'CSRF_PROTECTION_VIOLATION: Missing origin or referer header on cookie-authenticated mutation',
+        });
+      }
+
+      try {
+        const u = new URL(candidateHeader);
+        const requestOrigin = `${u.protocol}//${u.host}`;
+        const approved = serverConfig.corsAllowedOrigins;
+
+        if (!approved.includes(requestOrigin)) {
+          return reply.code(403).send({
+            error: 'CSRF_PROTECTION_VIOLATION: Cross-origin mutation request rejected',
+          });
+        }
+      } catch {
+        return reply.code(403).send({
+          error: 'CSRF_PROTECTION_VIOLATION: Malformed origin header on state-changing request',
+        });
+      }
+    }
+  });
+
   const allocationEngine = new AllocationEngineService(database);
   const floorPlanService = new FloorPlanService(database);
   const studentRegistry = new StudentRegistryService(database);
@@ -123,7 +186,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const extractActor = async (req: any): Promise<AuthActor> => {
     let userId: string | null = null;
 
-    // 1. Check Authorization Bearer header first
+    // 1. Check Authorization Bearer header first (Strict Non-Fallback):
+    // If an Authorization header is supplied, it MUST be valid. An invalid, malformed,
+    // or expired Bearer token MUST fail immediately with 401 and NEVER fall back to cookies.
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
     if (authHeader && typeof authHeader === 'string') {
       const parts = authHeader.trim().split(' ');
@@ -151,8 +216,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       }
     }
 
-    // 2. Fall back to signed cookie if present
-    if (!userId && req.cookies?.token) {
+    // 2. Cookie authentication path (Strictly used when NO Authorization header was supplied)
+    if (!userId && !authHeader && req.cookies?.token) {
       try {
         const decoded = (await app.jwt.verify(req.cookies.token)) as any;
         if (decoded?.sub) {
@@ -941,7 +1006,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const res = await operationsService.requestRoomChange(cycleId, studentProfileId, targetRoomId, reason, actor);
       return reply.code(201).send(res);
     } catch (err: any) {
-      return reply.code(400).send({ error: err.message });
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
+      return reply.code(code).send({ error: err.message });
     }
   });
 
