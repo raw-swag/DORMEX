@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { PWAInstallProvider } from './context/PWAInstallContext.js';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt.js';
 import { AppLayout } from './components/AppLayout.js';
-import { FloorPlanEditor } from './components/FloorPlanEditor.js';
-import { StudentAllocationView } from './components/StudentAllocationView.js';
-import { AdminDashboard } from './components/AdminDashboard.js';
-import { StudentRegistryView } from './components/StudentRegistryView.js';
-import { ComplaintsView } from './components/ComplaintsView.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
-import { StudentAdmissionManagementView } from './components/StudentAdmissionManagementView.js';
-import { MessMenuView } from './components/MessMenuView.js';
-import { DeviceManagementView } from './components/DeviceManagementView.js';
+
+// Route-level dynamic code splitting for internal post-login views (excluding PortalSelectionView)
+const FloorPlanEditor = lazy(() => import('./components/FloorPlanEditor.js').then((m) => ({ default: m.FloorPlanEditor })));
+const StudentAllocationView = lazy(() => import('./components/StudentAllocationView.js').then((m) => ({ default: m.StudentAllocationView })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard.js').then((m) => ({ default: m.AdminDashboard })));
+const StudentRegistryView = lazy(() => import('./components/StudentRegistryView.js').then((m) => ({ default: m.StudentRegistryView })));
+const ComplaintsView = lazy(() => import('./components/ComplaintsView.js').then((m) => ({ default: m.ComplaintsView })));
+const StudentAdmissionManagementView = lazy(() => import('./components/StudentAdmissionManagementView.js').then((m) => ({ default: m.StudentAdmissionManagementView })));
+const MessMenuView = lazy(() => import('./components/MessMenuView.js').then((m) => ({ default: m.MessMenuView })));
+const DeviceManagementView = lazy(() => import('./components/DeviceManagementView.js').then((m) => ({ default: m.DeviceManagementView })));
 
 const AppContent: React.FC = () => {
   const { session, isAuthenticated, isLoading } = useAuth();
@@ -45,17 +47,25 @@ const AppContent: React.FC = () => {
   return (
     <>
       <AppLayout currentTab={currentTab} setCurrentTab={setCurrentTab}>
-        {currentTab === 'student_allocation' && <StudentAllocationView initialSubTab="allocation_map" />}
-        {currentTab === 'student_profile' && <StudentAllocationView initialSubTab="workflow" />}
-        {currentTab === 'student_complaints' && <ComplaintsView />}
-        {currentTab === 'student_mess_menu' && <MessMenuView />}
-        {currentTab === 'admin_overview' && <AdminDashboard />}
-        {currentTab === 'admin_students' && <StudentRegistryView />}
-        {currentTab === 'admin_floor_editor' && <FloorPlanEditor />}
-        {currentTab === 'admin_complaints' && <ComplaintsView />}
-        {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
-        {currentTab === 'office_mess_menu' && <MessMenuView />}
-        {currentTab === 'admin_devices' && <DeviceManagementView />}
+        <Suspense
+          fallback={
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <div className="w-8 h-8 border-3 border-[#2C8279] border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
+          {currentTab === 'student_allocation' && <StudentAllocationView initialSubTab="allocation_map" />}
+          {currentTab === 'student_profile' && <StudentAllocationView initialSubTab="workflow" />}
+          {currentTab === 'student_complaints' && <ComplaintsView />}
+          {currentTab === 'student_mess_menu' && <MessMenuView />}
+          {currentTab === 'admin_overview' && <AdminDashboard />}
+          {currentTab === 'admin_students' && <StudentRegistryView />}
+          {currentTab === 'admin_floor_editor' && <FloorPlanEditor />}
+          {currentTab === 'admin_complaints' && <ComplaintsView />}
+          {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
+          {currentTab === 'office_mess_menu' && <MessMenuView />}
+          {currentTab === 'admin_devices' && <DeviceManagementView />}
+        </Suspense>
       </AppLayout>
       <PWAInstallPrompt />
     </>
