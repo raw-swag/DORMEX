@@ -517,100 +517,100 @@ export const AdminDashboard: React.FC = () => {
         {/* SECTION 1: 7-Card Executive Bento Metric Strip matching Stitch */}
         <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {/* Total Cohort */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D]">Total Cohort</span>
-              <Users className="w-4 h-4 text-[#203653]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Total Cohort</span>
+              <Users className="w-4 h-4 text-[#203653] dark:text-[#84D5CA]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#07203C] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#07203C] dark:text-[#F8FAFC] font-mono leading-none">
                 {overview?.registeredStudents ?? 30}
               </div>
-              <div className="text-[11px] text-[#74777E] mt-1">Synthetic records</div>
+              <div className="text-[11px] text-[#74777E] dark:text-[#94A3B8] mt-1">Synthetic records</div>
             </div>
           </div>
 
           {/* Fee Verified */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62]">Fee Verified</span>
-              <CheckCircle2 className="w-4 h-4 text-[#016A62]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62] dark:text-[#84D5CA]">Fee Verified</span>
+              <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#016A62] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#016A62] dark:text-[#84D5CA] font-mono leading-none">
                 {overview?.eligibleStudents ?? 24}
               </div>
-              <div className="text-[11px] text-[#016A62] font-medium mt-1">100% reconciled</div>
+              <div className="text-[11px] text-[#016A62] dark:text-[#84D5CA] font-medium mt-1">100% reconciled</div>
             </div>
           </div>
 
           {/* Pending Review */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#584411]">Pending Rev.</span>
-              <AlertCircle className="w-4 h-4 text-[#584411]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#584411] dark:text-[#D4B779]">Pending Rev.</span>
+              <AlertCircle className="w-4 h-4 text-[#584411] dark:text-[#D4B779]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#453201] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#453201] dark:text-[#F8FAFC] font-mono leading-none">
                 {overview ? Math.max(0, (overview.registeredStudents || 0) - (overview.eligibleStudents || 0)) : 0}
               </div>
-              <div className="text-[11px] text-[#74777E] mt-1">Holds / Incomplete</div>
+              <div className="text-[11px] text-[#74777E] dark:text-[#94A3B8] mt-1">Holds / Incomplete</div>
             </div>
           </div>
 
           {/* Configured Beds */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D]">Configured Beds</span>
-              <Bed className="w-4 h-4 text-[#203653]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Configured Beds</span>
+              <Bed className="w-4 h-4 text-[#203653] dark:text-[#84D5CA]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#07203C] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#07203C] dark:text-[#F8FAFC] font-mono leading-none">
                 {overview?.totalSeats ?? 72}
               </div>
-              <div className="text-[11px] text-[#74777E] mt-1">Rooms 201–272</div>
+              <div className="text-[11px] text-[#74777E] dark:text-[#94A3B8] mt-1">Rooms 201–272</div>
             </div>
           </div>
 
           {/* Occupied */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D]">Occupied</span>
-              <Check className="w-4 h-4 text-[#44474D]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Occupied</span>
+              <Check className="w-4 h-4 text-[#44474D] dark:text-[#94A3B8]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#181C1E] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#181C1E] dark:text-[#F8FAFC] font-mono leading-none">
                 {overview?.occupiedSeats ?? 0}
               </div>
-              <div className="text-[11px] text-[#74777E] mt-1">Allocated & confirmed</div>
+              <div className="text-[11px] text-[#74777E] dark:text-[#94A3B8] mt-1">Allocated & confirmed</div>
             </div>
           </div>
 
           {/* Available */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62]">Available</span>
-              <Layers className="w-4 h-4 text-[#016A62]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62] dark:text-[#84D5CA]">Available</span>
+              <Layers className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#016A62] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#016A62] dark:text-[#84D5CA] font-mono leading-none">
                 {overview?.availableSeats ?? 0}
               </div>
-              <div className="text-[11px] text-[#016A62] font-medium mt-1">Open for selection</div>
+              <div className="text-[11px] text-[#016A62] dark:text-[#84D5CA] font-medium mt-1">Open for selection</div>
             </div>
           </div>
 
           {/* Blocked / Maintenance */}
-          <div className="bg-white p-4 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#BA1A1A]">Blocked</span>
-              <Ban className="w-4 h-4 text-[#BA1A1A]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#BA1A1A] dark:text-[#F87171]">Blocked</span>
+              <Ban className="w-4 h-4 text-[#BA1A1A] dark:text-[#F87171]" />
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-bold text-[#BA1A1A] font-mono leading-none">
+              <div className="text-2xl font-bold text-[#BA1A1A] dark:text-[#F87171] font-mono leading-none">
                 {overview ? ((overview.blockedSeats || 0) + (overview.maintenanceSeats || 0)) : 0}
               </div>
-              <div className="text-[11px] text-[#BA1A1A] font-medium mt-1">BVB Maintenance</div>
+              <div className="text-[11px] text-[#BA1A1A] dark:text-[#F87171] font-medium mt-1">BVB Maintenance</div>
             </div>
           </div>
         </section>
@@ -618,65 +618,65 @@ export const AdminDashboard: React.FC = () => {
         {/* SECTION 2: PRE-FLIGHT CERTIFICATION (5 COLS) + LIVE TURN ENGINE (7 COLS) */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Pre-Flight Verification Checklist Card (5 Cols) */}
-          <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="lg:col-span-5 bg-white dark:bg-[#0A1929] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div>
-              <div className="flex items-center justify-between mb-4 border-b border-[#DFE3E5] pb-3">
+              <div className="flex items-center justify-between mb-4 border-b border-[#DFE3E5] dark:border-[#1E293B] pb-3">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#016A62]" />
-                  <h2 className="text-sm font-bold text-[#07203C]">Pre-Flight Certification</h2>
+                  <ShieldCheck className="w-5 h-5 text-[#016A62] dark:text-[#84D5CA]" />
+                  <h2 className="text-sm font-bold text-[#07203C] dark:text-[#F8FAFC]">Pre-Flight Certification</h2>
                 </div>
-                <span className="px-2.5 py-0.5 rounded bg-[#9DEFE3]/40 text-[#0D6F66] text-xs font-bold">
+                <span className="px-2.5 py-0.5 rounded bg-[#9DEFE3]/40 text-[#0D6F66] dark:text-[#84D5CA] text-xs font-bold">
                   5/5 Passed
                 </span>
               </div>
 
               <ul className="flex flex-col gap-2.5">
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6]">
-                  <CheckCircle2 className="w-4 h-4 text-[#016A62] shrink-0 mt-0.5" />
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                  <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#181C1E]">Hostel Fee Reconciliation</span>
-                    <span className="text-[11px] text-[#44474D]">100% verified for active cohort (Finance ERP synchronized).</span>
+                    <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Hostel Fee Reconciliation</span>
+                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">100% verified for active cohort (Finance ERP synchronized).</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6]">
-                  <CheckCircle2 className="w-4 h-4 text-[#016A62] shrink-0 mt-0.5" />
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                  <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#181C1E]">BVB Floor 2 Inventory Frozen</span>
-                    <span className="text-[11px] text-[#44474D]">72 provisional seats certified; 4 tagged for electrical maintenance.</span>
+                    <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">BVB Floor 2 Inventory Frozen</span>
+                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">72 provisional seats certified; 4 tagged for electrical maintenance.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6]">
-                  <CheckCircle2 className="w-4 h-4 text-[#016A62] shrink-0 mt-0.5" />
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                  <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#181C1E]">Priority Queue Sequenced</span>
-                    <span className="text-[11px] text-[#44474D]">Chronological payment timestamp ordering locked by warden keys.</span>
+                    <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Priority Queue Sequenced</span>
+                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Chronological payment timestamp ordering locked by warden keys.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6]">
-                  <CheckCircle2 className="w-4 h-4 text-[#016A62] shrink-0 mt-0.5" />
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                  <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#181C1E]">Roommate Groups Synced</span>
-                    <span className="text-[11px] text-[#44474D]">4 intent clusters validated for paired or triple room lock.</span>
+                    <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Roommate Groups Synced</span>
+                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">4 intent clusters validated for paired or triple room lock.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6]">
-                  <CheckCircle2 className="w-4 h-4 text-[#016A62] shrink-0 mt-0.5" />
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                  <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#181C1E]">Warden Oversight Mandate</span>
-                    <span className="text-[11px] text-[#44474D]">Digitally approved by <strong>Dr. K. Shivakumar</strong> (Chief Warden, BVB Block).</span>
+                    <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Warden Oversight Mandate</span>
+                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Digitally approved by <strong>Dr. K. Shivakumar</strong> (Chief Warden, BVB Block).</span>
                   </div>
                 </li>
               </ul>
             </div>
 
-            <div className="mt-4 pt-3 flex items-center justify-between text-[#44474D] text-xs bg-[#E5E9EB]/50 p-2.5 rounded border border-[#DFE3E5]">
+            <div className="mt-4 pt-3 flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-xs bg-[#E5E9EB]/50 dark:bg-[#071321]/50 p-2.5 rounded border border-[#DFE3E5] dark:border-[#1E293B]">
               <span>Lock State: Master Ledger Immutable</span>
-              <span className="font-mono text-[#07203C] font-bold">SHA256: e82b...491a</span>
+              <span className="font-mono text-[#07203C] dark:text-[#84D5CA] font-bold">SHA256: e82b...491a</span>
             </div>
           </div>
 
           {/* Real-Time Cycle Control Action Toolbar (7 Cols) */}
-          <div className="lg:col-span-7 bg-white p-6 rounded-xl border border-[#DFE3E5] shadow-sm flex flex-col justify-between">
+          <div className="lg:col-span-7 bg-white dark:bg-[#0A1929] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DFE3E5] pb-3">
                 <div className="flex items-center gap-2.5">
@@ -713,14 +713,14 @@ export const AdminDashboard: React.FC = () => {
                   : '—';
 
                 return (
-                  <div className="p-4 rounded-xl bg-[#F0F4F6] border border-[#DFE3E5] flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="p-4 rounded-xl bg-[#F0F4F6] dark:bg-[#071321] border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                      <div className="w-12 h-12 rounded-full bg-[#07203C] text-white flex items-center justify-center font-bold text-base shadow-sm">
+                      <div className="w-12 h-12 rounded-full bg-[#07203C] dark:bg-[#0E243A] text-white flex items-center justify-center font-bold text-base shadow-sm border border-[#203653]">
                         {activeInitials}
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-[#07203C]">
+                          <span className="text-sm font-bold text-[#07203C] dark:text-[#F8FAFC]">
                             {hasTurn ? candidate?.fullName : (isCycleActive ? 'Awaiting Next in Queue' : 'No Active Candidate Turn')}
                           </span>
                           {hasTurn && candidate?.collegeId && (
@@ -729,12 +729,12 @@ export const AdminDashboard: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-[#44474D]">
+                        <span className="text-xs text-[#44474D] dark:text-[#94A3B8]">
                           {hasTurn
                             ? `${candidate?.department || 'Department Registered'} · Priority #${candidate?.priorityNumber || 1}`
                             : (isCycleActive ? 'Waiting for queue check' : 'Cycle must be explicitly started by Admin')}
                         </span>
-                        <span className="text-xs text-[#016A62] font-semibold mt-0.5">
+                        <span className="text-xs text-[#016A62] dark:text-[#84D5CA] font-semibold mt-0.5">
                           {isCycleActive
                             ? (hasTurn ? 'Authoritative selection turn in progress' : 'Standby')
                             : (activeCycleStatus === 'PAUSED' ? 'Turn clock frozen by Admin Stop' : 'Allocation queue dormant')}
@@ -743,11 +743,11 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Timer Block */}
-                    <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white rounded-lg border border-[#DFE3E5] shadow-xs">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
+                    <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white dark:bg-[#0A1929] rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] shadow-xs transition-colors">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E] dark:text-[#94A3B8]">
                         {activeCycleStatus === 'PAUSED' ? 'Turn Timer (Frozen)' : 'Turn Window Remaining'}
                       </span>
-                      <div className="text-2xl text-[#07203C] font-mono font-bold tracking-tight">
+                      <div className="text-2xl text-[#07203C] dark:text-[#84D5CA] font-mono font-bold tracking-tight">
                         {hasTurn ? formatTimer(turnTimerSecs) : '--:--'}
                       </div>
                       <div className="w-32 bg-[#E5E9EB] h-1.5 rounded-full overflow-hidden mt-1.5">
@@ -1550,33 +1550,33 @@ export const AdminDashboard: React.FC = () => {
       {/* CYCLE LIFECYCLE CONFIRMATION MODAL */}
       {cycleControlAction && (
         <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#DFE3E5] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+          <div className="bg-white dark:bg-[#0A1929] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#DFE3E5] dark:border-[#1E293B] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] transition-colors">
             <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-            <div className="flex items-center gap-3 border-b border-[#DFE3E5] pb-3">
+            <div className="flex items-center gap-3 border-b border-[#DFE3E5] dark:border-[#1E293B] pb-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                cycleControlAction === 'START'
-                  ? 'bg-[#9DEFE3]/50 text-[#016A62]'
-                  : (cycleControlAction === 'STOP' ? 'bg-[#FAF4E6] text-[#9C7A2E]' : 'bg-[#9DEFE3]/50 text-[#016A62]')
+                cycleControlAction === 'STOP'
+                  ? 'bg-[#FAF4E6] text-[#9C7A2E]'
+                  : 'bg-[#9DEFE3]/50 text-[#016A62] dark:text-[#84D5CA]'
               }`}>
                 {cycleControlAction === 'STOP' ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#07203C]">
+                <h3 className="text-sm font-bold text-[#07203C] dark:text-[#F8FAFC]">
                   {cycleControlAction === 'START' && 'Start Allocation Cycle'}
                   {cycleControlAction === 'STOP' && 'Stop / Pause Allocation Cycle'}
                   {cycleControlAction === 'RESUME' && 'Resume Allocation Cycle'}
                 </h3>
-                <div className="text-[11px] text-[#44474D]">
+                <div className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">
                   Authoritative administrator lifecycle control
                 </div>
               </div>
             </div>
 
-            <div className="text-xs text-[#44474D] space-y-2 leading-relaxed">
+            <div className="text-xs text-[#44474D] dark:text-[#94A3B8] space-y-2 leading-relaxed">
               {cycleControlAction === 'START' && (
                 <p>
                   You are about to start the live allocation engine for{' '}
-                  <strong className="text-[#07203C]">{primaryCycle?.name || 'BVB Pilot Cycle'}</strong>.
+                  <strong className="text-[#07203C] dark:text-[#84D5CA]">{primaryCycle?.name || 'BVB Pilot Cycle'}</strong>.
                   This will verify inventory disjointness, activate the queue, and begin sequential turns.
                 </p>
               )}
@@ -1594,12 +1594,12 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DFE3E5]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DFE3E5] dark:border-[#1E293B]">
               <button
                 type="button"
                 disabled={cycleActionSubmitting}
                 onClick={() => setCycleControlAction(null)}
-                className="px-4 py-2 bg-[#F0F4F6] hover:bg-[#E5E9EB] text-[#44474D] text-xs font-bold rounded-lg transition-colors"
+                className="px-4 py-2 bg-[#F0F4F6] dark:bg-[#071321] hover:bg-[#E5E9EB] dark:hover:bg-[#122438] text-[#44474D] dark:text-[#94A3B8] text-xs font-bold rounded-lg transition-colors"
               >
                 Cancel
               </button>

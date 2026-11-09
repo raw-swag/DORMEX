@@ -320,7 +320,7 @@ export const MessMenuView: React.FC = () => {
           const displayedMenu = (selectedMenuId ? menuHistory.find(m => m.id === selectedMenuId) : null) || activeMenu;
 
           return (
-            <div className="bg-white rounded-2xl border border-[#E2E6E8] p-8 shadow-xs">
+            <div className="bg-white dark:bg-[#0A1929] rounded-2xl border border-[#E2E6E8] dark:border-[#1E293B] p-8 shadow-xs transition-colors">
               {loading ? (
                 <div className="py-20 text-center text-[#627084] space-y-2">
                   <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#2C8279]" />

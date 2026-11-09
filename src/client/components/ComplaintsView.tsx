@@ -449,7 +449,7 @@ export const ComplaintsView: React.FC = () => {
       {/* Complaints List */}
       <div className="space-y-3">
         {filtered.map((c) => (
-          <div key={c.id} className="bg-white p-5 rounded-xl border border-[#E2E6E8] shadow-sm space-y-2">
+          <div key={c.id} className="bg-white dark:bg-[#0A1929] p-5 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-sm space-y-2 transition-colors">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
