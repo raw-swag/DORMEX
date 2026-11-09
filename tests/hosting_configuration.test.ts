@@ -51,6 +51,7 @@ describe('DORMEX Hosting, TLS & Production Environment Integrity Suite', () => {
     it('permits valid 32+ character JWT_SECRET in production with in-memory DB override for testing', async () => {
       process.env.NODE_ENV = 'production';
       process.env.JWT_SECRET = 'a-very-long-production-jwt-secret-key-32-chars-long';
+      process.env.COOKIE_SECRET = 'a-very-long-production-cookie-secret-key-32-chars-long';
       const db = getDatabaseService(true);
       const app = await buildApp(db);
       expect(app).toBeDefined();
