@@ -4,6 +4,7 @@ import { PWAInstallProvider } from './context/PWAInstallContext.js';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt.js';
 import { AppLayout } from './components/AppLayout.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
+import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary.js';
 
 // Route-level dynamic code splitting for internal post-login views (excluding PortalSelectionView)
 const FloorPlanEditor = lazy(() => import('./components/FloorPlanEditor.js').then((m) => ({ default: m.FloorPlanEditor })));
@@ -47,25 +48,28 @@ const AppContent: React.FC = () => {
   return (
     <>
       <AppLayout currentTab={currentTab} setCurrentTab={setCurrentTab}>
-        <Suspense
-          fallback={
-            <div className="min-h-[50vh] flex items-center justify-center">
-              <div className="w-8 h-8 border-3 border-[#2C8279] border-t-transparent rounded-full animate-spin" />
-            </div>
-          }
-        >
-          {currentTab === 'student_allocation' && <StudentAllocationView initialSubTab="allocation_map" />}
-          {currentTab === 'student_profile' && <StudentAllocationView initialSubTab="workflow" />}
-          {currentTab === 'student_complaints' && <ComplaintsView />}
-          {currentTab === 'student_mess_menu' && <MessMenuView />}
-          {currentTab === 'admin_overview' && <AdminDashboard />}
-          {currentTab === 'admin_students' && <StudentRegistryView />}
-          {currentTab === 'admin_floor_editor' && <FloorPlanEditor />}
-          {currentTab === 'admin_complaints' && <ComplaintsView />}
-          {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
-          {currentTab === 'office_mess_menu' && <MessMenuView />}
-          {currentTab === 'admin_devices' && <DeviceManagementView />}
-        </Suspense>
+        <ChunkLoadErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <div className="w-8 h-8 border-3 border-[#2C8279] border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-stone-500 font-medium">Loading view...</p>
+              </div>
+            }
+          >
+            {currentTab === 'student_allocation' && <StudentAllocationView initialSubTab="allocation_map" />}
+            {currentTab === 'student_profile' && <StudentAllocationView initialSubTab="workflow" />}
+            {currentTab === 'student_complaints' && <ComplaintsView />}
+            {currentTab === 'student_mess_menu' && <MessMenuView />}
+            {currentTab === 'admin_overview' && <AdminDashboard />}
+            {currentTab === 'admin_students' && <StudentRegistryView />}
+            {currentTab === 'admin_floor_editor' && <FloorPlanEditor />}
+            {currentTab === 'admin_complaints' && <ComplaintsView />}
+            {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
+            {currentTab === 'office_mess_menu' && <MessMenuView />}
+            {currentTab === 'admin_devices' && <DeviceManagementView />}
+          </Suspense>
+        </ChunkLoadErrorBoundary>
       </AppLayout>
       <PWAInstallPrompt />
     </>
