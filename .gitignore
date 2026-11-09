@@ -6,3 +6,5 @@ dist/
 .agent/
 .claude/
 scratch/
+audit/*
+!audit/audit-report.md
