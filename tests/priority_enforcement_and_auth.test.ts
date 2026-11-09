@@ -392,11 +392,13 @@ describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () 
       const originalNodeEnv = process.env.NODE_ENV;
       const originalSeedDemo = process.env.SEED_DEMO_DATA;
       const originalJwtSecret = process.env.JWT_SECRET;
+      const originalCookieSecret = process.env.COOKIE_SECRET;
       try {
         process.env.NODE_ENV = nodeEnv;
         process.env.SEED_DEMO_DATA = seedDemoData;
         if (nodeEnv === 'production') {
           process.env.JWT_SECRET = 'dormex-test-production-jwt-signing-secret-32-chars-long';
+          process.env.COOKIE_SECRET = 'dormex-test-production-cookie-secret-32-chars-long';
         }
         resetDatabaseInstance();
         const testDb = getDatabaseService(true);
@@ -423,6 +425,11 @@ describe('Phase One & Four: Strict Priority Queue & Turn Enforcement Suite', () 
           process.env.JWT_SECRET = originalJwtSecret;
         } else {
           delete process.env.JWT_SECRET;
+        }
+        if (originalCookieSecret !== undefined) {
+          process.env.COOKIE_SECRET = originalCookieSecret;
+        } else {
+          delete process.env.COOKIE_SECRET;
         }
       }
     };

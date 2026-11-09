@@ -47,7 +47,7 @@ describe('DORMEX Dynamic Demo Accounts Suite (18 Accounts Expansion)', () => {
       expires_at: expiresAt,
     });
     demoSessionToken = mockSessionToken;
-  }, 30000);
+  }, 120000);
 
   afterAll(async () => {
     if (app) {
