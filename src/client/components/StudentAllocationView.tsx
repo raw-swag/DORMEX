@@ -72,6 +72,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
   const [isConfirmReviewStep, setIsConfirmReviewStep] = useState(false);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const confirmMutexRef = useRef(false);
+  const queueEntryMutexRef = useRef(false);
   const inspectorHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const shouldFocusInspectorHeadingRef = useRef(false);
   const [myAllocation, setMyAllocation] = useState<any>(null);
@@ -305,10 +306,13 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
   // Join waiting room
   const handleJoinWaitingRoom = async () => {
+    if (waitingEntry) return;
+    if (queueEntryMutexRef.current) return;
     if (!termsStatus?.accepted) {
       setShowTermsModal(true);
       return;
     }
+    queueEntryMutexRef.current = true;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -334,6 +338,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       const feedback = formatStudentAllocationError(err);
       setErrorMsg(feedback.friendlyMessage);
     } finally {
+      queueEntryMutexRef.current = false;
       setLoading(false);
     }
   };
