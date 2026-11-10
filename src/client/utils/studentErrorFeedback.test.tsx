@@ -47,10 +47,29 @@ describe('Student Experience Phase 1: Friendly Error Handling & Allocation Queue
       expect(termsFb.type).toBe(AllocationFeedbackType.TERMS_REQUIRED);
       expect(termsFb.friendlyMessage).toContain('Hostel Room Responsibility Agreement');
 
+      // INELIGIBLE with explicit status
       const ineligErr = new Error('INELIGIBLE: Student eligibility status is PENDING_VERIFICATION');
       const ineligFb = formatStudentAllocationError(ineligErr);
       expect(ineligFb.type).toBe(AllocationFeedbackType.STUDENT_INELIGIBLE);
-      expect(ineligFb.friendlyMessage).toContain('administrative eligibility clearance');
+      expect(ineligFb.friendlyMessage).toContain('status: PENDING VERIFICATION');
+      expect(ineligFb.friendlyMessage).not.toContain('SBI Collect');
+      expect(ineligFb.friendlyMessage).not.toContain('fee payment');
+
+      // INELIGIBLE without explicit status uses safe generic message
+      const genericInelig = formatStudentAllocationError(new Error('INELIGIBLE: Student not eligible'));
+      expect(genericInelig.type).toBe(AllocationFeedbackType.STUDENT_INELIGIBLE);
+      expect(genericInelig.friendlyMessage).toContain('Your account is currently not eligible for allocation');
+      expect(genericInelig.friendlyMessage).not.toContain('SBI Collect');
+      expect(genericInelig.friendlyMessage).not.toContain('fee payment');
+    });
+
+    it('5b. SEAT_UNAVAILABLE does not invent priority information', () => {
+      const seatErr = new Error('SEAT_UNAVAILABLE');
+      const feedback = formatStudentAllocationError(seatErr);
+      expect(feedback.type).toBe(AllocationFeedbackType.SEAT_CONTENTION);
+      expect(feedback.friendlyMessage).toBe('This bed is no longer available. Please select another available bed.');
+      expect(feedback.friendlyMessage).not.toContain('ahead of you in priority');
+      expect(feedback.friendlyMessage).not.toContain('higher-priority');
     });
   });
 
@@ -129,6 +148,70 @@ describe('Student Experience Phase 1: Friendly Error Handling & Allocation Queue
       const publishedStr = JSON.stringify(publishedRendered);
       expect(publishedStr).toContain('Cycle Concluded');
       expect(publishedStr).not.toContain('Enter Allocation Queue');
+    });
+  });
+
+  describe('Priority 3: queueEntryMutexRef behavior for queue entry', () => {
+    it('11. simulates queueEntryMutexRef locking out concurrent invocations and releasing in finally', async () => {
+      let activeCalls = 0;
+      let maxConcurrent = 0;
+      const queueEntryMutexRef = { current: false };
+
+      const simulateQueueEntry = async (shouldFail = false) => {
+        if (queueEntryMutexRef.current) return 'BLOCKED';
+        queueEntryMutexRef.current = true;
+        try {
+          activeCalls++;
+          maxConcurrent = Math.max(maxConcurrent, activeCalls);
+          // Simulate network delay
+          await new Promise((r) => setTimeout(r, 10));
+          if (shouldFail) throw new Error('Network failure');
+          return 'SUCCESS';
+        } finally {
+          activeCalls--;
+          queueEntryMutexRef.current = false;
+        }
+      };
+
+      // Concurrent invocations
+      const [res1, res2] = await Promise.all([
+        simulateQueueEntry(),
+        simulateQueueEntry(),
+      ]);
+
+      expect(maxConcurrent).toBe(1);
+      expect([res1, res2]).toContain('SUCCESS');
+      expect([res1, res2]).toContain('BLOCKED');
+      expect(queueEntryMutexRef.current).toBe(false);
+
+      // Verify release on failure
+      const failRes = await simulateQueueEntry(true).catch((e) => e.message);
+      expect(failRes).toBe('Network failure');
+      expect(queueEntryMutexRef.current).toBe(false);
+
+      // Subsequent invocation works after failure release
+      const followUpRes = await simulateQueueEntry(false);
+      expect(followUpRes).toBe('SUCCESS');
+      expect(queueEntryMutexRef.current).toBe(false);
+    });
+
+    it('12. prevents submission if student has already entered waiting queue', () => {
+      const queueEntryMutexRef = { current: false };
+      const waitingEntry = { id: 'wait-1', queuePosition: 2 };
+
+      const handleJoinWaitingRoomSim = (entry: any) => {
+        if (entry) return 'ALREADY_ENTERED';
+        if (queueEntryMutexRef.current) return 'MUTEX_LOCKED';
+        queueEntryMutexRef.current = true;
+        try {
+          return 'PROCEED';
+        } finally {
+          queueEntryMutexRef.current = false;
+        }
+      };
+
+      expect(handleJoinWaitingRoomSim(waitingEntry)).toBe('ALREADY_ENTERED');
+      expect(handleJoinWaitingRoomSim(null)).toBe('PROCEED');
     });
   });
 });

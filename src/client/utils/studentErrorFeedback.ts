@@ -55,13 +55,18 @@ export function formatStudentAllocationError(error: unknown): FormattedError {
     };
   }
 
-  // 3. Student Ineligible (e.g. Fee Pending or Academic Hold)
+  // 3. Student Ineligible
   if (rawMessage.includes('INELIGIBLE')) {
+    const statusMatch = rawMessage.match(/eligibility status is ([A-Z_]+)/i);
+    const specificStatus = statusMatch ? statusMatch[1].replace(/_/g, ' ') : null;
+
     return {
       type: AllocationFeedbackType.STUDENT_INELIGIBLE,
-      friendlyMessage: 'Your account is currently pending administrative eligibility clearance. Please verify your fee payment with the Hostel Office.',
+      friendlyMessage: specificStatus
+        ? `Your account is not eligible for allocation (status: ${specificStatus}). Please contact the Hostel Office.`
+        : 'Your account is currently not eligible for allocation. Please contact the Hostel Office to review your eligibility status.',
       rawError: rawMessage,
-      actionable: 'Ensure SBI Collect payment verification has been certified by the warden desk.',
+      actionable: 'Please visit or contact the Hostel Office to review your current eligibility status.',
     };
   }
 
@@ -78,7 +83,7 @@ export function formatStudentAllocationError(error: unknown): FormattedError {
   if (rawMessage.includes('SEAT_UNAVAILABLE') || rawMessage.includes('claimed concurrently') || rawMessage.includes('uq_seat_current')) {
     return {
       type: AllocationFeedbackType.SEAT_CONTENTION,
-      friendlyMessage: 'This bed was just selected by another student ahead of you in priority order. Please select another available green bed.',
+      friendlyMessage: 'This bed is no longer available. Please select another available bed.',
       rawError: rawMessage,
       actionable: 'Choose an alternate open bed on the floor map.',
     };
