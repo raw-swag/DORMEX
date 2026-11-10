@@ -154,14 +154,14 @@ export const DeviceManagementView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header & Overview */}
-      <div className="bg-white rounded-xl border border-[#E2E6E8] p-5 sm:p-6 shadow-xs">
+      <div className="bg-white dark:bg-[#111F32] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#1E7B54]" />
-              <h1 className="text-lg font-bold text-[#203653]">Hardware-Bound Three-Device Demo Authentication</h1>
+              <h1 className="text-lg font-bold text-[#203653] dark:text-[#F1F5F9]">Hardware-Bound Three-Device Demo Authentication</h1>
             </div>
-            <p className="text-xs text-[#627084] mt-1">
+            <p className="text-xs text-[#627084] dark:text-[#91A4BA] mt-1">
               Enforce strict, hardware-bound WebAuthn Level 3 platform authenticators for exactly two dedicated presentation devices.
             </p>
           </div>
@@ -173,12 +173,12 @@ export const DeviceManagementView: React.FC = () => {
         </div>
 
         {/* Security Invariant Callout */}
-        <div className="mt-4 p-3.5 bg-[#F0F5F8] border border-[#D0DFE8] rounded-lg text-xs text-[#203653] flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-[#2C8279] shrink-0 mt-0.5" />
+        <div className="mt-4 p-3.5 bg-[#F0F5F8] border border-[#D0DFE8] rounded-lg text-xs text-[#203653] dark:text-[#F1F5F9] flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-[#2C8279] dark:text-[#63D6C6] shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-semibold text-[#1B365D]">Zero-Trust Security & Backup Invariant Enforcement:</p>
             <p className="text-[#4E6178]">
-              Multi-device synced passkeys (Google Password Manager sync / iCloud Keychain) are rejected. Credentials must report single-device TPM or Secure Enclave attachment (<code className="bg-white px-1 py-0.5 rounded border border-[#CBD5E1]">backup_eligible = FALSE</code>).
+              Multi-device synced passkeys (Google Password Manager sync / iCloud Keychain) are rejected. Credentials must report single-device TPM or Secure Enclave attachment (<code className="bg-white dark:bg-[#111F32] px-1 py-0.5 rounded border border-[#CBD5E1]">backup_eligible = FALSE</code>).
             </p>
           </div>
         </div>
@@ -225,12 +225,12 @@ export const DeviceManagementView: React.FC = () => {
             return (
               <div
                 key={slot.slot_id}
-                className={`bg-white rounded-xl border p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all ${
+                className={`bg-white dark:bg-[#111F32] rounded-xl border p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all ${
                   slot.is_active
                     ? 'border-[#A8D5C2] bg-gradient-to-b from-white to-[#F9FCFA]'
                     : slot.is_revoked
                     ? 'border-[#F8B4B4] bg-gradient-to-b from-white to-[#FDFBFB]'
-                    : 'border-[#E2E6E8]'
+                    : 'border-[#E2E6E8] dark:border-[#293B52]'
                 }`}
               >
                 {/* Slot Top Details */}
@@ -243,69 +243,69 @@ export const DeviceManagementView: React.FC = () => {
                             ? 'bg-[#E7F2ED] text-[#1E7B54]'
                             : slot.is_revoked
                             ? 'bg-[#FDF2F2] text-[#9B1C1C]'
-                            : 'bg-[#F0F5F8] text-[#2C8279]'
+                            : 'bg-[#F0F5F8] text-[#2C8279] dark:text-[#63D6C6]'
                         }`}
                       >
                         <Icon className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#627084]">{slot.slot_id}</span>
+                          <span className="text-xs font-bold text-[#627084] dark:text-[#91A4BA]">{slot.slot_id}</span>
                           <span
                             className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
                               slot.is_active
                                 ? 'bg-[#1E7B54] text-white'
                                 : slot.is_revoked
                                 ? 'bg-[#9B1C1C] text-white'
-                                : 'bg-[#E2E6E8] text-[#627084]'
+                                : 'bg-[#E2E6E8] text-[#627084] dark:text-[#91A4BA]'
                             }`}
                           >
                             {slot.is_active ? 'Active & Bound' : slot.is_revoked ? 'Revoked' : 'Unregistered'}
                           </span>
                         </div>
-                        <h2 className="text-sm font-bold text-[#203653] mt-0.5">{slot.device_label}</h2>
+                        <h2 className="text-sm font-bold text-[#203653] dark:text-[#F1F5F9] mt-0.5">{slot.device_label}</h2>
                       </div>
                     </div>
                   </div>
 
                   {/* Metadata Specs */}
-                  <div className="mt-5 space-y-2.5 text-xs border-t border-b border-[#E2E6E8] py-3.5">
-                    <div className="flex items-center justify-between text-[#627084]">
+                  <div className="mt-5 space-y-2.5 text-xs border-t border-b border-[#E2E6E8] dark:border-[#293B52] py-3.5">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Platform Target</span>
-                      <span className="font-semibold text-[#203653]">
+                      <span className="font-semibold text-[#203653] dark:text-[#F1F5F9]">
                         {isWindows ? 'Windows Hello (TPM / PIN)' : 'Android Keystore / Chrome'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[#627084]">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Backup Invariant</span>
                       <span className="font-semibold text-[#1E7B54] flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5" /> Single-Device Only
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[#627084]">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Credential ID</span>
-                      <span className="font-mono text-[11px] text-[#203653]">
+                      <span className="font-mono text-[11px] text-[#203653] dark:text-[#F1F5F9]">
                         {slot.credential_id ? `${slot.credential_id.substring(0, 18)}...` : 'None (Not Enrolled)'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[#627084]">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Auth Counter</span>
-                      <span className="font-semibold text-[#203653]">{slot.counter}</span>
+                      <span className="font-semibold text-[#203653] dark:text-[#F1F5F9]">{slot.counter}</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[#627084]">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Enrolled At</span>
-                      <span className="text-[#203653]">
+                      <span className="text-[#203653] dark:text-[#F1F5F9]">
                         {slot.registered_at ? new Date(slot.registered_at).toLocaleString() : '—'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[#627084]">
+                    <div className="flex items-center justify-between text-[#627084] dark:text-[#91A4BA]">
                       <span>Last Authenticated</span>
-                      <span className="text-[#203653]">
+                      <span className="text-[#203653] dark:text-[#F1F5F9]">
                         {slot.last_authenticated_at ? new Date(slot.last_authenticated_at).toLocaleString() : 'Never'}
                       </span>
                     </div>

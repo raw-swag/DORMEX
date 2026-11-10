@@ -62,16 +62,16 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
       subtitle: 'Institutional Room Selection Process',
       icon: Compass,
       content: (
-        <div className="space-y-3 text-xs text-[#203653] leading-relaxed">
+        <div className="space-y-3 text-xs text-[#203653] dark:text-[#F1F5F9] leading-relaxed">
           <p>
             DORMEX is your college&apos;s authoritative hostel allotment engine. Allocations are strictly ordered by official institutional priority ranks.
           </p>
-          <div className="p-3 bg-[#F0F4F6] rounded-xl border border-[#D5DCDF] space-y-1.5">
-            <div className="font-bold text-[#07203C] flex items-center gap-1.5">
-              <Building className="w-4 h-4 text-[#016A62]" aria-hidden="true" />
+          <div className="p-3 bg-[#F0F4F6] dark:bg-[#0A1626] rounded-xl border border-[#D5DCDF] dark:border-[#293B52] space-y-1.5">
+            <div className="font-bold text-[#07203C] dark:text-[#F1F5F9] flex items-center gap-1.5">
+              <Building className="w-4 h-4 text-[#016A62] dark:text-[#63D6C6]" aria-hidden="true" />
               <span>Pilot Scope & Eligibility</span>
             </div>
-            <p className="text-[11px] text-[#627084]">
+            <p className="text-[11px] text-[#627084] dark:text-[#91A4BA]">
               Currently live for the <strong>BVB Block Floor 2</strong> cohort. Only students with verified institutional eligibility and fee clearance can select rooms.
             </p>
           </div>
@@ -83,7 +83,7 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
       subtitle: 'What Orange & Blue Markers Mean',
       icon: Users,
       content: (
-        <div className="space-y-3 text-xs text-[#203653] leading-relaxed">
+        <div className="space-y-3 text-xs text-[#203653] dark:text-[#F1F5F9] leading-relaxed">
           <p>
             You can indicate non-binding roommate preferences before your turn starts.
           </p>
@@ -115,7 +115,7 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
       subtitle: 'Strict Queue Progression',
       icon: Clock,
       content: (
-        <div className="space-y-3 text-xs text-[#203653] leading-relaxed">
+        <div className="space-y-3 text-xs text-[#203653] dark:text-[#F1F5F9] leading-relaxed">
           <p>
             When your priority turn becomes active, your countdown window opens at the top of the screen:
           </p>
@@ -132,7 +132,7 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
       subtitle: 'Authoritative Two-Step Seat Lock',
       icon: CheckCircle2,
       content: (
-        <div className="space-y-3 text-xs text-[#203653] leading-relaxed">
+        <div className="space-y-3 text-xs text-[#203653] dark:text-[#F1F5F9] leading-relaxed">
           <p>
             To confirm a room during your active turn:
           </p>
@@ -170,25 +170,25 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
       aria-modal="true"
       aria-labelledby="onboarding-guide-title"
     >
-      <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-5 border border-[#E2E6E8] shadow-2xl animate-fadeIn">
+      <div className="bg-white dark:bg-[#111F32] rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-5 border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl animate-fadeIn">
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
+        <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] text-[#1E7B54] flex items-center justify-center font-bold shrink-0">
               <StepIcon className="w-5 h-5 text-[#1E7B54]" aria-hidden="true" />
             </div>
             <div>
-              <h2 id="onboarding-guide-title" className="text-base font-bold text-[#203653]">
+              <h2 id="onboarding-guide-title" className="text-base font-bold text-[#203653] dark:text-[#F1F5F9]">
                 {currentStep.title}
               </h2>
-              <p className="text-xs text-[#627084]">{currentStep.subtitle}</p>
+              <p className="text-xs text-[#627084] dark:text-[#91A4BA]">{currentStep.subtitle}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSkip}
             aria-label="Skip onboarding"
-            className="p-1 rounded-lg text-[#627084] hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+            className="p-1 rounded-lg text-[#627084] dark:text-[#91A4BA] hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -200,7 +200,7 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
             <div
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i === step ? 'bg-[#016A62]' : i < step ? 'bg-[#A8D5C2]' : 'bg-[#E5E9EB]'
+                i === step ? 'bg-[#016A62]' : i < step ? 'bg-[#A8D5C2]' : 'bg-[#E5E9EB] dark:bg-[#0A1626]'
               }`}
             />
           ))}
@@ -210,11 +210,11 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
         <div className="min-h-[190px] py-1">{currentStep.content}</div>
 
         {/* Footer Navigation */}
-        <div className="flex items-center justify-between pt-3 border-t border-[#E2E6E8]">
+        <div className="flex items-center justify-between pt-3 border-t border-[#E2E6E8] dark:border-[#293B52]">
           <button
             type="button"
             onClick={handleSkip}
-            className="text-xs font-semibold text-[#627084] hover:text-[#203653] py-2 px-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+            className="text-xs font-semibold text-[#627084] dark:text-[#91A4BA] hover:text-[#203653] dark:text-[#F1F5F9] py-2 px-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
           >
             Skip Guide
           </button>
@@ -224,7 +224,7 @@ export const AllocationOnboardingModal: React.FC<AllocationOnboardingModalProps>
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
-                className="py-2 px-3 border border-[#E2E6E8] text-[#203653] hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+                className="py-2 px-3 border border-[#E2E6E8] dark:border-[#293B52] text-[#203653] dark:text-[#F1F5F9] hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
               >
                 <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Back</span>

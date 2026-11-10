@@ -260,14 +260,21 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
     return () => clearInterval(tInterval);
   }, [activeSession?.expiresAt, availableCycles, cycleId]);
 
-  // Load cycles and buildings on mount
+  // Load cycles and buildings on mount with cohort-aware cycle resolution
   useEffect(() => {
     Promise.all([
       apiFetch('/api/allocation-cycles').then((r) => r.ok ? r.json() : []),
       apiFetch('/api/buildings').then((r) => r.ok ? r.json() : []),
     ]).then(([cycs, blds]) => {
       setAvailableCycles(cycs);
-      if (cycs.length > 0 && !cycs.find((c: any) => c.id === cycleId)) {
+      if (cycs.length === 1 && !cycs[0]._ambiguous) {
+        // Case A: Exactly one unambiguous cycle matches the student's cohort
+        setCycleId(cycs[0].id);
+      } else if (cycs.some((c: any) => c._ambiguous)) {
+        // Case C: Multiple competing cycles without an authoritative single designation
+        setErrorMsg('Multiple competing allocation cycles are configured for your cohort. The Hostel Office has been notified to resolve cycle assignment.');
+      } else if (cycs.length > 1) {
+        // Resolved by single active/ready operational status
         setCycleId(cycs[0].id);
       }
       setBuildings(blds);
@@ -275,7 +282,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         setSelectedBuildingId(blds[0].id);
       }
     });
-  }, []);
+  }, [myProfile?.academic_year, myProfile?.quota_category]);
 
   // Fetch floors whenever selected building changes
   useEffect(() => {
@@ -335,7 +342,12 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       }
       setActiveSubTab('allocation_map');
     } catch (err: any) {
-      const feedback = formatStudentAllocationError(err);
+      const currentCycle = availableCycles.find((c: any) => c.id === cycleId);
+      const feedback = formatStudentAllocationError(err, {
+        cycleStatus: currentCycle?.status,
+        quota: myProfile?.quota_category,
+        academicYear: myProfile?.academic_year,
+      });
       setErrorMsg(feedback.friendlyMessage);
     } finally {
       queueEntryMutexRef.current = false;
@@ -437,9 +449,38 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
     if (!selectedRoomNumber || !session?.profileId) return;
     setRoommateMsg(null);
 
+    const myRank = myProfile?.assigned_priority;
     const priorities: number[] = [];
-    if (roommatePriority1) priorities.push(parseInt(roommatePriority1, 10));
-    if (roommatePriority2) priorities.push(parseInt(roommatePriority2, 10));
+
+    if (roommatePriority1) {
+      const p1 = parseInt(roommatePriority1, 10);
+      if (isNaN(p1) || p1 < 1) {
+        setRoommateMsg({ type: 'error', text: 'Peer rank must be a positive number.' });
+        return;
+      }
+      if (myRank && p1 === myRank) {
+        setRoommateMsg({ type: 'error', text: 'You cannot propose yourself (Rank #' + myRank + ') as a roommate.' });
+        return;
+      }
+      priorities.push(p1);
+    }
+
+    if (roommatePriority2) {
+      const p2 = parseInt(roommatePriority2, 10);
+      if (isNaN(p2) || p2 < 1) {
+        setRoommateMsg({ type: 'error', text: 'Peer rank must be a positive number.' });
+        return;
+      }
+      if (myRank && p2 === myRank) {
+        setRoommateMsg({ type: 'error', text: 'You cannot propose yourself (Rank #' + myRank + ') as a roommate.' });
+        return;
+      }
+      if (priorities.includes(p2)) {
+        setRoommateMsg({ type: 'error', text: 'Duplicate peer rank entered. Please enter distinct priority ranks.' });
+        return;
+      }
+      priorities.push(p2);
+    }
 
     if (priorities.length === 0) {
       setRoommateMsg({ type: 'error', text: 'Please enter at least one valid priority number' });
@@ -807,7 +848,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             ? 'bg-white dark:bg-[#0E243A] ring-2 ring-[#1D63B8] dark:ring-[#84D5CA] shadow-md z-10 border-transparent'
             : isFull
             ? 'bg-[#dfe3e5] dark:bg-[#1E293B]/70 hover:bg-[#d6dbdd] dark:hover:bg-[#1E293B] shadow-xs border border-transparent'
-            : 'bg-white dark:bg-[#0A1929] hover:bg-[#e5e9eb] dark:hover:bg-[#152E4A] shadow-xs border border-[#d2d7d9] dark:border-[#1E293B]'
+            : 'bg-white dark:bg-[#111F32] hover:bg-[#e5e9eb] dark:hover:bg-[#152E4A] shadow-xs border border-[#d2d7d9] dark:border-[#293B52]'
         }`}
       >
         {isTarget202 && !isSelected && (
@@ -968,7 +1009,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       )}
 
       {/* Student Onboarding & Operational Sub-Navigation: Clean Segmented Stepper */}
-      <div className="bg-white dark:bg-[#0A1929] p-3.5 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex flex-wrap items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#111F32] p-3.5 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs flex flex-wrap items-center justify-between gap-4 transition-colors">
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setActiveSubTab('workflow')}
@@ -1148,7 +1189,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           />
 
           {/* Dedicated Status Legend Section */}
-          <div className="bg-white dark:bg-[#0A1929] p-3.5 sm:p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-3.5 sm:p-4 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
             <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
               <span className="text-[11px] uppercase font-bold text-[#627084] dark:text-[#94A3B8] tracking-wider w-full sm:w-auto">Status Legend:</span>
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1184,19 +1225,19 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
             return (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs space-y-1 transition-colors">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#1E7B54] dark:text-[#84D5CA]">Vacant Beds</div>
                   <div className="text-2xl font-bold font-mono text-[#1E7B54] dark:text-[#84D5CA]">{vacantCount}</div>
                   <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Open for selection by active candidate</div>
                 </div>
 
-                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs space-y-1 transition-colors">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#E06A26] dark:text-[#FB923C]">Intent Reservations</div>
                   <div className="text-2xl font-bold font-mono text-[#E06A26] dark:text-[#FB923C]">{intentCount}</div>
                   <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Provisional roommate group requests</div>
                 </div>
 
-                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs space-y-1 transition-colors">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#203653] dark:text-[#93C5FD]">Confirmed Occupancy</div>
                   <div className="text-2xl font-bold font-mono text-[#203653] dark:text-[#93C5FD]">{occupiedCount}</div>
                   <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Finalized authoritative seat assignments</div>
@@ -1248,9 +1289,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           {/* Master-Detail Layout: 70% Floor Map, 30% Room Inspector */}
           <div id="room-matrix-container" tabIndex={-1} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start focus:outline-none">
             {/* 70% Map Panel (8 cols on lg) */}
-            <div className="lg:col-span-8 bg-white dark:bg-[#0A1929] p-3.5 sm:p-5 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-4 overflow-hidden transition-colors">
+            <div className="lg:col-span-8 bg-white dark:bg-[#111F32] p-3.5 sm:p-5 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs space-y-4 overflow-hidden transition-colors">
               {/* Floor Plan Header Overlay */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-1 bg-[#F0F4F6] dark:bg-[#071321] px-3 py-2 rounded-lg gap-2 border border-[#E5E9EB] dark:border-[#1E293B]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-1 bg-[#F0F4F6] dark:bg-[#0A1626] px-3 py-2 rounded-lg gap-2 border border-[#E5E9EB] dark:border-[#293B52]">
                 <div className="flex items-center gap-2">
                   <Building className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
                   <span className="text-[11px] uppercase tracking-wider text-[#181C1E] dark:text-[#F8FAFC] font-bold">
@@ -1270,7 +1311,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               <div className="flex flex-col gap-4">
                 {/* NORTH WING (Rooms 201 - 224) */}
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'NORTH') && (
-                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] transition-all space-y-2.5">
+                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#0A1626] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] transition-all space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                         North Wing Corridor · Rooms 201–224
@@ -1303,7 +1344,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'EAST') && (
                   <div className="flex flex-col md:flex-row gap-3 items-stretch">
                     {/* Central Courtyard Graphic */}
-                    <div className="flex-1 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[120px] border border-[#DFE3E5] dark:border-[#1E293B]">
+                    <div className="flex-1 bg-[#F0F4F6] dark:bg-[#0A1626] rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[120px] border border-[#DFE3E5] dark:border-[#293B52]">
                       <div className="text-[#016A62] dark:text-[#84D5CA] text-2xl mb-1">🌿</div>
                       <span className="text-xs uppercase tracking-widest text-[#44474D] dark:text-[#E2E8F0] font-bold">
                         Open Green Central Courtyard & Lightwell
@@ -1314,7 +1355,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     </div>
 
                     {/* EAST WING CONNECTOR (Rooms 249 - 252 hub view) */}
-                    <div className="w-full md:w-72 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl p-3 border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col justify-between space-y-2">
+                    <div className="w-full md:w-72 bg-[#EAEEF0] dark:bg-[#0A1626] rounded-xl p-3 border border-[#DFE3E5] dark:border-[#293B52] flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                           East Wing Hub (249-272)
@@ -1338,7 +1379,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
                 {/* SOUTH WING (Rooms 225 - 248) */}
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'SOUTH') && (
-                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] transition-all space-y-2.5">
+                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#0A1626] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] transition-all space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                         South Wing Corridor · Rooms 225–248
@@ -1369,10 +1410,10 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               </div>
 
               {/* BVB Block Heritage Elevation Card */}
-              <div className="mt-3 p-3 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="mt-3 p-3 bg-[#F0F4F6] dark:bg-[#0A1626] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    className="w-14 h-12 object-cover rounded-lg shadow-xs border border-[#DFE3E5] dark:border-[#1E293B]"
+                    className="w-14 h-12 object-cover rounded-lg shadow-xs border border-[#DFE3E5] dark:border-[#293B52]"
                     alt="BVB Block Heritage Elevation"
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRb8sQRBzS2mOkrQEvneAs4Xc2ONT0NLaJKlsApWfo483uxY7Ir4oKEzKwdgBdiZC9tZgdxzKwumsikImvdycT2WL4wCKXA6ZVn7SPA1oWP7XV1Z8f7tdFTdiliZpxN1wk7MbHhRDfh_XCG2YIlXatPoWOPw0EyS2IbTxunPMsoLVkWxl8_pmt3_kemFIyn9GGvDtHAhl0NolQyqW8zYmfN4KQxPOn2PprCGUdHRALrY_ZWxKBFsGdaA"
                   />
@@ -1395,7 +1436,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               </div>
 
               {/* Floor Plan Architectural Footnote */}
-              <div className="pt-2 flex flex-wrap items-center justify-between text-[11px] text-[#74777E] dark:text-[#64748B] border-t border-[#E5E9EB] dark:border-[#1E293B]">
+              <div className="pt-2 flex flex-wrap items-center justify-between text-[11px] text-[#74777E] dark:text-[#64748B] border-t border-[#E5E9EB] dark:border-[#293B52]">
                 <span>SIT Department of Civil Works & Campus Planning · Structural Scale 1:100</span>
                 <span>All room portals equipped with 1Gbps SIT-WLAN access points</span>
               </div>
@@ -1480,7 +1521,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               `}
             >
               {/* Sheet Header */}
-              <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3 max-lg:p-4 max-lg:pb-3 max-lg:shrink-0">
+              <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3 max-lg:p-4 max-lg:pb-3 max-lg:shrink-0">
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#016A62] dark:bg-[#84D5CA]" />
@@ -1566,7 +1607,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                   {/* Scrollable Body Container (min-h-0 guarantees scroll integrity above virtual keyboards) */}
                   <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-lg:p-4 max-lg:pt-2 space-y-4">
                     {/* Room Specs Card */}
-                    <div className="p-3 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col gap-1.5 text-xs text-[#181C1E] dark:text-[#E2E8F0]">
+                    <div className="p-3 bg-[#F0F4F6] dark:bg-[#0A1626] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] flex flex-col gap-1.5 text-xs text-[#181C1E] dark:text-[#E2E8F0]">
                       <div className="flex items-center justify-between">
                         <span className="text-[#44474D] dark:text-[#94A3B8]">Classification:</span>
                         <span className="font-semibold text-[#07203C] dark:text-[#F8FAFC]">
@@ -1625,7 +1666,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               return (
                                 <div
                                   key={st.id}
-                                  className="p-3 rounded-xl bg-[#EAEEF0]/70 dark:bg-[#071321] flex items-start justify-between border border-[#DFE3E5] dark:border-[#1E293B]"
+                                  className="p-3 rounded-xl bg-[#EAEEF0]/70 dark:bg-[#0A1626] flex items-start justify-between border border-[#DFE3E5] dark:border-[#293B52]"
                                 >
                                   <div className="flex items-start gap-2.5">
                                     <span className="p-1.5 rounded-lg bg-[#FDE8E8] dark:bg-[#2A1215] text-[#C93B3B] dark:text-[#F87171] mt-0.5">
@@ -1706,7 +1747,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                 className={`w-full p-3 rounded-xl cursor-pointer transition-all flex items-start justify-between border text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] ${
                                   isSelected || isMine
                                     ? 'bg-[#EBF3FC] dark:bg-[#0E243A] ring-2 ring-[#1D63B8] dark:ring-[#84D5CA] border-[#1D63B8] dark:border-[#84D5CA] shadow-sm'
-                                    : 'bg-white dark:bg-[#071321] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] border-[#DFE3E5] dark:border-[#1E293B]'
+                                    : 'bg-white dark:bg-[#0A1626] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] border-[#DFE3E5] dark:border-[#293B52]'
                                 }`}
                               >
                                 <div className="flex items-start gap-2.5">
@@ -1735,7 +1776,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                   className={`px-2 py-1 rounded text-[11px] font-bold shrink-0 ${
                                     isSelected || isMine
                                       ? 'bg-[#1D63B8] text-white'
-                                      : 'bg-[#F0F4F6] dark:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] border border-[#DFE3E5] dark:border-[#1E293B]'
+                                      : 'bg-[#F0F4F6] dark:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] border border-[#DFE3E5] dark:border-[#293B52]'
                                   }`}
                                 >
                                   {isSelected || isMine ? 'Selected' : 'Pick'}
@@ -1776,7 +1817,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                   setInspectorWarningDialog(null);
                                   setSuccessMsg('Intent acknowledged. Overriding preference queue.');
                                 }}
-                                className="px-3 py-1.5 bg-white dark:bg-[#071321] text-[#44474D] dark:text-[#CBD5E1] hover:text-[#ba1a1a] dark:hover:text-[#F87171] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] transition-colors min-h-[44px]"
+                                className="px-3 py-1.5 bg-white dark:bg-[#0A1626] text-[#44474D] dark:text-[#CBD5E1] hover:text-[#ba1a1a] dark:hover:text-[#F87171] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#293B52] transition-colors min-h-[44px]"
                               >
                                 Continue Anyway
                               </button>
@@ -1787,7 +1828,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     )}
 
                     {/* Roommate Priority Coordination Form */}
-                    <div className="p-4 bg-white dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] space-y-3">
+                    <div className="p-4 bg-white dark:bg-[#0A1626] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] space-y-3">
                       <div className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
                         <span>Coordinate Roommates (Priority Ranks)</span>
@@ -1815,7 +1856,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               value={roommatePriority1}
                               onChange={(e) => setRoommatePriority1(e.target.value)}
                               placeholder="e.g. 2"
-                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#0A1929] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#111F32] border border-[#E2E6E8] dark:border-[#293B52] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
                             />
                           </div>
                           <div>
@@ -1827,7 +1868,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               value={roommatePriority2}
                               onChange={(e) => setRoommatePriority2(e.target.value)}
                               placeholder="e.g. 3"
-                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#0A1929] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#111F32] border border-[#E2E6E8] dark:border-[#293B52] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
                             />
                           </div>
                         </div>
@@ -1848,7 +1889,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     - Non-shrinking footer (shrink-0)
                     - Sticky at bottom of sheet on mobile, static on desktop
                   */}
-                  <div className="shrink-0 p-4 bg-[#F0F4F6] dark:bg-[#071321] border-t border-[#DFE3E5] dark:border-[#1E293B] space-y-3 lg:rounded-b-xl max-lg:shadow-lg">
+                  <div className="shrink-0 p-4 bg-[#F0F4F6] dark:bg-[#0A1626] border-t border-[#DFE3E5] dark:border-[#293B52] space-y-3 lg:rounded-b-xl max-lg:shadow-lg">
                     {/* STEP 1: Standard Review Trigger */}
                     {!isConfirmReviewStep ? (
                       <div className="space-y-3">
@@ -1897,7 +1938,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                           onClick={() => {
                             setSuccessMsg(`Room ${selectedRoomNumber} saved to roommate preference draft.`);
                           }}
-                          className="w-full h-9 px-4 bg-white dark:bg-[#0A1929] text-[#181C1E] dark:text-[#E2E8F0] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] dark:hover:bg-[#0E243A] border border-[#DFE3E5] dark:border-[#1E293B] transition-colors flex items-center justify-center gap-1.5 min-h-[40px]"
+                          className="w-full h-9 px-4 bg-white dark:bg-[#111F32] text-[#181C1E] dark:text-[#E2E8F0] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] dark:hover:bg-[#0E243A] border border-[#DFE3E5] dark:border-[#293B52] transition-colors flex items-center justify-center gap-1.5 min-h-[40px]"
                         >
                           <BookmarkPlus className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" />
                           <span>Save to Roommate Preference Draft</span>
@@ -1905,7 +1946,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                       </div>
                     ) : (
                       /* STEP 2: Explicit Confirmation Review Panel (Accidental Confirmation Barrier) */
-                      <div className="p-3 bg-white dark:bg-[#0A1929] rounded-xl border border-[#A8D5C2] dark:border-[#1A5C47] shadow-sm space-y-3 animate-fadeIn">
+                      <div className="p-3 bg-white dark:bg-[#111F32] rounded-xl border border-[#A8D5C2] dark:border-[#1A5C47] shadow-sm space-y-3 animate-fadeIn">
                         <div className="flex items-start gap-2.5">
                           <span className="p-1 rounded-lg bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] shrink-0 mt-0.5">
                             <CheckSquare className="w-4 h-4" />
@@ -1946,7 +1987,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                           <button
                             type="button"
                             onClick={() => setIsConfirmReviewStep(false)}
-                            className="flex-1 h-10 px-3 bg-white dark:bg-[#071321] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] transition-colors min-h-[44px]"
+                            className="flex-1 h-10 px-3 bg-white dark:bg-[#0A1626] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#293B52] transition-colors min-h-[44px]"
                           >
                             Back / Change
                           </button>
@@ -1982,7 +2023,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                   </div>
                 </div>
               ) : (
-                <div className="p-8 bg-[#F7F6F1] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] text-center space-y-2 max-lg:m-4 transition-colors">
+                <div className="p-8 bg-[#F7F6F1] dark:bg-[#0A1626] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] text-center space-y-2 max-lg:m-4 transition-colors">
                   <Info className="w-6 h-6 mx-auto text-[#627084] dark:text-[#84D5CA]" />
                   <div className="text-xs font-semibold text-[#203653] dark:text-[#F8FAFC]">No Room Selected</div>
                   <p className="text-[11px] text-[#627084] dark:text-[#94A3B8] leading-relaxed">

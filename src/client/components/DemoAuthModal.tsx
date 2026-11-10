@@ -29,7 +29,7 @@ interface DemoAuthModalProps {
 
 export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<{ text: string; isConfigNotice?: boolean } | null>(null);
 
   const handleAuthenticate = async () => {
     try {
@@ -37,15 +37,28 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
       setErrorMsg(null);
 
       // 1. Fetch authentication options from backend
-      const optionsRes = await apiJson<{
-        options: any;
-        challengeToken: string;
-      }>('/api/demo/auth/options', { method: 'POST' });
+      let optionsRes;
+      try {
+        optionsRes = await apiJson<{
+          options: any;
+          challengeToken: string;
+        }>('/api/demo/auth/options', { method: 'POST' });
+      } catch (optErr: any) {
+        if (optErr.message && optErr.message.includes('NO_DEVICES_REGISTERED')) {
+          setErrorMsg({
+            text: 'Biometric hardware sign-in is currently unconfigured because no presentation devices have been enrolled yet. Please proceed using standard institutional credentials.',
+            isConfigNotice: true,
+          });
+          return;
+        }
+        throw optErr;
+      }
 
       // 2. Invoke browser WebAuthn platform authenticator
       let asseResp;
       try {
-        const cleanOpts = { ...optionsRes.options, rpId: window.location.hostname }; asseResp = await startAuthentication({ optionsJSON: cleanOpts });
+        const cleanOpts = { ...optionsRes.options, rpId: window.location.hostname };
+        asseResp = await startAuthentication({ optionsJSON: cleanOpts });
       } catch (err: any) {
         if (err.name === 'NotAllowedError') {
           throw new Error('Verification was canceled or timed out.');
@@ -69,7 +82,10 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
 
       onSuccess(verifyRes);
     } catch (err: any) {
-      setErrorMsg(err.message || 'WebAuthn assertion failed');
+      setErrorMsg({
+        text: err.message || 'WebAuthn assertion failed',
+        isConfigNotice: false,
+      });
     } finally {
       setLoading(false);
     }
@@ -77,25 +93,32 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E6E8] space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-[#111F32] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E6E8] dark:border-[#293B52] space-y-5 animate-in fade-in zoom-in-95 duration-150">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-[#E7F2ED] text-[#1E7B54] flex items-center justify-center mx-auto">
             <Fingerprint className="w-6 h-6" />
           </div>
-          <h2 className="text-base font-bold text-[#203653]">Authenticate Registered Demo Device</h2>
-          <p className="text-xs text-[#627084]">
+          <h2 className="text-base font-bold text-[#203653] dark:text-[#F1F5F9]">Authenticate Registered Demo Device</h2>
+          <p className="text-xs text-[#627084] dark:text-[#91A4BA]">
             Touch your biometric sensor or enter your device PIN (Windows Hello / Android Screen Lock) to unlock the live interactive demo session.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-[#FDF2F2] border border-[#F8B4B4] rounded-xl text-xs text-[#9B1C1C] flex items-start gap-2">
+          <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
+            errorMsg.isConfigNotice
+              ? 'bg-[#EBF5FB] dark:bg-[#0C2238] border-[#A8D1EC] dark:border-[#1E456B] text-[#1B4F72] dark:text-[#93C5FD]'
+              : 'bg-[#FDF2F2] dark:bg-[#321212] border-[#F8B4B4] dark:border-[#7A2525] text-[#9B1C1C] dark:text-[#FCA5A5]'
+          }`}>
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+            <div className="space-y-1">
+              <span className="font-semibold block">{errorMsg.isConfigNotice ? 'Biometric Enrollment Notice' : 'Authentication Error'}</span>
+              <span>{errorMsg.text}</span>
+            </div>
           </div>
         )}
 
-        <div className="p-3 bg-[#F0F5F8] rounded-xl text-xs text-[#203653] space-y-1.5 border border-[#D0DFE8]">
+        <div className="p-3 bg-[#F0F5F8] rounded-xl text-xs text-[#203653] dark:text-[#F1F5F9] space-y-1.5 border border-[#D0DFE8]">
           <div className="flex items-center gap-1.5 font-semibold text-[#1B365D]">
             <ShieldCheck className="w-3.5 h-3.5 text-[#1E7B54]" />
             Authorized Device Slots:
@@ -111,7 +134,7 @@ export const DemoAuthModal: React.FC<DemoAuthModalProps> = ({ onSuccess, onCance
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-2.5 px-4 border border-[#E2E6E8] text-[#627084] hover:bg-[#F7F6F1] text-xs font-semibold rounded-xl transition-colors"
+            className="flex-1 py-2.5 px-4 border border-[#E2E6E8] dark:border-[#293B52] text-[#627084] dark:text-[#91A4BA] hover:bg-[#F7F6F1] dark:bg-[#080F1C] text-xs font-semibold rounded-xl transition-colors"
           >
             Cancel
           </button>

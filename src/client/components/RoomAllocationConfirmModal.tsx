@@ -31,21 +31,21 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
       aria-labelledby="confirm-allocation-title"
       className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
     >
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 sm:space-y-5 border border-[#E2E6E8] shadow-2xl max-h-[90vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+      <div className="bg-white dark:bg-[#111F32] rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 sm:space-y-5 border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl max-h-[90vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
         {/* Mobile handle */}
         <div className="w-10 h-1 bg-[#E2E6E8] rounded-full mx-auto sm:hidden -mt-1 mb-1" />
 
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
+        <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#E7F2ED] text-[#2C8279] border border-[#A8D5C2] flex items-center justify-center font-bold shrink-0">
-              <Bed className="w-5 h-5 text-[#2C8279]" />
+            <div className="w-10 h-10 rounded-xl bg-[#E7F2ED] text-[#2C8279] dark:text-[#63D6C6] border border-[#A8D5C2] flex items-center justify-center font-bold shrink-0">
+              <Bed className="w-5 h-5 text-[#2C8279] dark:text-[#63D6C6]" />
             </div>
             <div>
-              <h3 id="confirm-allocation-title" className="text-base font-bold text-[#203653] tracking-tight">
+              <h3 id="confirm-allocation-title" className="text-base font-bold text-[#203653] dark:text-[#F1F5F9] tracking-tight">
                 Confirm Your Room Allocation
               </h3>
-              <p className="text-xs text-[#627084]">
+              <p className="text-xs text-[#627084] dark:text-[#91A4BA]">
                 Your roommate invitation has been accepted. Review details and confirm to finalize.
               </p>
             </div>
@@ -53,31 +53,31 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
         </div>
 
         {/* Room & Target Seat Details Card */}
-        <div className="p-4 bg-[#F7F6F1] rounded-xl border border-[#E2E6E8] space-y-3">
+        <div className="p-4 bg-[#F7F6F1] dark:bg-[#080F1C] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] space-y-3">
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-[#627084] font-medium block">Building & Floor:</span>
-              <span className="font-bold text-[#203653]">
+              <span className="text-[#627084] dark:text-[#91A4BA] font-medium block">Building & Floor:</span>
+              <span className="font-bold text-[#203653] dark:text-[#F1F5F9]">
                 {context.buildingName} · Floor {context.floorNumber}
               </span>
             </div>
             <div>
-              <span className="text-[#627084] font-medium block">Room Number:</span>
-              <span className="font-bold font-mono text-[#203653] text-sm">
+              <span className="text-[#627084] dark:text-[#91A4BA] font-medium block">Room Number:</span>
+              <span className="font-bold font-mono text-[#203653] dark:text-[#F1F5F9] text-sm">
                 Room {context.roomNumber}
               </span>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-[#E2E6E8] flex items-center justify-between text-xs">
+          <div className="pt-2 border-t border-[#E2E6E8] dark:border-[#293B52] flex items-center justify-between text-xs">
             <div>
-              <span className="text-[#627084] font-medium block">Target Seat:</span>
+              <span className="text-[#627084] dark:text-[#91A4BA] font-medium block">Target Seat:</span>
               <span className="font-bold font-mono text-[#1D63B8] text-sm">
-                Seat {context.targetSeatLabel} <span className="text-[11px] font-normal text-[#627084]">({context.targetSeatId})</span>
+                Seat {context.targetSeatLabel} <span className="text-[11px] font-normal text-[#627084] dark:text-[#91A4BA]">({context.targetSeatId})</span>
               </span>
             </div>
             <div>
-              <span className="text-[#627084] font-medium block text-right">Availability:</span>
+              <span className="text-[#627084] dark:text-[#91A4BA] font-medium block text-right">Availability:</span>
               <span
                 className={`text-[11px] font-bold px-2 py-0.5 rounded inline-block ${
                   isSeatTaken
@@ -92,8 +92,8 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
 
           {/* Seat Picker if multiple seats are available */}
           {context.allRoomSeats.length > 1 && onSelectSeat && (
-            <div className="pt-2 border-t border-[#E2E6E8] space-y-1.5">
-              <span className="text-[11px] font-semibold text-[#627084] block">Available Beds in Room {context.roomNumber}:</span>
+            <div className="pt-2 border-t border-[#E2E6E8] dark:border-[#293B52] space-y-1.5">
+              <span className="text-[11px] font-semibold text-[#627084] dark:text-[#91A4BA] block">Available Beds in Room {context.roomNumber}:</span>
               <div className="grid grid-cols-3 gap-2">
                 {context.allRoomSeats.map((seat) => {
                   const isSelected = seat.id === context.targetSeatId;
@@ -108,7 +108,7 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
                           ? 'bg-[#EBF3FC] border-[#1D63B8] text-[#1D63B8] ring-1 ring-[#1D63B8]'
                           : seat.isTaken
                           ? 'bg-[#FDE8E8] border-[#F8B4B4] text-[#C93B3B] cursor-not-allowed opacity-60'
-                          : 'bg-white border-[#E2E6E8] text-[#203653] hover:bg-[#F7F6F1]'
+                          : 'bg-white dark:bg-[#111F32] border-[#E2E6E8] dark:border-[#293B52] text-[#203653] dark:text-[#F1F5F9] hover:bg-[#F7F6F1] dark:bg-[#080F1C]'
                       }`}
                     >
                       <span>Seat {seat.label}</span>
@@ -124,20 +124,20 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
         </div>
 
         {/* Roommate Group Members Card */}
-        <div className="p-3 bg-white rounded-xl border border-[#E2E6E8] space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#203653]">
-            <Users className="w-4 h-4 text-[#2C8279]" />
+        <div className="p-3 bg-white dark:bg-[#111F32] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#203653] dark:text-[#F1F5F9]">
+            <Users className="w-4 h-4 text-[#2C8279] dark:text-[#63D6C6]" />
             <span>Roommate Group ({context.groupMembers.length} members)</span>
           </div>
           <div className="space-y-1.5 max-h-32 overflow-y-auto">
             {context.groupMembers.map((m) => (
               <div
                 key={m.studentId}
-                className="flex items-center justify-between text-xs p-1.5 rounded bg-[#F7F6F1] border border-[#E2E6E8]"
+                className="flex items-center justify-between text-xs p-1.5 rounded bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#E2E6E8] dark:border-[#293B52]"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-[#203653]">{m.fullName}</span>
-                  <span className="text-[10px] text-[#627084] font-mono">Rank #{m.priorityNumber}</span>
+                  <span className="font-semibold text-[#203653] dark:text-[#F1F5F9]">{m.fullName}</span>
+                  <span className="text-[10px] text-[#627084] dark:text-[#91A4BA] font-mono">Rank #{m.priorityNumber}</span>
                 </div>
                 <span
                   className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
@@ -178,12 +178,12 @@ export const RoomAllocationConfirmModal: React.FC<RoomAllocationConfirmModalProp
         )}
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-[#E2E6E8]">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-[#E2E6E8] dark:border-[#293B52]">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 border border-[#E2E6E8] hover:bg-[#F7F6F1] text-[#627084] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center"
+            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 border border-[#E2E6E8] dark:border-[#293B52] hover:bg-[#F7F6F1] dark:bg-[#080F1C] text-[#627084] dark:text-[#91A4BA] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center"
           >
             Cancel
           </button>

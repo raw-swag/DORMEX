@@ -25,7 +25,7 @@ export const RoomChangeTab: React.FC<RoomChangeTabProps> = ({
   onSubmit,
 }) => {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+    <div className="bg-white dark:bg-[#111F32] p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h2 className="text-lg font-bold text-navy-900 tracking-tight flex items-center gap-2">
@@ -89,7 +89,7 @@ export const RoomChangeTab: React.FC<RoomChangeTabProps> = ({
                 value={roomChangeTargetRoomId}
                 onChange={(e) => setRoomChangeTargetRoomId(e.target.value)}
                 required
-                className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                className="w-full text-xs bg-white dark:bg-[#111F32] border border-slate-300 rounded-lg px-3 py-2 text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-teal"
               >
                 <option value="">Select target room...</option>
                 {allRooms.map((r: any) => (
@@ -107,7 +107,7 @@ export const RoomChangeTab: React.FC<RoomChangeTabProps> = ({
                 onChange={(e) => setRoomChangeReason(e.target.value)}
                 placeholder="e.g. Academic project collaboration / medical accessibility"
                 required
-                className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                className="w-full text-xs bg-white dark:bg-[#111F32] border border-slate-300 rounded-lg px-3 py-2 text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-teal"
               />
             </div>
           </div>

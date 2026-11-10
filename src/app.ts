@@ -482,7 +482,77 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     return res.rows;
   });
 
-  app.get('/api/allocation-cycles', async () => {
+  app.get('/api/allocation-cycles', async (req: any) => {
+    let studentYear: number | undefined;
+    let studentQuota: string | undefined;
+
+    try {
+      const actor = await extractActor(req);
+      if (actor && actor.role === 'STUDENT' && actor.student_profile_id) {
+        // Authoritative: Derive academic cohort strictly from authenticated student profile
+        const stuRes = await database.query(
+          `SELECT academic_year, quota_category FROM student_profiles WHERE id = $1`,
+          [actor.student_profile_id]
+        );
+        if (stuRes.rows.length > 0) {
+          studentYear = stuRes.rows[0].academic_year;
+          studentQuota = stuRes.rows[0].quota_category;
+        }
+      }
+    } catch (_) {
+      // Unauthenticated or administrative caller
+    }
+
+    // For student callers, strictly use database profile cohort; ignore untrusted client query params
+    if (studentYear !== undefined && studentQuota !== undefined) {
+      const res = await database.query(
+        `SELECT DISTINCT ac.*
+         FROM allocation_cycles ac
+         JOIN allocation_pools ap ON ac.id = ap.cycle_id
+         WHERE ap.academic_year = $1 AND ap.quota_category = $2 AND ap.is_active = TRUE`,
+        [studentYear, studentQuota]
+      );
+
+      // Section 17C Ambiguity Resolution:
+      // A. Exactly 0 matching cycles -> Empty set (triggers CONFIGURATION_PENDING)
+      // B. Exactly 1 matching cycle -> Return single unambiguous cycle
+      // C. Multiple matching cycles:
+      //    If exactly one cycle has authoritative designation ('cyc_bvb_pilot_2026' or status = 'ACTIVE'),
+      //    resolve unambiguous active cycle; otherwise flag as multiple matching cycles requiring institutional resolution.
+      if (res.rows.length <= 1) {
+        return res.rows;
+      }
+
+      // Check if there is an unambiguous operational cycle (e.g. exactly one ACTIVE or exactly one READY)
+      const activeRows = res.rows.filter((c: any) => c.status === 'ACTIVE');
+      if (activeRows.length === 1) {
+        return activeRows;
+      }
+      const readyRows = res.rows.filter((c: any) => c.status === 'READY');
+      if (readyRows.length === 1 && activeRows.length === 0) {
+        return readyRows;
+      }
+
+      // Multiple competing matching cycles without unambiguous single operational designation
+      return res.rows.map((row: any) => ({
+        ...row,
+        _ambiguous: true,
+      }));
+    }
+
+    // For administrative or explicit query callers
+    const { academicYear, quota } = (req.query || {}) as any;
+    if (academicYear && quota) {
+      const res = await database.query(
+        `SELECT DISTINCT ac.*
+         FROM allocation_cycles ac
+         JOIN allocation_pools ap ON ac.id = ap.cycle_id
+         WHERE ap.academic_year = $1 AND ap.quota_category = $2 AND ap.is_active = TRUE
+         ORDER BY ac.created_at DESC`,
+        [parseInt(academicYear, 10), quota]
+      );
+      return res.rows;
+    }
     const res = await database.query(`SELECT * FROM allocation_cycles ORDER BY created_at DESC`);
     return res.rows;
   });

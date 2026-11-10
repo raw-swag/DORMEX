@@ -213,18 +213,18 @@ export const StudentAdmissionManagementView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F7F6F1] min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#F7F6F1] dark:bg-[#080F1C] min-h-screen">
       {/* Top Banner & Header */}
-      <div className="bg-white border-b border-[#E2E6E8] px-8 py-6">
+      <div className="bg-white dark:bg-[#111F32] border-b border-[#E2E6E8] dark:border-[#293B52] px-8 py-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs text-[#627084] font-medium mb-1">
+            <div className="flex items-center gap-2 text-xs text-[#627084] dark:text-[#91A4BA] font-medium mb-1">
               <span>Hostel Office Workspace</span>
               <ChevronRight className="w-3.5 h-3.5 opacity-60" />
-              <span className="text-[#2C8279] font-bold">Admissions & Enrolment Desk</span>
+              <span className="text-[#2C8279] dark:text-[#63D6C6] font-bold">Admissions & Enrolment Desk</span>
             </div>
-            <h1 className="text-2xl font-black text-[#203653] tracking-tight">Student Admission Management</h1>
-            <p className="text-xs text-[#627084] mt-1">
+            <h1 className="text-2xl font-black text-[#203653] dark:text-[#F1F5F9] tracking-tight">Student Admission Management</h1>
+            <p className="text-xs text-[#627084] dark:text-[#91A4BA] mt-1">
               Register newly admitted hostel candidates, enforce authoritative batch-wise priority numbers, assign faculty proctors, and initialize baseline student profiles.
             </p>
           </div>
@@ -235,7 +235,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'register'
                   ? 'bg-[#2C8279] text-white shadow-sm'
-                  : 'bg-white text-[#203653] border border-[#D5DCDF] hover:bg-[#F7F6F1]'
+                  : 'bg-white dark:bg-[#111F32] text-[#203653] dark:text-[#F1F5F9] border border-[#D5DCDF] dark:border-[#293B52] hover:bg-[#F7F6F1] dark:bg-[#080F1C]'
               }`}
             >
               <UserPlus className="w-4 h-4" />
@@ -246,7 +246,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'registry'
                   ? 'bg-[#2C8279] text-white shadow-sm'
-                  : 'bg-white text-[#203653] border border-[#D5DCDF] hover:bg-[#F7F6F1]'
+                  : 'bg-white dark:bg-[#111F32] text-[#203653] dark:text-[#F1F5F9] border border-[#D5DCDF] dark:border-[#293B52] hover:bg-[#F7F6F1] dark:bg-[#080F1C]'
               }`}
             >
               <FileCheck className="w-4 h-4" />
@@ -261,12 +261,12 @@ export const StudentAdmissionManagementView: React.FC = () => {
         {/* Banner Alert Message */}
         {msg && (
           <div className={`p-4 rounded-xl border text-xs flex items-center justify-between shadow-xs transition-all ${
-            msg.type === 'success' 
-              ? 'bg-[#84d5ca]/15 border-[#2C8279]/30 text-[#07203C]' 
+            msg.type === 'success'
+              ? 'bg-[#84d5ca]/15 border-[#2C8279]/30 text-[#07203C] dark:text-[#F1F5F9]'
               : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}>
             <div className="flex items-center gap-2.5">
-              {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-[#2C8279]" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
+              {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-[#2C8279] dark:text-[#63D6C6]" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
               <span className="font-semibold">{msg.text}</span>
             </div>
             <button onClick={() => setMsg(null)} className="text-slate-400 hover:text-slate-700">
@@ -277,27 +277,27 @@ export const StudentAdmissionManagementView: React.FC = () => {
 
         {/* Tab 1: New Admission Multi-Section Form */}
         {activeTab === 'register' && (
-          <form onSubmit={handleSubmitAdmission} className="bg-white rounded-2xl border border-[#E2E6E8] p-8 shadow-xs space-y-8">
+          <form onSubmit={handleSubmitAdmission} className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] p-8 shadow-xs space-y-8">
             {/* Section A: Academic & Priority Details */}
             <div>
-              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] pb-3 mb-5">
-                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] flex items-center justify-center font-bold text-xs">
+              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] dark:border-[#293B52] pb-3 mb-5">
+                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] dark:text-[#63D6C6] flex items-center justify-center font-bold text-xs">
                   A
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#203653]">Academic & Institutional Priority</h3>
-                  <p className="text-[11px] text-[#627084]">Official admission cohort, department, USN, and batch-wise unique priority rank.</p>
+                  <h3 className="text-sm font-bold text-[#203653] dark:text-[#F1F5F9]">Academic & Institutional Priority</h3>
+                  <p className="text-[11px] text-[#627084] dark:text-[#91A4BA]">Official admission cohort, department, USN, and batch-wise unique priority rank.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Academic Enrolment Year *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Academic Enrolment Year *</label>
                   <select
                     value={form.academic_year_code}
                     onChange={(e) => setForm({ ...form, academic_year_code: e.target.value })}
                     required
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   >
                     <option value="2026-2027">2026-2027 (Upcoming Fall Cohort)</option>
                     <option value="2027-2028">2027-2028 (Future Academic Year)</option>
@@ -306,35 +306,35 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Student Full Name *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Student Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Admitted Student Full Name"
                     value={form.full_name}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">USN (University Seat Number) *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">USN (University Seat Number) *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. 1SI26CS101"
                     value={form.college_id}
                     onChange={(e) => setForm({ ...form, college_id: e.target.value })}
-                    className="w-full text-xs font-mono uppercase bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-semibold focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs font-mono uppercase bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-semibold focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Branch / Department *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Branch / Department *</label>
                   <select
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   >
                     <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
                     <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
@@ -346,11 +346,11 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Admitting Semester</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Admitting Semester</label>
                   <select
                     value={form.semester}
                     onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value, 10) })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   >
                     <option value={1}>Semester 1 (Year 1 Intake)</option>
                     <option value={3}>Semester 3 (Year 2 Intake / Lateral)</option>
@@ -361,8 +361,8 @@ export const StudentAdmissionManagementView: React.FC = () => {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-[#203653]">Official Priority Number *</label>
-                    <span className="text-[10px] text-[#2C8279] font-bold">Unique Within Batch</span>
+                    <label className="text-xs font-bold text-[#203653] dark:text-[#F1F5F9]">Official Priority Number *</label>
+                    <span className="text-[10px] text-[#2C8279] dark:text-[#63D6C6] font-bold">Unique Within Batch</span>
                   </div>
                   <input
                     type="number"
@@ -371,62 +371,62 @@ export const StudentAdmissionManagementView: React.FC = () => {
                     placeholder="e.g. 101"
                     value={form.official_priority}
                     onChange={(e) => setForm({ ...form, official_priority: e.target.value })}
-                    className="w-full text-xs font-bold bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs font-bold bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] focus:outline-none focus:border-[#2C8279]"
                   />
-                  <p className="text-[10px] text-[#627084] mt-1">Authoritative unique priority within admission batch ({form.academic_year_code}).</p>
+                  <p className="text-[10px] text-[#627084] dark:text-[#91A4BA] mt-1">Authoritative unique priority within admission batch ({form.academic_year_code}).</p>
                 </div>
               </div>
             </div>
 
             {/* Section B: Contact & Proctor Details */}
             <div>
-              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] pb-3 mb-5">
-                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] flex items-center justify-center font-bold text-xs">
+              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] dark:border-[#293B52] pb-3 mb-5">
+                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] dark:text-[#63D6C6] flex items-center justify-center font-bold text-xs">
                   B
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#203653]">Candidate Contact & Proctor Assignment</h3>
-                  <p className="text-[11px] text-[#627084]">Student communication channels and institutional faculty proctor linkage.</p>
+                  <h3 className="text-sm font-bold text-[#203653] dark:text-[#F1F5F9]">Candidate Contact & Proctor Assignment</h3>
+                  <p className="text-[11px] text-[#627084] dark:text-[#91A4BA]">Student communication channels and institutional faculty proctor linkage.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Student Email Address *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Student Email Address *</label>
                   <div className="relative">
-                    <Mail className="w-3.5 h-3.5 absolute left-3 top-3 text-[#627084]" />
+                    <Mail className="w-3.5 h-3.5 absolute left-3 top-3 text-[#627084] dark:text-[#91A4BA]" />
                     <input
                       type="email"
                       required
                       placeholder="e.g. student@sit.ac.in"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg pl-9 pr-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                      className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg pl-9 pr-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Mobile Number *</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Mobile Number *</label>
                   <div className="relative">
-                    <Phone className="w-3.5 h-3.5 absolute left-3 top-3 text-[#627084]" />
+                    <Phone className="w-3.5 h-3.5 absolute left-3 top-3 text-[#627084] dark:text-[#91A4BA]" />
                     <input
                       type="tel"
                       required
                       placeholder="e.g. +91 94481 23456"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg pl-9 pr-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                      className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg pl-9 pr-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Assigned Faculty Proctor</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Assigned Faculty Proctor</label>
                   <select
                     value={form.proctor_user_id}
                     onChange={(e) => setForm({ ...form, proctor_user_id: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   >
                     <option value="">-- Select Active Proctor --</option>
                     {proctors.map((p) => (
@@ -441,34 +441,34 @@ export const StudentAdmissionManagementView: React.FC = () => {
 
             {/* Section C: Parent & Guardian Details */}
             <div>
-              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] pb-3 mb-5">
-                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] flex items-center justify-center font-bold text-xs">
+              <div className="flex items-center gap-2.5 border-b border-[#E2E6E8] dark:border-[#293B52] pb-3 mb-5">
+                <div className="w-7 h-7 rounded-lg bg-[#2C8279]/15 text-[#2C8279] dark:text-[#63D6C6] flex items-center justify-center font-bold text-xs">
                   C
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#203653]">Parent / Guardian Information</h3>
-                  <p className="text-[11px] text-[#627084]">Emergency contact details for institutional hostel records.</p>
+                  <h3 className="text-sm font-bold text-[#203653] dark:text-[#F1F5F9]">Parent / Guardian Information</h3>
+                  <p className="text-[11px] text-[#627084] dark:text-[#91A4BA]">Emergency contact details for institutional hostel records.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Parent / Guardian Name</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Parent / Guardian Name</label>
                   <input
                     type="text"
                     placeholder="e.g. Shankar Gowda"
                     value={form.parent_name}
                     onChange={(e) => setForm({ ...form, parent_name: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Relationship</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Relationship</label>
                   <select
                     value={form.parent_relationship}
                     onChange={(e) => setForm({ ...form, parent_relationship: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   >
                     <option value="Father">Father</option>
                     <option value="Mother">Mother</option>
@@ -477,44 +477,44 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Contact Phone</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Contact Phone</label>
                   <input
                     type="tel"
                     placeholder="e.g. +91 94481 23450"
                     value={form.parent_phone}
                     onChange={(e) => setForm({ ...form, parent_phone: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Contact Email</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Contact Email</label>
                   <input
                     type="email"
                     placeholder="e.g. parent@example.com"
                     value={form.parent_email}
                     onChange={(e) => setForm({ ...form, parent_email: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2.5 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
 
                 <div className="md:col-span-4">
-                  <label className="block text-xs font-bold text-[#203653] mb-1.5">Permanent Residence Address</label>
+                  <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] mb-1.5">Permanent Residence Address</label>
                   <textarea
                     rows={2}
                     placeholder="e.g. #42, 5th Cross, Ashoka Road, Tumakuru - 572103"
                     value={form.parent_address}
                     onChange={(e) => setForm({ ...form, parent_address: e.target.value })}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3.5 py-2 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                    className="w-full text-xs bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3.5 py-2 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                   />
                 </div>
               </div>
             </div>
 
             {/* Form Actions */}
-            <div className="pt-4 border-t border-[#E2E6E8] flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-[#627084]">
-                <ShieldCheck className="w-4 h-4 text-[#2C8279]" />
+            <div className="pt-4 border-t border-[#E2E6E8] dark:border-[#293B52] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-[#627084] dark:text-[#91A4BA]">
+                <ShieldCheck className="w-4 h-4 text-[#2C8279] dark:text-[#63D6C6]" />
                 <span>Admission creates profile in <strong>PENDING</strong> verification state; fee & terms must follow institutional process.</span>
               </div>
 
@@ -539,7 +539,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                     hostel_building_id: 'bld_bvb',
                     notes: '',
                   })}
-                  className="px-4 py-2.5 rounded-lg text-xs font-semibold text-[#627084] hover:bg-[#F7F6F1] border border-[#D5DCDF]"
+                  className="px-4 py-2.5 rounded-lg text-xs font-semibold text-[#627084] dark:text-[#91A4BA] hover:bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52]"
                 >
                   Clear Form
                 </button>
@@ -559,17 +559,17 @@ export const StudentAdmissionManagementView: React.FC = () => {
 
         {/* Tab 2: Admission Registry & Search Table */}
         {activeTab === 'registry' && (
-          <div className="bg-white rounded-2xl border border-[#E2E6E8] shadow-xs overflow-hidden">
+          <div className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xs overflow-hidden">
             {/* Filter Toolbar */}
-            <div className="p-5 border-b border-[#E2E6E8] bg-[#F7F6F1]/50 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="p-5 border-b border-[#E2E6E8] dark:border-[#293B52] bg-[#F7F6F1] dark:bg-[#080F1C]/50 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex-1 w-full md:w-auto relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-[#627084]" />
+                <Search className="w-4 h-4 absolute left-3 top-3 text-[#627084] dark:text-[#91A4BA]" />
                 <input
                   type="text"
                   placeholder="Search by student name, USN, priority number, or email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full text-xs bg-white border border-[#D5DCDF] rounded-lg pl-9 pr-3.5 py-2 text-[#203653] font-medium focus:outline-none focus:border-[#2C8279]"
+                  className="w-full text-xs bg-white dark:bg-[#111F32] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg pl-9 pr-3.5 py-2 text-[#203653] dark:text-[#F1F5F9] font-medium focus:outline-none focus:border-[#2C8279]"
                 />
               </div>
 
@@ -577,7 +577,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 <select
                   value={yearFilter}
                   onChange={(e) => setYearFilter(e.target.value)}
-                  className="text-xs bg-white border border-[#D5DCDF] rounded-lg px-3 py-2 text-[#203653] font-semibold"
+                  className="text-xs bg-white dark:bg-[#111F32] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3 py-2 text-[#203653] dark:text-[#F1F5F9] font-semibold"
                 >
                   <option value="">All Academic Years</option>
                   <option value="2026-2027">2026-2027</option>
@@ -588,7 +588,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="text-xs bg-white border border-[#D5DCDF] rounded-lg px-3 py-2 text-[#203653] font-semibold"
+                  className="text-xs bg-white dark:bg-[#111F32] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3 py-2 text-[#203653] dark:text-[#F1F5F9] font-semibold"
                 >
                   <option value="">All Statuses</option>
                   <option value="REGISTERED">Registered</option>
@@ -599,7 +599,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
 
                 <button
                   onClick={fetchAdmissions}
-                  className="p-2 bg-white border border-[#D5DCDF] rounded-lg text-[#627084] hover:text-[#203653]"
+                  className="p-2 bg-white dark:bg-[#111F32] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg text-[#627084] dark:text-[#91A4BA] hover:text-[#203653] dark:text-[#F1F5F9]"
                   title="Refresh table"
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -611,7 +611,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#F7F6F1] border-b border-[#E2E6E8] text-[11px] font-bold text-[#627084] uppercase tracking-wider">
+                  <tr className="bg-[#F7F6F1] dark:bg-[#080F1C] border-b border-[#E2E6E8] dark:border-[#293B52] text-[11px] font-bold text-[#627084] dark:text-[#91A4BA] uppercase tracking-wider">
                     <th className="py-3 px-4">Priority</th>
                     <th className="py-3 px-4">USN & Candidate</th>
                     <th className="py-3 px-4">Academic Year</th>
@@ -624,32 +624,32 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 <tbody className="divide-y divide-[#E2E6E8] text-xs">
                   {admissions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-[#627084]">
+                      <td colSpan={7} className="py-12 text-center text-[#627084] dark:text-[#91A4BA]">
                         {loading ? 'Loading admissions...' : 'No admission records found matching active filters.'}
                       </td>
                     </tr>
                   ) : (
                     admissions.map((adm) => (
-                      <tr key={adm.id} className="hover:bg-[#F7F6F1]/50 transition-colors">
+                      <tr key={adm.id} className="hover:bg-[#F7F6F1] dark:bg-[#080F1C]/50 transition-colors">
                         <td className="py-3 px-4">
-                          <span className="font-bold text-[#203653] px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                          <span className="font-bold text-[#203653] dark:text-[#F1F5F9] px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
                             #{adm.official_priority}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-[#203653]">{adm.full_name}</div>
-                          <div className="text-[11px] font-mono text-[#627084]">{adm.college_id} · {adm.email}</div>
+                          <div className="font-bold text-[#203653] dark:text-[#F1F5F9]">{adm.full_name}</div>
+                          <div className="text-[11px] font-mono text-[#627084] dark:text-[#91A4BA]">{adm.college_id} · {adm.email}</div>
                         </td>
-                        <td className="py-3 px-4 font-medium text-[#203653]">
+                        <td className="py-3 px-4 font-medium text-[#203653] dark:text-[#F1F5F9]">
                           {adm.academic_year_code}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-medium text-[#203653] truncate max-w-[180px]">{adm.department}</div>
-                          <div className="text-[10px] text-[#627084]">Semester {adm.semester}</div>
+                          <div className="font-medium text-[#203653] dark:text-[#F1F5F9] truncate max-w-[180px]">{adm.department}</div>
+                          <div className="text-[10px] text-[#627084] dark:text-[#91A4BA]">Semester {adm.semester}</div>
                         </td>
                         <td className="py-3 px-4">
                           {adm.proctor_name ? (
-                            <div className="text-xs text-[#203653] font-medium">{adm.proctor_name}</div>
+                            <div className="text-xs text-[#203653] dark:text-[#F1F5F9] font-medium">{adm.proctor_name}</div>
                           ) : (
                             <span className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">
                               Unassigned
@@ -659,7 +659,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             adm.admission_status === 'PROCTOR_ASSIGNED'
-                              ? 'bg-[#2C8279]/15 text-[#2C8279]'
+                              ? 'bg-[#2C8279]/15 text-[#2C8279] dark:text-[#63D6C6]'
                               : adm.admission_status === 'COMPLETED'
                               ? 'bg-blue-50 text-blue-700'
                               : 'bg-slate-100 text-slate-700'
@@ -670,7 +670,7 @@ export const StudentAdmissionManagementView: React.FC = () => {
                         <td className="py-3 px-4 text-right">
                           <button
                             onClick={() => setEditingAdmission({ ...adm })}
-                            className="p-1.5 rounded hover:bg-[#E2E6E8] text-[#203653] font-medium inline-flex items-center gap-1 text-xs"
+                            className="p-1.5 rounded hover:bg-[#E2E6E8] text-[#203653] dark:text-[#F1F5F9] font-medium inline-flex items-center gap-1 text-xs"
                             title="Edit Record"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -689,45 +689,45 @@ export const StudentAdmissionManagementView: React.FC = () => {
         {/* Edit Admission Modal */}
         {editingAdmission && (
           <div className="fixed inset-0 z-50 bg-[#07203C]/60 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-xl w-full border border-[#E2E6E8] shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#E2E6E8] flex items-center justify-between bg-[#F7F6F1]">
+            <div className="bg-white dark:bg-[#111F32] rounded-2xl max-w-xl w-full border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#E2E6E8] dark:border-[#293B52] flex items-center justify-between bg-[#F7F6F1] dark:bg-[#080F1C]">
                 <div>
-                  <h3 className="text-sm font-bold text-[#203653]">Edit Admission Record</h3>
-                  <p className="text-[11px] font-mono text-[#627084]">{editingAdmission.college_id} · {editingAdmission.full_name}</p>
+                  <h3 className="text-sm font-bold text-[#203653] dark:text-[#F1F5F9]">Edit Admission Record</h3>
+                  <p className="text-[11px] font-mono text-[#627084] dark:text-[#91A4BA]">{editingAdmission.college_id} · {editingAdmission.full_name}</p>
                 </div>
                 <button onClick={() => setEditingAdmission(null)} className="p-1 hover:bg-[#E2E6E8] rounded">
-                  <X className="w-4 h-4 text-[#627084]" />
+                  <X className="w-4 h-4 text-[#627084] dark:text-[#91A4BA]" />
                 </button>
               </div>
 
               <form onSubmit={handleUpdateAdmission} className="p-6 space-y-4 text-xs">
                 <div>
-                  <label className="block font-bold text-[#203653] mb-1">Full Name</label>
+                  <label className="block font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">Full Name</label>
                   <input
                     type="text"
                     value={editingAdmission.full_name}
                     onChange={(e) => setEditingAdmission({ ...editingAdmission, full_name: e.target.value })}
-                    className="w-full bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg p-2 font-medium"
+                    className="w-full bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg p-2 font-medium"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-[#203653] mb-1">Official Priority Number</label>
+                    <label className="block font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">Official Priority Number</label>
                     <input
                       type="number"
                       value={editingAdmission.official_priority}
                       onChange={(e) => setEditingAdmission({ ...editingAdmission, official_priority: parseInt(e.target.value, 10) })}
-                      className="w-full bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg p-2 font-bold"
+                      className="w-full bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg p-2 font-bold"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-bold text-[#203653] mb-1">Admission Status</label>
+                    <label className="block font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">Admission Status</label>
                     <select
                       value={editingAdmission.admission_status}
                       onChange={(e) => setEditingAdmission({ ...editingAdmission, admission_status: e.target.value })}
-                      className="w-full bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg p-2"
+                      className="w-full bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg p-2"
                     >
                       <option value="REGISTERED">REGISTERED</option>
                       <option value="PROCTOR_ASSIGNED">PROCTOR_ASSIGNED</option>
@@ -738,11 +738,11 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#203653] mb-1">Proctor</label>
+                  <label className="block font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">Proctor</label>
                   <select
                     value={editingAdmission.proctor_user_id || ''}
                     onChange={(e) => setEditingAdmission({ ...editingAdmission, proctor_user_id: e.target.value })}
-                    className="w-full bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg p-2"
+                    className="w-full bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg p-2"
                   >
                     <option value="">-- No Proctor --</option>
                     {proctors.map((p) => (
@@ -754,20 +754,20 @@ export const StudentAdmissionManagementView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#203653] mb-1">Notes</label>
+                  <label className="block font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">Notes</label>
                   <textarea
                     rows={2}
                     value={editingAdmission.notes || ''}
                     onChange={(e) => setEditingAdmission({ ...editingAdmission, notes: e.target.value })}
-                    className="w-full bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg p-2 font-medium"
+                    className="w-full bg-[#F7F6F1] dark:bg-[#080F1C] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg p-2 font-medium"
                   />
                 </div>
 
-                <div className="pt-3 border-t border-[#E2E6E8] flex justify-end gap-2">
+                <div className="pt-3 border-t border-[#E2E6E8] dark:border-[#293B52] flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setEditingAdmission(null)}
-                    className="px-4 py-2 border rounded-lg text-[#627084] font-medium"
+                    className="px-4 py-2 border rounded-lg text-[#627084] dark:text-[#91A4BA] font-medium"
                   >
                     Cancel
                   </button>

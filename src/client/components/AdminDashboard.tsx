@@ -517,7 +517,7 @@ export const AdminDashboard: React.FC = () => {
         {/* SECTION 1: 7-Card Executive Bento Metric Strip matching Stitch */}
         <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {/* Total Cohort */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Total Cohort</span>
               <Users className="w-4 h-4 text-[#203653] dark:text-[#84D5CA]" />
@@ -531,7 +531,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Fee Verified */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62] dark:text-[#84D5CA]">Fee Verified</span>
               <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
@@ -545,7 +545,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Pending Review */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#584411] dark:text-[#D4B779]">Pending Rev.</span>
               <AlertCircle className="w-4 h-4 text-[#584411] dark:text-[#D4B779]" />
@@ -559,7 +559,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Configured Beds */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Configured Beds</span>
               <Bed className="w-4 h-4 text-[#203653] dark:text-[#84D5CA]" />
@@ -573,7 +573,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Occupied */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8]">Occupied</span>
               <Check className="w-4 h-4 text-[#44474D] dark:text-[#94A3B8]" />
@@ -587,7 +587,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Available */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#016A62] dark:text-[#84D5CA]">Available</span>
               <Layers className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
@@ -601,7 +601,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Blocked / Maintenance */}
-          <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="bg-white dark:bg-[#111F32] p-4 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#BA1A1A] dark:text-[#F87171]">Blocked</span>
               <Ban className="w-4 h-4 text-[#BA1A1A] dark:text-[#F87171]" />
@@ -618,9 +618,9 @@ export const AdminDashboard: React.FC = () => {
         {/* SECTION 2: PRE-FLIGHT CERTIFICATION (5 COLS) + LIVE TURN ENGINE (7 COLS) */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Pre-Flight Verification Checklist Card (5 Cols) */}
-          <div className="lg:col-span-5 bg-white dark:bg-[#0A1929] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="lg:col-span-5 bg-white dark:bg-[#111F32] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div>
-              <div className="flex items-center justify-between mb-4 border-b border-[#DFE3E5] dark:border-[#1E293B] pb-3">
+              <div className="flex items-center justify-between mb-4 border-b border-[#DFE3E5] dark:border-[#293B52] pb-3">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-[#016A62] dark:text-[#84D5CA]" />
                   <h2 className="text-sm font-bold text-[#07203C] dark:text-[#F8FAFC]">Pre-Flight Certification</h2>
@@ -631,35 +631,35 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <ul className="flex flex-col gap-2.5">
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#0A1626]">
                   <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Hostel Fee Reconciliation</span>
                     <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">100% verified for active cohort (Finance ERP synchronized).</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#0A1626]">
                   <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">BVB Floor 2 Inventory Frozen</span>
                     <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">72 provisional seats certified; 4 tagged for electrical maintenance.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#0A1626]">
                   <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Priority Queue Sequenced</span>
                     <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Chronological payment timestamp ordering locked by warden keys.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#0A1626]">
                   <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Roommate Groups Synced</span>
                     <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">4 intent clusters validated for paired or triple room lock.</span>
                   </div>
                 </li>
-                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#071321]">
+                <li className="flex items-start gap-3 p-2.5 rounded bg-[#F0F4F6] dark:bg-[#0A1626]">
                   <CheckCircle2 className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0 mt-0.5" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Warden Oversight Mandate</span>
@@ -669,14 +669,14 @@ export const AdminDashboard: React.FC = () => {
               </ul>
             </div>
 
-            <div className="mt-4 pt-3 flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-xs bg-[#E5E9EB]/50 dark:bg-[#071321]/50 p-2.5 rounded border border-[#DFE3E5] dark:border-[#1E293B]">
+            <div className="mt-4 pt-3 flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-xs bg-[#E5E9EB]/50 dark:bg-[#0A1626]/50 p-2.5 rounded border border-[#DFE3E5] dark:border-[#293B52]">
               <span>Lock State: Master Ledger Immutable</span>
               <span className="font-mono text-[#07203C] dark:text-[#84D5CA] font-bold">SHA256: e82b...491a</span>
             </div>
           </div>
 
           {/* Real-Time Cycle Control Action Toolbar (7 Cols) */}
-          <div className="lg:col-span-7 bg-white dark:bg-[#0A1929] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm flex flex-col justify-between transition-colors">
+          <div className="lg:col-span-7 bg-white dark:bg-[#111F32] p-6 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm flex flex-col justify-between transition-colors">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DFE3E5] pb-3">
                 <div className="flex items-center gap-2.5">
@@ -713,7 +713,7 @@ export const AdminDashboard: React.FC = () => {
                   : '—';
 
                 return (
-                  <div className="p-4 rounded-xl bg-[#F0F4F6] dark:bg-[#071321] border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
+                  <div className="p-4 rounded-xl bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#DFE3E5] dark:border-[#293B52] flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
                     <div className="flex items-center gap-3 w-full md:w-auto">
                       <div className="w-12 h-12 rounded-full bg-[#07203C] dark:bg-[#0E243A] text-white flex items-center justify-center font-bold text-base shadow-sm border border-[#203653]">
                         {activeInitials}
@@ -743,7 +743,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     {/* Timer Block */}
-                    <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white dark:bg-[#0A1929] rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] shadow-xs transition-colors">
+                    <div className="flex flex-col items-end w-full md:w-auto p-3 bg-white dark:bg-[#111F32] rounded-lg border border-[#DFE3E5] dark:border-[#293B52] shadow-xs transition-colors">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E] dark:text-[#94A3B8]">
                         {activeCycleStatus === 'PAUSED' ? 'Turn Timer (Frozen)' : 'Turn Window Remaining'}
                       </span>
@@ -984,17 +984,17 @@ export const AdminDashboard: React.FC = () => {
         </section>
 
         {/* SECTION 4: FLOOR BED MATRIX VISUAL (ROOMS 201-212) */}
-        <section className="bg-white rounded-xl border border-[#DFE3E5] shadow-sm p-6 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DFE3E5] pb-3">
+        <section className="bg-white dark:bg-[#111F32] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm p-6 flex flex-col gap-4 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DFE3E5] dark:border-[#293B52] pb-3">
             <div>
-              <h2 className="text-sm font-bold text-[#07203C]">Floor 2 Pilot Wing Layout Reference (72 Configured Beds)</h2>
-              <p className="text-xs text-[#44474D]">Live visual state of pilot rooms 201 through 212 (Wing A sample preview)</p>
+              <h2 className="text-sm font-bold text-[#07203C] dark:text-[#F1F5F9]">Floor 2 Pilot Wing Layout Reference (72 Configured Beds)</h2>
+              <p className="text-xs text-[#44474D] dark:text-[#91A4BA]">Live visual state of pilot rooms 201 through 212 (Wing A sample preview)</p>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#E5E9EB]"></span> Available</div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#07203C]"></span> Occupied</div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#016A62]"></span> Active Target</div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#BA1A1A]"></span> Maintenance</div>
+            <div className="flex items-center gap-3 text-xs text-[#44474D] dark:text-[#B7C6D8]">
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#E5E9EB] dark:bg-[#1E293B] border border-transparent dark:border-[#293B52]"></span> Available</div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#07203C] dark:bg-[#0D1929] border border-transparent dark:border-[#293B52]"></span> Occupied</div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#016A62] dark:bg-[#63D6C6]"></span> Active Target</div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#BA1A1A] dark:bg-[#F87171]"></span> Maintenance</div>
             </div>
           </div>
 
@@ -1012,10 +1012,10 @@ export const AdminDashboard: React.FC = () => {
               const labels = ['A', 'B', 'C'].slice(0, cap);
 
               return (
-                <div key={rm.room_number} className="bg-[#F0F4F6] p-3 rounded-lg border border-[#DFE3E5] flex flex-col gap-2">
+                <div key={rm.room_number} className="bg-[#F0F4F6] dark:bg-[#0A1626] p-3 rounded-lg border border-[#DFE3E5] dark:border-[#293B52] flex flex-col gap-2 transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#07203C]">Room {rm.room_number}</span>
-                    <span className="text-[10px] text-[#74777E] capitalize">{(rm.room_type || 'standard').toLowerCase()}</span>
+                    <span className="text-xs font-bold text-[#07203C] dark:text-[#F1F5F9]">Room {rm.room_number}</span>
+                    <span className="text-[10px] text-[#74777E] dark:text-[#91A4BA] capitalize">{(rm.room_type || 'standard').toLowerCase()}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1">
                     {labels.map((lbl, sIdx) => {
@@ -1025,8 +1025,8 @@ export const AdminDashboard: React.FC = () => {
                           key={lbl}
                           className={`h-6 rounded text-[10px] flex items-center justify-center font-bold ${
                             isOccupied
-                              ? 'bg-[#07203C] text-white'
-                              : 'bg-[#E5E9EB] text-[#181C1E]'
+                              ? 'bg-[#07203C] dark:bg-[#1E293B] text-white dark:text-[#F1F5F9] border border-transparent dark:border-[#293B52]'
+                              : 'bg-[#E5E9EB] dark:bg-[#111F32] text-[#181C1E] dark:text-[#B7C6D8] border border-transparent dark:border-[#293B52]'
                           }`}
                           title={`Room ${rm.room_number} Bed ${lbl}: ${isOccupied ? 'Occupied' : 'Available'}`}
                         >
@@ -1550,9 +1550,9 @@ export const AdminDashboard: React.FC = () => {
       {/* CYCLE LIFECYCLE CONFIRMATION MODAL */}
       {cycleControlAction && (
         <div className="fixed inset-0 z-50 bg-[#07203C]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white dark:bg-[#0A1929] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#DFE3E5] dark:border-[#1E293B] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] transition-colors">
+          <div className="bg-white dark:bg-[#111F32] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#DFE3E5] dark:border-[#293B52] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] transition-colors">
             <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-            <div className="flex items-center gap-3 border-b border-[#DFE3E5] dark:border-[#1E293B] pb-3">
+            <div className="flex items-center gap-3 border-b border-[#DFE3E5] dark:border-[#293B52] pb-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
                 cycleControlAction === 'STOP'
                   ? 'bg-[#FAF4E6] text-[#9C7A2E]'
@@ -1594,12 +1594,12 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DFE3E5] dark:border-[#1E293B]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DFE3E5] dark:border-[#293B52]">
               <button
                 type="button"
                 disabled={cycleActionSubmitting}
                 onClick={() => setCycleControlAction(null)}
-                className="px-4 py-2 bg-[#F0F4F6] dark:bg-[#071321] hover:bg-[#E5E9EB] dark:hover:bg-[#122438] text-[#44474D] dark:text-[#94A3B8] text-xs font-bold rounded-lg transition-colors"
+                className="px-4 py-2 bg-[#F0F4F6] dark:bg-[#0A1626] hover:bg-[#E5E9EB] dark:hover:bg-[#122438] text-[#44474D] dark:text-[#94A3B8] text-xs font-bold rounded-lg transition-colors"
               >
                 Cancel
               </button>

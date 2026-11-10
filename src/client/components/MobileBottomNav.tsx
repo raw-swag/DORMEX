@@ -29,22 +29,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setShowMoreMenu(false)}
         >
           <div
-            className="bg-white rounded-t-3xl border-t border-[#DFE3E5] p-4 sm:p-5 shadow-2xl max-h-[80vh] overflow-y-auto space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+            className="bg-white dark:bg-[#111F32] rounded-t-3xl border-t border-[#DFE3E5] dark:border-[#293B52] p-4 sm:p-5 shadow-2xl max-h-[80vh] overflow-y-auto space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Sheet Handle */}
-            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto -mt-1 mb-2 shrink-0" />
-            <div className="flex items-center justify-between pb-2 border-b border-[#DFE3E5]">
+            <div className="w-10 h-1 bg-[#D5DCDF] dark:bg-[#293B52] rounded-full mx-auto -mt-1 mb-2 shrink-0" />
+            <div className="flex items-center justify-between pb-2 border-b border-[#DFE3E5] dark:border-[#293B52]">
               <div className="flex flex-col">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#07203C]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#07203C] dark:text-[#F1F5F9]">
                   Additional Workspaces
                 </span>
-                <span className="text-[11px] text-[#627084]">Institutional Tools & Registry</span>
+                <span className="text-[11px] text-[#627084] dark:text-[#91A4BA]">Institutional Tools &amp; Registry</span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMoreMenu(false)}
-                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#627084] hover:text-[#07203C] hover:bg-[#F0F4F6]"
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#627084] dark:text-[#91A4BA] hover:text-[#07203C] dark:hover:text-[#F1F5F9] hover:bg-[#F0F4F6] dark:hover:bg-[#17283D]"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -65,15 +65,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     }}
                     className={`w-full min-h-[48px] px-4 py-3 rounded-xl text-left flex items-center justify-between transition-colors ${
                       isSelected
-                        ? 'bg-[#2C8279] text-white font-bold shadow-xs'
-                        : 'bg-[#F7F6F1] text-[#203653] hover:bg-[#EAEEF0] font-medium'
+                        ? 'bg-[#2C8279] dark:bg-[#016A62] text-white font-bold shadow-xs'
+                        : 'bg-[#F7F6F1] dark:bg-[#0A1626] text-[#203653] dark:text-[#F1F5F9] hover:bg-[#EAEEF0] dark:hover:bg-[#17283D] font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-[#2C8279]'}`} />
+                      <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-[#2C8279] dark:text-[#63D6C6]'}`} />
                       <span className="text-xs">{tab.label}</span>
                     </div>
-                    <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-[#627084]'}`} />
+                    <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-[#627084] dark:text-[#91A4BA]'}`} />
                   </button>
                 );
               })}
@@ -85,7 +85,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* Floating Bottom Nav Container */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07203C] border-t border-[#17283B] px-2 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] shadow-2xl"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07203C] dark:bg-[#0D1929] border-t border-[#17283B] dark:border-[#293B52] px-2 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] shadow-2xl"
       >
         <div className="flex items-center justify-around gap-1 max-w-lg mx-auto">
           {primaryTabs.map((tab) => {
@@ -121,7 +121,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   {tab.shortLabel}
                 </span>
                 {isSelected && (
-                  <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-[#84D5CA]" />
+                  <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-[#84D5CA] dark:bg-[#63D6C6]" />
                 )}
               </button>
             );
@@ -153,7 +153,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 More
               </span>
               {isMoreActive && (
-                <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-[#84D5CA]" />
+                <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-[#84D5CA] dark:bg-[#63D6C6]" />
               )}
             </button>
           )}

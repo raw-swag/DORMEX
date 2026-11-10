@@ -43,16 +43,16 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
   const currentTitle = activeTabMeta ? activeTabMeta.label : 'Allocation Platform';
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#F7F6F1] dark:bg-[#071321] font-sans antialiased text-[#263345] dark:text-[#E2E8F0] transition-colors duration-150">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#F7F6F1] dark:bg-[#080F1C] font-sans antialiased text-[#263345] dark:text-[#F1F5F9] transition-colors duration-150">
       {/* 
         COMPACT MOBILE HEADER (Sticky, 56px, Safe-Area Padded)
         Visible only on < md (768px). Eliminates clutter, provides institution branding + quick notifications.
       */}
-      <header className="md:hidden sticky top-0 z-30 bg-[#07203C] dark:bg-[#05101C] text-white border-b border-[#203653] dark:border-[#122438] px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm pt-[calc(0.625rem+env(safe-area-inset-top,0px))]">
+      <header className="md:hidden sticky top-0 z-30 bg-[#07203C] dark:bg-[#0D1929] text-white border-b border-[#203653] dark:border-[#293B52] px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm pt-[calc(0.625rem+env(safe-area-inset-top,0px))]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <DormexLogo theme="white" size="custom" className="h-6 w-auto shrink-0 max-w-[90px] xs:max-w-none" />
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] text-[#84D5CA] font-bold uppercase tracking-wider truncate leading-tight">
+            <span className="text-[10px] text-[#84D5CA] dark:text-[#63D6C6] font-bold uppercase tracking-wider truncate leading-tight">
               SIT · {session.role.replace('_', ' ')}
             </span>
             <span className="text-xs font-bold text-white truncate leading-tight">
@@ -69,7 +69,7 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-            className="min-h-[44px] min-w-[44px] p-2 rounded-lg text-slate-300 hover:text-white hover:bg-[#203653] flex items-center justify-center transition-colors focus:outline-none focus:ring-1 focus:ring-[#84D5CA]"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-lg text-slate-300 hover:text-white hover:bg-[#203653] dark:hover:bg-[#17283D] flex items-center justify-center transition-colors focus:outline-none focus:ring-1 focus:ring-[#63D6C6]"
             aria-label="Toggle user menu and switcher"
           >
             {mobileDrawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -217,8 +217,8 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
             <div className="w-8 h-8 rounded-full bg-[#112947] border border-[#203653] flex items-center justify-center font-bold text-xs text-white shrink-0">
               {session.fullName.substring(0, 2).toUpperCase()}
             </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-white truncate">{session.fullName}</div>
+            <div className="min-w-0 pr-1" title={session.fullName}>
+              <div className="text-xs font-semibold text-white truncate max-w-[130px]">{session.fullName}</div>
               <div className="text-[10px] text-[#84d5ca] font-medium uppercase tracking-wider truncate">{session.role}</div>
             </div>
           </div>
@@ -238,23 +238,23 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
       {/* Main View Area with Clean Header */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Spacious Desktop Navigation Header (64px) - hidden on mobile in favor of compact mobile header */}
-        <header className="hidden md:flex h-16 bg-white dark:bg-[#0A1929] border-b border-[#E2E6E8] dark:border-[#1E293B] px-6 items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
+        <header className="hidden md:flex h-16 bg-white dark:bg-[#0D1929] border-b border-[#E2E6E8] dark:border-[#293B52] px-6 items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
           {/* Breadcrumb Path */}
           <div className="flex items-center gap-2 text-xs min-w-0">
-            <span className="text-[#627084] dark:text-[#94A3B8] font-medium">Campus Hostels</span>
-            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8] opacity-60" />
-            <span className="text-[#627084] dark:text-[#94A3B8] font-medium">BVB Block</span>
-            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8] opacity-60" />
-            <span className="text-[#203653] dark:text-[#F8FAFC] font-bold truncate">{currentTitle}</span>
-            <span className="hidden lg:inline-flex items-center ml-2 px-2 py-0.5 rounded-full bg-[#F7F6F1] dark:bg-[#0E243A] border border-[#E2E6E8] dark:border-[#203653] text-[10px] text-[#627084] dark:text-[#94A3B8] font-semibold">
+            <span className="text-[#627084] dark:text-[#91A4BA] font-medium">Campus Hostels</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#91A4BA] opacity-60" />
+            <span className="text-[#627084] dark:text-[#91A4BA] font-medium">BVB Block</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#91A4BA] opacity-60" />
+            <span className="text-[#203653] dark:text-[#F1F5F9] font-bold truncate">{currentTitle}</span>
+            <span className="hidden lg:inline-flex items-center ml-2 px-2 py-0.5 rounded-full bg-[#F7F6F1] dark:bg-[#111F32] border border-[#E2E6E8] dark:border-[#293B52] text-[10px] text-[#627084] dark:text-[#91A4BA] font-semibold">
               AY 2024–25
             </span>
           </div>
 
           {/* Right Area: Status & Compact User Pill */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2] text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#1E7B54] animate-pulse" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#1E7B54] dark:text-[#63D6C6] border border-[#A8D5C2] dark:border-[#1E5C50] text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#1E7B54] dark:bg-[#63D6C6] animate-pulse" />
               <span>Pilot Cycle: Floor 2</span>
             </div>
 
@@ -262,7 +262,7 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
 
             <ThemeToggle />
 
-            <div className="h-6 w-px bg-[#E2E6E8] dark:bg-[#203653]" />
+            <div className="h-6 w-px bg-[#E2E6E8] dark:border-[#293B52]" />
 
             <div className="flex items-center gap-2 pl-1">
               <div className="text-right">

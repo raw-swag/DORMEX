@@ -522,9 +522,9 @@ export const FloorPlanEditor: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6FAFC] dark:bg-[#071321] font-sans text-[#181C1E] dark:text-[#E2E8F0] flex flex-col transition-colors">
+    <div className="min-h-screen bg-[#F6FAFC] dark:bg-[#0A1626] font-sans text-[#181C1E] dark:text-[#E2E8F0] flex flex-col transition-colors">
       {/* Top Utility Context Bar */}
-      <div className="w-full bg-[#E5E9EB] dark:bg-[#0A1929] px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#DFE3E5] dark:border-[#1E293B] text-xs transition-colors">
+      <div className="w-full bg-[#E5E9EB] dark:bg-[#111F32] px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#DFE3E5] dark:border-[#293B52] text-xs transition-colors">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#016A62] dark:bg-[#84D5CA] animate-pulse" />
           <span className="font-bold text-[#07203C] dark:text-[#F8FAFC]">Hostel Office CAD & Spatial Geometry Suite</span>
@@ -544,7 +544,7 @@ export const FloorPlanEditor: React.FC = () => {
       </div>
 
       {/* Main Workspace Bar & Executive Action Controls */}
-      <div className="px-6 py-4 bg-[#F0F4F6] dark:bg-[#0A1929] border-b border-[#E5E9EB] dark:border-[#1E293B] flex flex-col xl:flex-row xl:items-center justify-between gap-4 transition-colors">
+      <div className="px-6 py-4 bg-[#F0F4F6] dark:bg-[#111F32] border-b border-[#E5E9EB] dark:border-[#293B52] flex flex-col xl:flex-row xl:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E7F2ED] dark:bg-[#016A62]/30 text-[#016A62] dark:text-[#84D5CA] uppercase tracking-wider">
@@ -564,7 +564,7 @@ export const FloorPlanEditor: React.FC = () => {
         {/* Global Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Switch View Mode: Blueprint vs CAD Precision Canvas */}
-          <div className="flex items-center bg-white dark:bg-[#071321] p-1 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs">
+          <div className="flex items-center bg-white dark:bg-[#0A1626] p-1 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] shadow-xs">
             <button
               type="button"
               onClick={() => setViewMode('blueprint')}
@@ -651,24 +651,24 @@ export const FloorPlanEditor: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           {/* Room Search */}
           <div className="relative flex items-center min-w-[200px] sm:w-60">
-            <Search className="w-4 h-4 text-[#74777E] absolute left-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#74777E] dark:text-[#91A4BA] absolute left-3 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter room (e.g. 202)..."
-              className="w-full h-9 pl-9 pr-3 bg-white text-[#181C1E] text-xs rounded-lg border border-[#E2E6E8] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#07203C]"
+              className="w-full h-9 pl-9 pr-3 bg-white dark:bg-[#071321] text-[#181C1E] dark:text-[#F8FAFC] text-xs rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#07203C] dark:focus:ring-[#63D6C6]"
             />
           </div>
 
           {/* Wing Filters */}
-          <div className="flex items-center bg-white p-1 rounded-lg border border-[#E2E6E8] shadow-xs">
+          <div className="flex items-center bg-white dark:bg-[#071321] p-1 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs">
             <button
               onClick={() => setWingFilter('all')}
               className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                 wingFilter === 'all'
-                  ? 'bg-[#07203C] text-white'
-                  : 'text-[#44474D] hover:text-[#07203C]'
+                  ? 'bg-[#07203C] dark:bg-[#1E3A5F] text-white'
+                  : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#07203C] dark:hover:text-white'
               }`}
             >
               All Wings ({roomCount})
@@ -677,7 +677,7 @@ export const FloorPlanEditor: React.FC = () => {
               onClick={() => setWingFilter('north')}
               className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                 wingFilter === 'north'
-                  ? 'bg-[#07203C] text-white'
+                  ? 'bg-[#07203C] dark:bg-[#1E3A5F] text-white'
                   : 'text-[#44474D] hover:text-[#07203C]'
               }`}
             >
@@ -708,14 +708,14 @@ export const FloorPlanEditor: React.FC = () => {
 
         {/* Bento Statistics Cards */}
         <div className="flex items-center gap-3">
-          <div className="bg-white dark:bg-[#071321] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex items-center gap-2.5 transition-colors">
+          <div className="bg-white dark:bg-[#0A1626] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] shadow-xs flex items-center gap-2.5 transition-colors">
             <Building className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
             <div>
               <div className="text-[10px] uppercase font-bold text-[#74777E] dark:text-[#94A3B8] tracking-wider">Total Rooms</div>
               <div className="text-xs font-extrabold text-[#07203C] dark:text-[#F8FAFC]">{roomCount} Units</div>
             </div>
           </div>
-          <div className="bg-white dark:bg-[#071321] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex items-center gap-2.5 transition-colors">
+          <div className="bg-white dark:bg-[#0A1626] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] shadow-xs flex items-center gap-2.5 transition-colors">
             <Bed className="w-4 h-4 text-[#07203C] dark:text-[#84D5CA]" />
             <div>
               <div className="text-[10px] uppercase font-bold text-[#74777E] dark:text-[#94A3B8] tracking-wider">Configured Beds</div>
@@ -723,7 +723,7 @@ export const FloorPlanEditor: React.FC = () => {
             </div>
           </div>
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg p-1 bg-white dark:bg-[#071321] shadow-xs transition-colors">
+          <div className="flex items-center gap-1 border border-[#E2E6E8] dark:border-[#293B52] rounded-lg p-1 bg-white dark:bg-[#0A1626] shadow-xs transition-colors">
             <button
               onClick={() => setZoomLevel((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
               className="p-1 hover:bg-[#E5E9EB] dark:hover:bg-[#1E293B] rounded text-[#44474D] dark:text-[#94A3B8]"
@@ -756,14 +756,14 @@ export const FloorPlanEditor: React.FC = () => {
         <div className="lg:col-span-3 flex flex-col gap-4">
           {viewMode === 'blueprint' ? (
             /* Stitch Multi-Wing Architectural Floor Plan Layout */
-            <div className="bg-white rounded-2xl border border-[#E2E6E8] shadow-sm p-6 space-y-6">
+            <div className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] shadow-sm p-6 space-y-6 transition-colors">
               {/* Floor Plan Header Overlay */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#E2E6E8]">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E2E6E8] dark:border-[#293B52]">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E5E9EB] text-[#07203C] uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E5E9EB] dark:bg-[#1E293B] text-[#07203C] dark:text-[#E2E8F0] uppercase tracking-wider">
                     Interactive Wing Matrix
                   </span>
-                  <span className="text-xs font-semibold text-[#44474D]">Click any room unit to inspect and calibrate</span>
+                  <span className="text-xs font-semibold text-[#44474D] dark:text-[#94A3B8]">Click any room unit to inspect and calibrate</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-[#74777E]">
                   <span className="flex items-center gap-1.5">
@@ -895,24 +895,24 @@ export const FloorPlanEditor: React.FC = () => {
             </div>
           ) : (
             /* Precision CAD Vector SVG Canvas Mode (900 × 650) */
-            <div className="bg-white rounded-2xl border border-[#E2E6E8] shadow-sm p-5 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E6E8] pb-3 gap-2">
+            <div className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] shadow-sm p-5 space-y-3 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3 gap-2">
                 <div>
-                  <span className="text-xs font-bold text-[#07203C] uppercase tracking-wider flex items-center gap-1.5">
-                    <LayoutGrid className="w-4 h-4 text-[#016A62]" />
+                  <span className="text-xs font-bold text-[#07203C] dark:text-[#E2E8F0] uppercase tracking-wider flex items-center gap-1.5">
+                    <LayoutGrid className="w-4 h-4 text-[#016A62] dark:text-[#63D6C6]" />
                     SVG CAD Canvas (900 × 650 Projection)
                   </span>
-                  <span className="text-[11px] text-[#74777E] block mt-0.5">
+                  <span className="text-[11px] text-[#74777E] dark:text-[#94A3B8] block mt-0.5">
                     Click vector polygons or seats to calibrate pixel coordinates and dimensions.
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-[#74777E] font-semibold">Canvas Filter:</span>
+                  <span className="text-[11px] text-[#74777E] dark:text-[#94A3B8] font-semibold">Canvas Filter:</span>
                   <select
                     value={cadFilterType}
                     onChange={(e) => setCadFilterType(e.target.value)}
-                    className="text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded px-2 py-1 text-[#07203C] font-semibold"
+                    className="text-xs bg-[#F0F4F6] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2 py-1 text-[#07203C] dark:text-[#E2E8F0] font-semibold"
                   >
                     <option value="ALL">All Elements ({elements.length})</option>
                     <option value="room">Rooms Only ({roomCount})</option>
@@ -934,20 +934,20 @@ export const FloorPlanEditor: React.FC = () => {
                   <svg
                     viewBox="0 0 900 650"
                     id="hostel-map-svg"
-                    className="w-full max-h-[550px] bg-white rounded-lg shadow-sm select-none"
+                    className="w-full max-h-[550px] bg-white dark:bg-[#080F1C] rounded-lg shadow-sm select-none border border-transparent dark:border-[#293B52] transition-colors"
                   >
                     {/* Outer Perimeter & Structural Outline */}
-                    <rect x="0" y="0" width="900" height="650" fill="#f8fafc" />
-                    <rect x="50" y="50" width="800" height="550" fill="none" stroke="#c4c6ce" strokeWidth="1.5" rx="6" ry="6" />
-                    <rect x="110" y="50" width="680" height="70" fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />
-                    <rect x="110" y="530" width="680" height="70" fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />
-                    <rect x="50" y="120" width="60" height="410" fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />
-                    <rect x="790" y="120" width="60" height="410" fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />
-                    <rect x="430" y="140" width="40" height="360" fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />
-                    <rect x="170" y="140" width="260" height="360" fill="#f0fdf4" stroke="#bbf7d0" strokeWidth="1" />
-                    <rect x="470" y="140" width="260" height="360" fill="#f0fdf4" stroke="#bbf7d0" strokeWidth="1" />
-                    <rect x="50" y="50" width="60" height="70" fill="#d1fae5" stroke="#a7f3d0" strokeWidth="1" />
-                    <rect x="790" y="50" width="60" height="70" fill="#d1fae5" stroke="#a7f3d0" strokeWidth="1" />
+                    <rect x="0" y="0" width="900" height="650" className="fill-[#f8fafc] dark:fill-[#0A1626]" />
+                    <rect x="50" y="50" width="800" height="550" fill="none" className="stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1.5" rx="6" ry="6" />
+                    <rect x="110" y="50" width="680" height="70" className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />
+                    <rect x="110" y="530" width="680" height="70" className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />
+                    <rect x="50" y="120" width="60" height="410" className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />
+                    <rect x="790" y="120" width="60" height="410" className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />
+                    <rect x="430" y="140" width="40" height="360" className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />
+                    <rect x="170" y="140" width="260" height="360" className="fill-[#f0fdf4] dark:fill-[#0E2F2B]/40 stroke-[#bbf7d0] dark:stroke-[#1E5C50]" strokeWidth="1" />
+                    <rect x="470" y="140" width="260" height="360" className="fill-[#f0fdf4] dark:fill-[#0E2F2B]/40 stroke-[#bbf7d0] dark:stroke-[#1E5C50]" strokeWidth="1" />
+                    <rect x="50" y="50" width="60" height="70" className="fill-[#d1fae5] dark:fill-[#0E2F2B]/60 stroke-[#a7f3d0] dark:stroke-[#1E5C50]" strokeWidth="1" />
+                    <rect x="790" y="50" width="60" height="70" className="fill-[#d1fae5] dark:fill-[#0E2F2B]/60 stroke-[#a7f3d0] dark:stroke-[#1E5C50]" strokeWidth="1" />
 
                     {/* Corridors and walls */}
                     {elements.map((el, i) => {
@@ -961,7 +961,7 @@ export const FloorPlanEditor: React.FC = () => {
                             y1={y1}
                             x2={x2}
                             y2={y2}
-                            stroke="#74777e"
+                            className="stroke-[#74777e] dark:stroke-[#91A4BA]"
                             strokeWidth="2"
                             strokeLinecap="round"
                           />
@@ -969,7 +969,7 @@ export const FloorPlanEditor: React.FC = () => {
                       }
                       if (el.t === 'corridor' && el.pts) {
                         const pts = el.pts.map(([x, y]) => `${x},${y}`).join(' ');
-                        return <polygon key={`corridor_${i}`} points={pts} fill="#eaeef0" stroke="#c4c6ce" strokeWidth="1" />;
+                        return <polygon key={`corridor_${i}`} points={pts} className="fill-[#eaeef0] dark:fill-[#0D1929] stroke-[#c4c6ce] dark:stroke-[#293B52]" strokeWidth="1" />;
                       }
                       return null;
                     })}
@@ -1001,15 +1001,18 @@ export const FloorPlanEditor: React.FC = () => {
                             height={rh}
                             rx="3"
                             ry="3"
-                            fill={isSelected ? '#07203C' : '#ffffff'}
-                            stroke={isSelected ? '#016A62' : '#74777E'}
+                            className={isSelected
+                              ? 'fill-[#07203C] dark:fill-[#17283D] stroke-[#016A62] dark:stroke-[#63D6C6]'
+                              : 'fill-white dark:fill-[#111F32] stroke-[#74777E] dark:stroke-[#293B52]'}
                             strokeWidth={isSelected ? '2.5' : '1'}
                           />
                           {el.label && (
                             <text
                               x={rx + rw / 2}
                               y={ry + rh / 2}
-                              fill={isSelected ? '#ffffff' : '#203653'}
+                              className={isSelected
+                                ? 'fill-white dark:fill-[#63D6C6]'
+                                : 'fill-[#203653] dark:fill-[#F1F5F9]'}
                               fontSize={rw < 45 ? '10' : '12'}
                               fontFamily="Inter, sans-serif"
                               fontWeight={isSelected ? 'bold' : 'normal'}
@@ -1073,34 +1076,34 @@ export const FloorPlanEditor: React.FC = () => {
         </div>
 
         {/* Right 1-Column: Stitch Active Room Inspector & Geometry Calibrator */}
-        <aside className="bg-white rounded-2xl border border-[#E2E6E8] shadow-sm p-6 flex flex-col justify-between space-y-6">
+        <aside className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] shadow-sm p-6 flex flex-col justify-between space-y-6 transition-colors">
           <div className="space-y-5">
             {/* Inspector Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-[#E2E6E8]">
+            <div className="flex items-start justify-between pb-3 border-b border-[#E2E6E8] dark:border-[#293B52]">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#016A62]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
+                  <span className="w-2 h-2 rounded-full bg-[#016A62] dark:bg-[#63D6C6]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E] dark:text-[#94A3B8]">
                     Room CAD Calibrator
                   </span>
                 </div>
-                <h2 className="text-xl font-extrabold text-[#07203C] mt-0.5 tracking-tight">
+                <h2 className="text-xl font-extrabold text-[#07203C] dark:text-[#F8FAFC] mt-0.5 tracking-tight">
                   Room {activeRoomNum}
                 </h2>
-                <span className="text-xs text-[#74777E]">
+                <span className="text-xs text-[#74777E] dark:text-[#94A3B8]">
                   {activeRoomData.wing} · Level 02
                 </span>
               </div>
-              <span className="px-2.5 py-1 rounded bg-[#E7F2ED] text-[#016A62] text-xs font-bold border border-[#A8D5C2]">
+              <span className="px-2.5 py-1 rounded bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#016A62] dark:text-[#63D6C6] text-xs font-bold border border-[#A8D5C2] dark:border-[#1E5C50]">
                 {activeRoomData.vacant ?? 1} Vacant
               </span>
             </div>
 
             {/* Room Specifications Card */}
-            <div className="p-3.5 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] space-y-2 text-xs">
+            <div className="p-3.5 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[#74777E]">Classification:</span>
-                <span className="font-bold text-[#07203C]">
+                <span className="text-[#74777E] dark:text-[#94A3B8]">Classification:</span>
+                <span className="font-bold text-[#07203C] dark:text-[#F8FAFC]">
                   {editCapacity === 1 ? 'Single Seater' : editCapacity === 2 ? 'Double Seater' : 'Provisional 3-Seater'}
                 </span>
               </div>
