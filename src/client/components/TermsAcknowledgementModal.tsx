@@ -75,24 +75,24 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
 
   return (
     <div className="fixed inset-0 z-50 bg-[#203653]/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full border border-[#E2E6E8] shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden animate-fadeIn pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+      <div className="bg-white dark:bg-[#111F32] rounded-t-3xl sm:rounded-2xl max-w-2xl w-full border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden animate-fadeIn pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
         {/* Mobile handle */}
         <div className="w-10 h-1 bg-[#E2E6E8] rounded-full mx-auto sm:hidden mt-2 mb-1" />
 
         {/* Header */}
-        <div className="p-4 sm:p-6 bg-[#F7F6F1] border-b border-[#E2E6E8] flex items-start justify-between gap-3">
+        <div className="p-4 sm:p-6 bg-[#F7F6F1] dark:bg-[#080F1C] border-b border-[#E2E6E8] dark:border-[#293B52] flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#E7F2ED] border border-[#2C8279]/30 text-[#2C8279] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#E7F2ED] border border-[#2C8279]/30 text-[#2C8279] dark:text-[#63D6C6] flex items-center justify-center shrink-0">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#2C8279] bg-[#E7F2ED] px-2 py-0.5 rounded inline-block mb-1">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#2C8279] dark:text-[#63D6C6] bg-[#E7F2ED] px-2 py-0.5 rounded inline-block mb-1">
                 Official University Accord • Step 5 of 5
               </div>
-              <h2 className="text-sm sm:text-lg font-bold text-[#203653] leading-tight">
+              <h2 className="text-sm sm:text-lg font-bold text-[#203653] dark:text-[#F1F5F9] leading-tight">
                 Hostel Allocation Application & Responsibility Accord
               </h2>
-              <div className="text-[10px] sm:text-[11px] text-[#627084] mt-0.5">
+              <div className="text-[10px] sm:text-[11px] text-[#627084] dark:text-[#91A4BA] mt-0.5">
                 B.V.B. Campus Hostel Allocation Pilot • Mandatory Sign-off
               </div>
             </div>
@@ -100,7 +100,7 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
 
           <button
             onClick={logout}
-            className="text-xs text-[#627084] hover:text-[#263345] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E2E6E8] bg-white transition-colors shrink-0"
+            className="text-xs text-[#627084] dark:text-[#91A4BA] hover:text-[#263345] dark:text-[#F1F5F9] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] bg-white dark:bg-[#111F32] transition-colors shrink-0"
             title="Decline and Sign Out"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -111,34 +111,34 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
         {/* Scrollable Terms Document Body */}
         <div 
           onScroll={handleScroll}
-          className="p-6 overflow-y-auto space-y-4 text-xs text-[#263345] leading-relaxed font-sans divide-y divide-[#E2E6E8]"
+          className="p-6 overflow-y-auto space-y-4 text-xs text-[#263345] dark:text-[#F1F5F9] leading-relaxed font-sans divide-y divide-[#E2E6E8]"
         >
-          <div className="p-3.5 bg-[#FAF4E6] border border-[#D4B779]/50 rounded-lg text-[#263345] flex items-start gap-2.5">
+          <div className="p-3.5 bg-[#FAF4E6] border border-[#D4B779]/50 rounded-lg text-[#263345] dark:text-[#F1F5F9] flex items-start gap-2.5">
             <Info className="w-4 h-4 text-[#D4B779] shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-[#203653]">Statutory Acknowledgment:</span>
-              <p className="mt-0.5 text-xs text-[#627084]">
+              <span className="font-bold text-[#203653] dark:text-[#F1F5F9]">Statutory Acknowledgment:</span>
+              <p className="mt-0.5 text-xs text-[#627084] dark:text-[#91A4BA]">
                 Before participating in room allocation or reserving seats, institutional policy requires all admitted students to review and accept the official room responsibility terms.
               </p>
             </div>
           </div>
 
           <div className="pt-3 prose prose-sm max-w-none">
-            <div className="font-semibold text-sm text-[#203653] mb-2">
+            <div className="font-semibold text-sm text-[#203653] dark:text-[#F1F5F9] mb-2">
               {terms?.title || 'Hostel Room Responsibility & Allocation Agreement'}
             </div>
-            <div className="whitespace-pre-line text-[#263345] bg-[#F7F6F1] p-4 rounded-lg border border-[#E2E6E8] font-mono text-[11px] leading-relaxed">
+            <div className="whitespace-pre-line text-[#263345] dark:text-[#F1F5F9] bg-[#F7F6F1] dark:bg-[#080F1C] p-4 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] font-mono text-[11px] leading-relaxed">
               {terms?.content || 'Loading official agreement content...'}
             </div>
           </div>
 
-          <div className="pt-3 text-[11px] text-[#627084]">
-            Version: {terms?.version || 1} • Published by Authorized Administration • Institutional Policy Hash: <code className="font-mono text-[#203653]">{terms?.content_hash || 'hash_v1'}</code>
+          <div className="pt-3 text-[11px] text-[#627084] dark:text-[#91A4BA]">
+            Version: {terms?.version || 1} • Published by Authorized Administration • Institutional Policy Hash: <code className="font-mono text-[#203653] dark:text-[#F1F5F9]">{terms?.content_hash || 'hash_v1'}</code>
           </div>
         </div>
 
         {/* Footer Acknowledgement Controls */}
-        <div className="p-4 sm:p-6 bg-[#F7F6F1] border-t border-[#E2E6E8] space-y-3 sm:space-y-4">
+        <div className="p-4 sm:p-6 bg-[#F7F6F1] dark:bg-[#080F1C] border-t border-[#E2E6E8] dark:border-[#293B52] space-y-3 sm:space-y-4">
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -152,9 +152,9 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
               type="checkbox"
               checked={confirmedChecked}
               onChange={(e) => setConfirmedChecked(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-[#E2E6E8] text-[#2C8279] focus:ring-[#2C8279] cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded border-[#E2E6E8] dark:border-[#293B52] text-[#2C8279] dark:text-[#63D6C6] focus:ring-[#2C8279] cursor-pointer"
             />
-            <label htmlFor="confirm-terms" className="text-xs text-[#263345] font-medium cursor-pointer">
+            <label htmlFor="confirm-terms" className="text-xs text-[#263345] dark:text-[#F1F5F9] font-medium cursor-pointer">
               I confirm that I have read and understood the Hostel Room Responsibility & Allocation Agreement and agree to follow all applicable hostel rules and code of conduct.
             </label>
           </div>
@@ -163,7 +163,7 @@ export const TermsAcknowledgementModal: React.FC<TermsModalProps> = ({ onAccepte
             <button
               onClick={logout}
               type="button"
-              className="w-full sm:w-auto min-h-[44px] text-xs text-[#627084] hover:text-[#263345] font-medium px-4 py-2.5 rounded-xl hover:bg-slate-200/60 transition-colors text-center"
+              className="w-full sm:w-auto min-h-[44px] text-xs text-[#627084] dark:text-[#91A4BA] hover:text-[#263345] dark:text-[#F1F5F9] font-medium px-4 py-2.5 rounded-xl hover:bg-slate-200/60 transition-colors text-center"
             >
               Decline & Exit
             </button>

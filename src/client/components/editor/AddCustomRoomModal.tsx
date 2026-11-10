@@ -35,15 +35,15 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-[#07203C]/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-[#E2E6E8]">
-        <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
+      <div className="bg-white dark:bg-[#111F32] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-[#E2E6E8] dark:border-[#293B52]">
+        <div className="flex items-center justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3">
           <div>
-            <h3 className="text-sm font-bold text-[#07203C]">Add New Room to Architectural Layout</h3>
+            <h3 className="text-sm font-bold text-[#07203C] dark:text-[#F1F5F9]">Add New Room to Architectural Layout</h3>
             <p className="text-[11px] text-[#74777E]">Configures room bounds and creates matching seat inventory.</p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#74777E] hover:text-[#07203C] text-xs font-bold p-1"
+            className="text-[#74777E] hover:text-[#07203C] dark:text-[#F1F5F9] text-xs font-bold p-1"
           >
             ✕
           </button>
@@ -58,7 +58,7 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
               value={newRoomNum}
               onChange={(e) => setNewRoomNum(e.target.value)}
               placeholder="e.g. 273"
-              className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
+              className="w-full text-xs bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#E2E6E8] dark:border-[#293B52] rounded-lg px-3 py-2 text-[#07203C] dark:text-[#F1F5F9]"
             />
           </div>
 
@@ -67,7 +67,7 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
             <select
               value={newRoomWing}
               onChange={(e) => setNewRoomWing(e.target.value as any)}
-              className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
+              className="w-full text-xs bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#E2E6E8] dark:border-[#293B52] rounded-lg px-3 py-2 text-[#07203C] dark:text-[#F1F5F9]"
             >
               <option value="North Wing">North Wing Corridor</option>
               <option value="South Wing">South Wing Corridor</option>
@@ -80,7 +80,7 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
             <select
               value={newRoomType}
               onChange={(e) => setNewRoomType(e.target.value as any)}
-              className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-3 py-2 text-[#07203C]"
+              className="w-full text-xs bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#E2E6E8] dark:border-[#293B52] rounded-lg px-3 py-2 text-[#07203C] dark:text-[#F1F5F9]"
             >
               <option value="1">Single Occupancy (1 Berth)</option>
               <option value="2">Double Occupancy (2 Berths)</option>
@@ -95,7 +95,7 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
                 type="number"
                 value={newRoomWidth}
                 onChange={(e) => setNewRoomWidth(parseInt(e.target.value, 10) || 50)}
-                className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
+                className="w-full text-xs bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#E2E6E8] dark:border-[#293B52] rounded-lg px-2.5 py-1.5 font-mono"
               />
             </div>
             <div>
@@ -104,16 +104,16 @@ export const AddCustomRoomModal: React.FC<AddCustomRoomModalProps> = ({
                 type="number"
                 value={newRoomHeight}
                 onChange={(e) => setNewRoomHeight(parseInt(e.target.value, 10) || 30)}
-                className="w-full text-xs bg-[#F0F4F6] border border-[#E2E6E8] rounded-lg px-2.5 py-1.5 font-mono"
+                className="w-full text-xs bg-[#F0F4F6] dark:bg-[#0A1626] border border-[#E2E6E8] dark:border-[#293B52] rounded-lg px-2.5 py-1.5 font-mono"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E6E8]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E6E8] dark:border-[#293B52]">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs text-[#74777E] rounded-lg hover:text-[#07203C]"
+              className="px-3.5 py-1.5 text-xs text-[#74777E] rounded-lg hover:text-[#07203C] dark:text-[#F1F5F9]"
             >
               Cancel
             </button>

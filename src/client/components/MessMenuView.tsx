@@ -192,9 +192,9 @@ export const MessMenuView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F7F6F1] dark:bg-[#071321] min-h-screen transition-colors">
+    <div className="flex-1 flex flex-col bg-[#F7F6F1] dark:bg-[#0A1626] min-h-screen transition-colors">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-[#0A1929] border-b border-[#E2E6E8] dark:border-[#1E293B] px-8 py-6 transition-colors">
+      <div className="bg-white dark:bg-[#111F32] border-b border-[#E2E6E8] dark:border-[#293B52] px-8 py-6 transition-colors">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-[#627084] dark:text-[#94A3B8] font-medium mb-1">
@@ -274,7 +274,7 @@ export const MessMenuView: React.FC = () => {
         )}
 
         {/* Global Scope & Week Selector Bar */}
-        <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs transition-colors">
+        <div className="bg-white dark:bg-[#111F32] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs transition-colors">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
               <Utensils className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
@@ -286,7 +286,7 @@ export const MessMenuView: React.FC = () => {
                 setSelectedScope(e.target.value);
                 setSelectedMenuId(null);
               }}
-              className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#D5DCDF] dark:border-[#1E293B] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
+              className="text-xs bg-[#F7F6F1] dark:bg-[#0A1626] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
             >
               <option value="ALL">All Campus Dining Halls</option>
               <option value="CAMPUS_CENTRAL">Campus Central Dining Hall</option>
@@ -303,7 +303,7 @@ export const MessMenuView: React.FC = () => {
               <select
                 value={selectedMenuId || (activeMenu?.id ?? '')}
                 onChange={(e) => setSelectedMenuId(e.target.value)}
-                className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#D5DCDF] dark:border-[#1E293B] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
+                className="text-xs bg-[#F7F6F1] dark:bg-[#0A1626] border border-[#D5DCDF] dark:border-[#293B52] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
               >
                 {menuHistory.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -320,7 +320,7 @@ export const MessMenuView: React.FC = () => {
           const displayedMenu = (selectedMenuId ? menuHistory.find(m => m.id === selectedMenuId) : null) || activeMenu;
 
           return (
-            <div className="bg-white dark:bg-[#0A1929] rounded-2xl border border-[#E2E6E8] dark:border-[#1E293B] p-8 shadow-xs transition-colors">
+            <div className="bg-white dark:bg-[#111F32] rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] p-8 shadow-xs transition-colors">
               {loading ? (
                 <div className="py-20 text-center text-[#627084] space-y-2">
                   <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#2C8279]" />
@@ -393,22 +393,33 @@ export const MessMenuView: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="py-20 text-center text-[#627084] space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-[#627084]">
+                <div className="py-16 text-center text-[#627084] dark:text-[#94A3B8] space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#0E243A] flex items-center justify-center mx-auto text-[#627084] dark:text-[#63D6C6]">
                     <Utensils className="w-6 h-6" />
                   </div>
-                  <h3 className="text-sm font-bold text-[#203653]">No mess menu published for this week yet</h3>
-                  <p className="text-xs text-[#627084] max-w-sm mx-auto">
-                    The Hostel Office has not published a notice board photo for this dining hall and period. Please check back shortly.
+                  <h3 className="text-sm font-bold text-[#203653] dark:text-[#F8FAFC]">No mess menu published for this week yet</h3>
+                  <p className="text-xs text-[#627084] dark:text-[#94A3B8] max-w-sm mx-auto leading-relaxed">
+                    The Hostel Office has not published the official dining hall schedule for this period. Standard institutional dining hall operational hours remain in effect.
                   </p>
-                  {isStaff && (
-                    <button
-                      onClick={() => setActiveTab('manage')}
-                      className="mt-3 px-4 py-2 bg-[#2C8279] text-white text-xs font-bold rounded-lg shadow-xs"
-                    >
-                      Upload Menu Now
-                    </button>
-                  )}
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                    {menuHistory.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('history')}
+                        className="px-3.5 py-1.5 bg-[#E5EFF5] dark:bg-[#1E3A5F] text-[#1B365D] dark:text-[#93C5FD] text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                      >
+                        View Previous Menu Archive ({menuHistory.length})
+                      </button>
+                    )}
+                    {isStaff && (
+                      <button
+                        onClick={() => setActiveTab('manage')}
+                        className="px-4 py-2 bg-[#2C8279] text-white text-xs font-bold rounded-lg shadow-xs"
+                      >
+                        Upload Menu Now
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

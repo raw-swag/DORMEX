@@ -28,6 +28,7 @@ export const StudentRegistryView: React.FC = () => {
   const { session } = useAuth();
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<{ status?: number; message: string; isPermission?: boolean } | null>(null);
   const [search, setSearch] = useState('');
   const [quotaFilter, setQuotaFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
@@ -54,21 +55,45 @@ export const StudentRegistryView: React.FC = () => {
   const canEditPriority = session?.role ? ['HOSTEL_OFFICE', 'SUPER_ADMIN'].includes(session.role) : false;
 
   const fetchStudents = async () => {
+    setLoading(true);
+    setFetchError(null);
     try {
       const q = new URLSearchParams();
       if (search) q.append('search', search);
       if (quotaFilter) q.append('quota', quotaFilter);
 
       const res = await apiFetch(`/api/students?${q.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStudents(data);
-        if (data.length > 0 && !selectedStudent) {
-          setSelectedStudent(data[0]);
+      if (!res.ok) {
+        const isPerm = res.status === 401 || res.status === 403;
+        let errMsg = 'Failed to load student registry records';
+        try {
+          const errData = await res.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch (_) {}
+        if (isPerm) {
+          errMsg = res.status === 401
+            ? 'Institutional session expired or unauthenticated. Please re-authenticate.'
+            : 'Access restricted: Student registry records require Hostel Office or Administrative authorization.';
+        } else if (res.status >= 500) {
+          errMsg = 'The student registry service encountered a temporary server error. Please try again.';
         }
+        setFetchError({ status: res.status, message: errMsg, isPermission: isPerm });
+        setStudents([]);
+        return;
       }
-    } catch (e) {
+
+      const data = await res.json();
+      setStudents(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0 && !selectedStudent) {
+        setSelectedStudent(data[0]);
+      }
+    } catch (e: any) {
       console.error(e);
+      setFetchError({
+        message: e?.message || 'Network communication failure. Please verify your connection and retry.',
+        isPermission: false,
+      });
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -405,8 +430,8 @@ export const StudentRegistryView: React.FC = () => {
             </div>
 
             {/* Table Card */}
-            <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-xs overflow-hidden flex flex-col justify-between transition-colors">
-              <div className="px-4 py-3 bg-[#F0F4F6] dark:bg-[#071321] border-b border-[#DFE3E5] dark:border-[#1E293B] flex items-center justify-between">
+            <div className="bg-white dark:bg-[#111F32] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-xs overflow-hidden flex flex-col justify-between transition-colors">
+              <div className="px-4 py-3 bg-[#F0F4F6] dark:bg-[#0A1626] border-b border-[#DFE3E5] dark:border-[#293B52] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Registered Student Applications</span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-[#DFE3E5] dark:bg-[#1E293B] text-[#181C1E] dark:text-[#E2E8F0] font-medium">
@@ -419,7 +444,7 @@ export const StudentRegistryView: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-[#181C1E] dark:text-[#E2E8F0]">
                   <thead>
-                    <tr className="bg-[#F0F4F6] dark:bg-[#071321] text-[10px] uppercase font-bold text-[#44474D] dark:text-[#94A3B8] tracking-wider border-b border-[#DFE3E5] dark:border-[#1E293B]">
+                    <tr className="bg-[#F0F4F6] dark:bg-[#0A1626] text-[10px] uppercase font-bold text-[#44474D] dark:text-[#94A3B8] tracking-wider border-b border-[#DFE3E5] dark:border-[#293B52]">
                       <th className="py-2.5 px-3">Queue #</th>
                       <th className="py-2.5 px-3">Candidate Details</th>
                       <th className="py-2.5 px-3">Branch</th>
@@ -429,87 +454,136 @@ export const StudentRegistryView: React.FC = () => {
                       <th className="py-2.5 px-3 text-right">Dossier</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#DFE3E5]">
-                    {displayedStudents.map((stu, idx) => {
-                      const priority = stu.assigned_priority || (idx + 1);
-                      const isFeeVerified = stu.fee_status === 'VERIFIED';
-                      const isSelected = activeDossier?.id === stu.id;
+                  <tbody className="divide-y divide-[#DFE3E5] dark:divide-[#293B52]">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-xs text-[#74777E] dark:text-[#94A3B8]">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="w-6 h-6 border-2 border-[#2C8279] border-t-transparent rounded-full animate-spin" />
+                            <span>Loading registry applications...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : fetchError ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 px-4 text-center">
+                          <div className="max-w-md mx-auto flex flex-col items-center gap-2 text-xs">
+                            <AlertCircle className="w-6 h-6 text-[#BA1A1A] dark:text-[#FFB4AB]" />
+                            <span className="font-bold text-[#181C1E] dark:text-[#F8FAFC]">
+                              {fetchError.isPermission ? 'Access Authorization Required' : 'Registry Load Error'}
+                            </span>
+                            <p className="text-[#44474D] dark:text-[#94A3B8] text-[11px] leading-relaxed">
+                              {fetchError.message}
+                            </p>
+                            {!fetchError.isPermission && (
+                              <button
+                                onClick={() => fetchStudents()}
+                                className="mt-2 px-3 py-1 bg-[#2C8279] hover:bg-[#1E7B54] text-white rounded font-semibold text-xs transition-colors"
+                              >
+                                Retry Sync
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : displayedStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-xs text-[#74777E] dark:text-[#94A3B8]">
+                          {students.length === 0 ? (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <Users className="w-6 h-6 text-[#74777E] dark:text-[#94A3B8] opacity-60" />
+                              <span className="font-semibold text-[#181C1E] dark:text-[#F8FAFC]">No Student Applications Found</span>
+                              <p className="text-[11px]">There are currently 0 candidate applications registered in this cycle.</p>
+                            </div>
+                          ) : (
+                            <span>No student applications match the active filters or search criteria.</span>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedStudents.map((stu, idx) => {
+                        const priority = stu.assigned_priority || (idx + 1);
+                        const isFeeVerified = stu.fee_status === 'VERIFIED';
+                        const isSelected = activeDossier?.id === stu.id;
 
-                      return (
-                        <tr
-                          key={stu.id || idx}
-                          onClick={() => handleStartEdit(stu)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-[#9DEFE3]/20' : 'hover:bg-[#F0F4F6]'
-                          }`}
-                        >
-                          <td className="py-3 px-3 align-middle">
-                            <div className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#07203C] text-white text-xs font-bold">
-                              {String(priority).padStart(2, '0')}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-[#203653] text-white flex items-center justify-center font-bold text-[10px]">
-                                {stu.full_name?.slice(0, 2).toUpperCase() || 'ST'}
+                        return (
+                          <tr
+                            key={stu.id || idx}
+                            onClick={() => handleStartEdit(stu)}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-[#9DEFE3]/20 dark:bg-[#2C8279]/30'
+                                : 'hover:bg-[#F0F4F6] dark:hover:bg-[#1A2C42]'
+                            }`}
+                          >
+                            <td className="py-3 px-3 align-middle">
+                              <div className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#07203C] dark:bg-[#05101C] text-white text-xs font-bold border dark:border-[#293B52]">
+                                {String(priority).padStart(2, '0')}
                               </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-[#181C1E] leading-tight">{stu.full_name}</span>
-                                <span className="text-[10px] text-[#74777E] font-mono">{stu.college_id}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-[#203653] text-white flex items-center justify-center font-bold text-[10px]">
+                                  {stu.full_name?.slice(0, 2).toUpperCase() || 'ST'}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-bold text-[#181C1E] dark:text-[#F8FAFC] leading-tight">{stu.full_name}</span>
+                                  <span className="text-[10px] text-[#74777E] dark:text-[#94A3B8] font-mono">{stu.college_id}</span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded bg-[#E5E9EB] text-[#181C1E] text-[10px] font-semibold">
-                              {stu.department} · S{stu.academic_year ? stu.academic_year * 2 : 6}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col font-mono text-[11px]">
-                              <span className="font-bold text-[#07203C]">{stu.fee_receipt_ref || `DUK89324${String(idx + 1).padStart(2, '0')}`}</span>
-                              <span className="text-[10px] text-[#74777E]">12-Jul 09:14:{String(idx * 4 + 10).padStart(2, '0')} IST</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-[#181C1E]">₹38,500</span>
-                              <span className={`text-[10px] font-semibold inline-flex items-center gap-1 ${
-                                isFeeVerified ? 'text-[#016A62]' : 'text-[#BA1A1A]'
-                              }`}>
-                                {isFeeVerified ? '✓ Verified' : '⚠ Pending'}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded bg-[#E5E9EB] dark:bg-[#1E293B] text-[#181C1E] dark:text-[#E2E8F0] text-[10px] font-semibold">
+                                {stu.department} · S{stu.academic_year ? stu.academic_year * 2 : 6}
                               </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap ${
-                              isFeeVerified ? 'bg-[#9DEFE3]/50 text-[#005049]' : 'bg-[#FFDAD6] text-[#93000A]'
-                            }`}>
-                              {isFeeVerified ? `Eligible Turn ${priority}` : 'Doc Pending'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <button className="px-2 py-1 bg-[#07203C] hover:bg-[#203653] text-white rounded text-[10px] font-bold transition-colors">
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-col font-mono text-[11px]">
+                                <span className="font-bold text-[#07203C] dark:text-[#63D6C6]">{stu.fee_receipt_ref || `DUK89324${String(idx + 1).padStart(2, '0')}`}</span>
+                                <span className="text-[10px] text-[#74777E] dark:text-[#94A3B8]">12-Jul 09:14:{String(idx * 4 + 10).padStart(2, '0')} IST</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-[#181C1E] dark:text-[#F8FAFC]">₹38,500</span>
+                                <span className={`text-[10px] font-semibold inline-flex items-center gap-1 ${
+                                  isFeeVerified ? 'text-[#016A62] dark:text-[#4ADE80]' : 'text-[#BA1A1A] dark:text-[#FFB4AB]'
+                                }`}>
+                                  {isFeeVerified ? '✓ Verified' : '⚠ Pending'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap ${
+                                isFeeVerified ? 'bg-[#9DEFE3]/50 dark:bg-[#07362E] text-[#005049] dark:text-[#4ADE80]' : 'bg-[#FFDAD6] dark:bg-[#381E10] text-[#93000A] dark:text-[#FB923C]'
+                              }`}>
+                                {isFeeVerified ? `Eligible Turn ${priority}` : 'Doc Pending'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button className="px-2 py-1 bg-[#07203C] dark:bg-[#17283D] hover:bg-[#203653] dark:hover:bg-[#253D5B] text-white rounded text-[10px] font-bold transition-colors">
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              <div className="p-3 bg-[#F0F4F6] border-t border-[#DFE3E5] flex items-center justify-between text-xs text-[#74777E]">
+              <div className="p-3 bg-[#F0F4F6] dark:bg-[#0A1626] border-t border-[#DFE3E5] dark:border-[#293B52] flex items-center justify-between text-xs text-[#74777E] dark:text-[#94A3B8]">
                 <span>Showing {displayedStudents.length} of {students.length} applications</span>
                 <span className="font-mono text-[11px]">SIT LAN Sync Active</span>
               </div>
             </div>
 
             {/* Tie-breaker Note */}
-            <div className="p-3.5 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] flex items-start gap-3">
-              <Gavel className="w-5 h-5 text-[#44474D] shrink-0 mt-0.5" />
-              <div className="flex flex-col text-xs text-[#44474D]">
-                <span className="font-bold text-[#181C1E]">Priority Tie-Breaker Protocol</span>
+            <div className="p-3.5 bg-[#F0F4F6] dark:bg-[#0A1626] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] flex items-start gap-3">
+              <Gavel className="w-5 h-5 text-[#44474D] dark:text-[#94A3B8] shrink-0 mt-0.5" />
+              <div className="flex flex-col text-xs text-[#44474D] dark:text-[#94A3B8]">
+                <span className="font-bold text-[#181C1E] dark:text-[#F8FAFC]">Priority Tie-Breaker Protocol</span>
                 <p className="mt-0.5 leading-relaxed">
                   In the event of simultaneous registration submissions, priority is strictly derived from the State Bank of India Collect payment gateway confirmation timestamp. Academic CGPA is applied exclusively when payment timestamps are identical down to milliseconds.
                 </p>
@@ -520,7 +594,7 @@ export const StudentRegistryView: React.FC = () => {
           {/* RIGHT PANEL: Structured Applicant Dossier (5 Cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4 sticky top-6">
             {activeDossier ? (
-              <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm overflow-hidden flex flex-col transition-colors">
+              <div className="bg-white dark:bg-[#111F32] rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm overflow-hidden flex flex-col transition-colors">
                 {/* Dossier Header */}
                 <div className="p-4 bg-[#07203C] dark:bg-[#05101C] text-white flex items-start justify-between border-b border-[#203653] dark:border-[#122438]">
                   <div className="flex items-center gap-3">
@@ -543,12 +617,12 @@ export const StudentRegistryView: React.FC = () => {
                 </div>
 
                 {/* Dossier Tabs */}
-                <div className="flex items-center bg-[#E5E9EB] dark:bg-[#071321] px-2 pt-2 gap-1 border-b border-[#DFE3E5] dark:border-[#1E293B] text-xs transition-colors">
+                <div className="flex items-center bg-[#E5E9EB] dark:bg-[#0A1626] px-2 pt-2 gap-1 border-b border-[#DFE3E5] dark:border-[#293B52] text-xs transition-colors">
                   <button
                     onClick={() => setDossierTab('fee')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
                       dossierTab === 'fee'
-                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        ? 'bg-white dark:bg-[#111F32] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
                         : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
@@ -558,7 +632,7 @@ export const StudentRegistryView: React.FC = () => {
                     onClick={() => setDossierTab('profile')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
                       dossierTab === 'profile'
-                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        ? 'bg-white dark:bg-[#111F32] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
                         : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
@@ -568,7 +642,7 @@ export const StudentRegistryView: React.FC = () => {
                     onClick={() => setDossierTab('guardian')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
                       dossierTab === 'guardian'
-                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        ? 'bg-white dark:bg-[#111F32] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
                         : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
@@ -578,7 +652,7 @@ export const StudentRegistryView: React.FC = () => {
                     onClick={() => setDossierTab('proctor')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
                       dossierTab === 'proctor'
-                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        ? 'bg-white dark:bg-[#111F32] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
                         : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >

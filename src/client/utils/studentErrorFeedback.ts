@@ -8,9 +8,11 @@
 
 export enum AllocationFeedbackType {
   CONFIGURATION_PENDING = 'CONFIGURATION_PENDING',
+  CYCLE_NOT_STARTED = 'CYCLE_NOT_STARTED',
   TERMS_REQUIRED = 'TERMS_REQUIRED',
   STUDENT_INELIGIBLE = 'STUDENT_INELIGIBLE',
   CYCLE_INACTIVE = 'CYCLE_INACTIVE',
+  ALREADY_QUEUED = 'ALREADY_QUEUED',
   SEAT_CONTENTION = 'SEAT_CONTENTION',
   NETWORK_OFFLINE = 'NETWORK_OFFLINE',
   TURN_NOT_ACTIVE = 'TURN_NOT_ACTIVE',
@@ -26,22 +28,67 @@ export interface FormattedError {
   rawError?: string;
   /** Whether the error is actionable (e.g. contact office or retry) */
   actionable?: string;
+  /** Internal diagnostic details for administration */
+  adminDiagnostic?: string;
 }
 
-export function formatStudentAllocationError(error: unknown): FormattedError {
+export function formatStudentAllocationError(
+  error: unknown,
+  context?: { cycleStatus?: string; quota?: string; academicYear?: number }
+): FormattedError {
   const rawMessage = error instanceof Error 
     ? error.message 
     : typeof error === 'string' 
       ? error 
       : 'Unknown error occurred';
 
-  // 1. Missing pool configuration for student's quota and academic year
+  // Case A: Allocation cycle confirmed not started or in simulation
+  if (
+    context?.cycleStatus === 'NOT_STARTED' ||
+    context?.cycleStatus === 'DRAFT' ||
+    rawMessage.includes('CYCLE_NOT_STARTED') ||
+    rawMessage.includes('CYCLE_SIMULATING')
+  ) {
+    return {
+      type: AllocationFeedbackType.CYCLE_NOT_STARTED,
+      friendlyMessage: 'Allocation has not been started by the Hostel Office yet. You will be notified when your turn opens.',
+      rawError: rawMessage,
+      actionable: 'Please check back once the official cycle schedule commences.',
+    };
+  }
+
+  // Case A2: Allocation cycle temporarily paused
+  if (context?.cycleStatus === 'PAUSED' || rawMessage.includes('CYCLE_PAUSED')) {
+    return {
+      type: AllocationFeedbackType.CYCLE_INACTIVE,
+      friendlyMessage: 'Allocation is temporarily paused by the Hostel Office. New queue entries are suspended while existing positions remain secure.',
+      rawError: rawMessage,
+      actionable: 'Please wait for the administrator to resume the allocation session.',
+    };
+  }
+
+  // Case B: Missing allocation pool configuration
   if (rawMessage.includes('NO_MATCHING_POOL')) {
+    const cohortInfo = context?.quota || context?.academicYear
+      ? ` [Cohort: Quota=${context?.quota ?? 'Unknown'}, Year=${context?.academicYear ?? 'Unknown'}]`
+      : '';
+
     return {
       type: AllocationFeedbackType.CONFIGURATION_PENDING,
       friendlyMessage: 'Allocation is not available for your current category and academic year yet. Please contact the Hostel Office if you need assistance.',
       rawError: rawMessage,
       actionable: 'Please visit or email the Hostel Office to verify your quota and academic year cohort setup.',
+      adminDiagnostic: `Missing allocation pool mapping for quota ${context?.quota ?? 'unspecified'}, academic year ${context?.academicYear ?? 'unspecified'}.${cohortInfo}`,
+    };
+  }
+
+  // Case D: Already in queue
+  if (rawMessage.includes('ALREADY_IN_QUEUE') || rawMessage.includes('already entered')) {
+    return {
+      type: AllocationFeedbackType.ALREADY_QUEUED,
+      friendlyMessage: 'You have already entered the allocation queue. Your position is preserved.',
+      rawError: rawMessage,
+      actionable: 'View your live queue position in the status ribbon above.',
     };
   }
 

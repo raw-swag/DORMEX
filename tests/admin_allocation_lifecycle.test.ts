@@ -20,6 +20,9 @@ describe('Admin-Controlled Allocation Lifecycle Suite', () => {
   }, 30000);
 
   it('1. Student login or waiting room join does NOT start the allocation engine', async () => {
+    // Transition to READY so waiting room enrollment is permitted while engine is not running
+    await db.query(`UPDATE allocation_cycles SET status = 'READY' WHERE id = 'cyc_bvb_pilot_2026'`);
+
     // Student joins waiting room
     const joinRes = await request(app)
       .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
@@ -27,20 +30,52 @@ describe('Admin-Controlled Allocation Lifecycle Suite', () => {
       .send({ studentProfileId: 'prof_demo_001' });
 
     expect(joinRes.status).toBe(200);
+    expect(joinRes.body.status).toBe('WAITING');
     activePoolId = joinRes.body.poolId;
 
-    // Direct advance poll when cycle is DRAFT must return null session
-    const advRes = await request(app)
-      .post(`/api/allocation-pools/${activePoolId}/advance`)
-      .send();
+    // Verify that joining the waiting room in READY state does NOT start a turn session or countdown
+    const activeTurnRes = await request(app)
+      .get('/api/allocation-cycles/cyc_bvb_pilot_2026/active-turn')
+      .set('x-user-id', 'usr_admin');
 
-    expect(advRes.status).toBe(200);
-    expect(advRes.body.session).toBeNull();
+    expect(activeTurnRes.status).toBe(200);
+    expect(activeTurnRes.body.cycleStatus).toBe('READY');
+    expect(activeTurnRes.body.hasActiveTurn).toBe(false);
+    expect(activeTurnRes.body.session).toBeNull();
+    expect(activeTurnRes.body.candidate).toBeNull();
+    expect(activeTurnRes.body.totalWaiting).toBe(1);
 
-    // Verify cycle status remains DRAFT
+    // Verify student remains in waiting room and no booking sessions exist
+    const sessionCountRes = await db.query(
+      `SELECT COUNT(*)::int AS count FROM booking_sessions WHERE cycle_id = 'cyc_bvb_pilot_2026'`
+    );
+    expect(sessionCountRes.rows[0].count).toBe(0);
+
+    const waitingEntryRes = await db.query(
+      `SELECT status FROM waiting_room_entries WHERE cycle_id = 'cyc_bvb_pilot_2026' AND student_id = 'prof_demo_001'`
+    );
+    expect(waitingEntryRes.rows[0].status).toBe('WAITING');
+
+    // Verify cycle status remains READY
     const cycleRes = await request(app).get('/api/allocation-cycles');
     const cycle = cycleRes.body.find((c: any) => c.id === 'cyc_bvb_pilot_2026');
-    expect(cycle.status).toBe('DRAFT');
+    expect(cycle.status).toBe('READY');
+  });
+
+  it('1b. Student queue entry is rejected when cycle is in DRAFT status', async () => {
+    // Ensure cycle is in DRAFT
+    await db.query(`UPDATE allocation_cycles SET status = 'DRAFT' WHERE id = 'cyc_bvb_pilot_2026'`);
+
+    const joinDraft = await request(app)
+      .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+      .set('x-user-id', 'usr_demo_002')
+      .send({ studentProfileId: 'prof_demo_002' });
+
+    expect(joinDraft.status).toBe(400);
+    expect(joinDraft.body.error).toContain('CYCLE_NOT_STARTED');
+
+    // Restore cycle to READY for subsequent test flow
+    await db.query(`UPDATE allocation_cycles SET status = 'READY' WHERE id = 'cyc_bvb_pilot_2026'`);
   });
 
   it('2. Students and unauthorized roles are forbidden from starting or stopping the cycle', async () => {
@@ -257,5 +292,95 @@ describe('Admin-Controlled Allocation Lifecycle Suite', () => {
 
     // Restore cycle to ACTIVE for any teardown consistency
     await db.query(`UPDATE allocation_cycles SET status = 'ACTIVE' WHERE id = 'cyc_bvb_pilot_2026'`);
+  });
+
+  describe('10. Lifecycle State-by-State Student Queue Entry Authorization', () => {
+    it('rejects student queue entry in DRAFT state', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'DRAFT' WHERE id = 'cyc_bvb_pilot_2026'`);
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_002')
+        .send({ studentProfileId: 'prof_demo_002' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('CYCLE_NOT_STARTED');
+    });
+
+    it('rejects student queue entry in NOT_STARTED state', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'NOT_STARTED' WHERE id = 'cyc_bvb_pilot_2026'`);
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_002')
+        .send({ studentProfileId: 'prof_demo_002' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('CYCLE_NOT_STARTED');
+    });
+
+    it('permits student waiting room entry in READY state', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'READY' WHERE id = 'cyc_bvb_pilot_2026'`);
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_002')
+        .send({ studentProfileId: 'prof_demo_002' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('WAITING');
+    });
+
+    it('permits student waiting room entry in ACTIVE state', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'ACTIVE' WHERE id = 'cyc_bvb_pilot_2026'`);
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_003')
+        .send({ studentProfileId: 'prof_demo_003' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('WAITING');
+    });
+
+    it('rejects student queue entry in SIMULATING state', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'SIMULATING' WHERE id = 'cyc_bvb_pilot_2026'`);
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_004')
+        .send({ studentProfileId: 'prof_demo_004' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('CYCLE_SIMULATING');
+    });
+
+    it('rejects new student queue entry in PAUSED state while preserving existing queue', async () => {
+      await db.query(`UPDATE allocation_cycles SET status = 'PAUSED' WHERE id = 'cyc_bvb_pilot_2026'`);
+
+      // Attempt new student entry
+      const res = await request(app)
+        .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+        .set('x-user-id', 'usr_demo_005')
+        .send({ studentProfileId: 'prof_demo_005' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('CYCLE_PAUSED');
+
+      // Verify previously queued students remain in waiting_room_entries
+      const entriesRes = await db.query(
+        `SELECT student_id, status FROM waiting_room_entries WHERE cycle_id = 'cyc_bvb_pilot_2026' AND student_id = 'prof_demo_002'`
+      );
+      expect(entriesRes.rows.length).toBe(1);
+      expect(entriesRes.rows[0].status).toBe('WAITING');
+    });
+
+    it('rejects student queue entry in terminal states (PUBLISHED, LOCKED, CLOSED)', async () => {
+      for (const st of ['PUBLISHED', 'LOCKED', 'CLOSED']) {
+        await db.query(`UPDATE allocation_cycles SET status = $1 WHERE id = 'cyc_bvb_pilot_2026'`, [st]);
+        const res = await request(app)
+          .post('/api/allocation-cycles/cyc_bvb_pilot_2026/join')
+          .set('x-user-id', 'usr_demo_006')
+          .send({ studentProfileId: 'prof_demo_006' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toContain('CYCLE_CLOSED');
+      }
+    });
   });
 });

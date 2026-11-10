@@ -86,7 +86,7 @@ export const MobileInspectorBottomSheet: React.FC<MobileInspectorProps> = ({
 
   return (
     <div 
-      className={`fixed inset-x-0 bottom-0 z-40 bg-white border-t border-slate-200 shadow-2xl rounded-t-3xl transition-all duration-300 flex flex-col ${
+      className={`fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-[#111F32] border-t border-slate-200 shadow-2xl rounded-t-3xl transition-all duration-300 flex flex-col ${
         isMobileInspectorExpanded ? 'h-[85vh]' : 'max-h-[60vh]'
       }`}
       role="region"
@@ -150,7 +150,7 @@ export const MobileInspectorBottomSheet: React.FC<MobileInspectorProps> = ({
                         ? 'border-emerald-300 bg-emerald-50'
                         : isCoord 
                           ? 'border-amber-300 bg-amber-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          : 'border-slate-200 bg-white dark:bg-[#111F32] hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">

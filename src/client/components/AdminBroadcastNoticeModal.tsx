@@ -91,7 +91,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E6E8] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-[#111F32] rounded-2xl shadow-2xl border border-[#E2E6E8] dark:border-[#293B52] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-[#203653] text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -131,7 +131,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-[#203653] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] uppercase tracking-wider mb-1">
               Notice Title *
             </label>
             <input
@@ -139,7 +139,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. BVB Floor 2 Allocation Commencing Tomorrow"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E6E8] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] focus:border-transparent text-[#263345]"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] focus:border-transparent text-[#263345] dark:text-[#F1F5F9]"
               required
             />
           </div>
@@ -147,13 +147,13 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
           {/* Category & Urgency Grid */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#203653] uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] uppercase tracking-wider mb-1">
                 Category
               </label>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-lg border border-[#E2E6E8] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] bg-white"
+                className="w-full px-3 py-2 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] dark:text-[#F1F5F9] bg-white dark:bg-[#111F32]"
               >
                 <option value="NOTICE">Official Circular</option>
                 <option value="ALLOTMENT">Allocation Alert</option>
@@ -162,13 +162,13 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#203653] uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] uppercase tracking-wider mb-1">
                 Urgency Level
               </label>
               <select
                 value={priority}
                 onChange={e => setPriority(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-lg border border-[#E2E6E8] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] bg-white"
+                className="w-full px-3 py-2 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] dark:text-[#F1F5F9] bg-white dark:bg-[#111F32]"
               >
                 <option value="NORMAL">Normal Priority</option>
                 <option value="URGENT">Urgent (Red Badge)</option>
@@ -179,7 +179,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
 
           {/* Target Audience */}
           <div>
-            <label className="block text-xs font-bold text-[#203653] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] uppercase tracking-wider mb-1">
               Target Audience
             </label>
             <div className="grid grid-cols-3 gap-2 text-xs">
@@ -189,7 +189,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
                 className={`px-3 py-2 rounded-lg border font-semibold flex items-center justify-center space-x-1.5 transition-colors ${
                   targetAudience === 'ALL'
                     ? 'bg-[#203653] text-white border-[#203653]'
-                    : 'bg-[#F7F6F1] text-[#627084] border-[#E2E6E8] hover:bg-white'
+                    : 'bg-[#F7F6F1] dark:bg-[#080F1C] text-[#627084] dark:text-[#91A4BA] border-[#E2E6E8] dark:border-[#293B52] hover:bg-white dark:bg-[#111F32]'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
                 className={`px-3 py-2 rounded-lg border font-semibold flex items-center justify-center space-x-1.5 transition-colors ${
                   targetAudience === 'STUDENTS'
                     ? 'bg-[#2C8279] text-white border-[#2C8279]'
-                    : 'bg-[#F7F6F1] text-[#627084] border-[#E2E6E8] hover:bg-white'
+                    : 'bg-[#F7F6F1] dark:bg-[#080F1C] text-[#627084] dark:text-[#91A4BA] border-[#E2E6E8] dark:border-[#293B52] hover:bg-white dark:bg-[#111F32]'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
                 className={`px-3 py-2 rounded-lg border font-semibold flex items-center justify-center space-x-1.5 transition-colors ${
                   targetAudience === 'BVB_BLOCK'
                     ? 'bg-[#1D63B8] text-white border-[#1D63B8]'
-                    : 'bg-[#F7F6F1] text-[#627084] border-[#E2E6E8] hover:bg-white'
+                    : 'bg-[#F7F6F1] dark:bg-[#080F1C] text-[#627084] dark:text-[#91A4BA] border-[#E2E6E8] dark:border-[#293B52] hover:bg-white dark:bg-[#111F32]'
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5" />
@@ -226,7 +226,7 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
 
           {/* Message Body */}
           <div>
-            <label className="block text-xs font-bold text-[#203653] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#203653] dark:text-[#F1F5F9] uppercase tracking-wider mb-1">
               Detailed Announcement *
             </label>
             <textarea
@@ -234,18 +234,18 @@ export const AdminBroadcastNoticeModal: React.FC<AdminBroadcastNoticeModalProps>
               onChange={e => setMessage(e.target.value)}
               rows={4}
               placeholder="Enter official notice details, deadlines, maintenance instructions, or room allocation alerts..."
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E6E8] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] resize-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] text-xs focus:outline-hidden focus:ring-2 focus:ring-[#2C8279] text-[#263345] dark:text-[#F1F5F9] resize-none"
               required
             />
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-3 border-t border-[#E2E6E8] flex items-center justify-end space-x-2.5">
+          <div className="pt-3 border-t border-[#E2E6E8] dark:border-[#293B52] flex items-center justify-end space-x-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 rounded-lg border border-[#E2E6E8] text-xs font-semibold text-[#627084] hover:bg-[#F7F6F1] transition-colors"
+              className="px-4 py-2 rounded-lg border border-[#E2E6E8] dark:border-[#293B52] text-xs font-semibold text-[#627084] dark:text-[#91A4BA] hover:bg-[#F7F6F1] dark:bg-[#080F1C] transition-colors"
             >
               Cancel
             </button>

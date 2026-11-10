@@ -82,7 +82,7 @@ export class AllocationEngineService {
     }
 
     return this.db.transaction(async (client) => {
-      // 1. Verify cycle status
+      // 1. Verify cycle status & student queue-entry authorization
       const cycleRes = await client.query(
         `SELECT id, status, waiting_room_threshold, turn_duration_seconds FROM allocation_cycles WHERE id = $1`,
         [cycleId]
@@ -91,7 +91,24 @@ export class AllocationEngineService {
         throw new Error('NOT_FOUND: Allocation cycle not found');
       }
       const cycle = cycleRes.rows[0];
-      if (!['READY', 'SIMULATING', 'ACTIVE', 'PAUSED', 'DRAFT', 'NOT_STARTED'].includes(cycle.status)) {
+
+      // Institutional Lifecycle Queue-Entry Policy:
+      // - READY: Allowed for pre-allocation waiting-room enrollment ahead of cycle activation.
+      // - ACTIVE: Allowed for eligible students during active selection.
+      // - DRAFT / NOT_STARTED: Rejected (cycle not yet scheduled or opened).
+      // - PAUSED: Rejected for new entries while preserving existing waiting entries.
+      // - SIMULATING: Rejected for ordinary students; simulation operations use simulateCycle.
+      // - CLOSED / PUBLISHED / LOCKED: Rejected (allocation concluded).
+      if (cycle.status === 'PAUSED') {
+        throw new Error('CYCLE_PAUSED: Allocation cycle is temporarily paused; new queue entries are suspended');
+      }
+      if (cycle.status === 'DRAFT' || cycle.status === 'NOT_STARTED') {
+        throw new Error(`CYCLE_NOT_STARTED: Cycle has not been started by the Hostel Office (status: ${cycle.status})`);
+      }
+      if (cycle.status === 'SIMULATING') {
+        throw new Error('CYCLE_SIMULATING: Allocation cycle is in simulation mode');
+      }
+      if (!['READY', 'ACTIVE'].includes(cycle.status)) {
         throw new Error(`CYCLE_CLOSED: Cycle is currently in ${cycle.status} state`);
       }
 

@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { PWAInstallProvider } from './context/PWAInstallContext.js';
@@ -18,8 +18,18 @@ const StudentAdmissionManagementView = lazy(() => import('./components/StudentAd
 const MessMenuView = lazy(() => import('./components/MessMenuView.js').then((m) => ({ default: m.MessMenuView })));
 const DeviceManagementView = lazy(() => import('./components/DeviceManagementView.js').then((m) => ({ default: m.DeviceManagementView })));
 
-const AppContent: React.FC = () => {
+export const AppContent: React.FC = () => {
   const { session, isAuthenticated, isLoading } = useAuth();
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    return session?.role === 'STUDENT' ? 'student_allocation' : 'admin_overview';
+  });
+
+  // Synchronize tab default when authenticated role changes, without conditional Hook execution
+  useEffect(() => {
+    if (session?.role) {
+      setCurrentTab(session.role === 'STUDENT' ? 'student_allocation' : 'admin_overview');
+    }
+  }, [session?.role, session?.userId]);
 
   // Show a neutral clean spinner during session restoration so protected views don't prematurely render
   if (isLoading) {
@@ -43,10 +53,6 @@ const AppContent: React.FC = () => {
       </>
     );
   }
-
-  const [currentTab, setCurrentTab] = useState<string>(
-    session.role === 'STUDENT' ? 'student_allocation' : 'admin_overview'
-  );
 
   return (
     <>

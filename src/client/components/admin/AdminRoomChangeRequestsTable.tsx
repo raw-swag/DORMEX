@@ -11,14 +11,14 @@ export const AdminRoomChangeRequestsTable: React.FC<AdminRoomChangeRequestsTable
   onReview,
 }) => {
   return (
-    <div className="bg-white p-5 rounded-xl border border-[#DFE3E5] shadow-sm space-y-4">
-      <div className="flex items-center justify-between border-b border-[#DFE3E5] pb-3">
+    <div className="bg-white dark:bg-[#111F32] p-5 rounded-xl border border-[#DFE3E5] dark:border-[#293B52] shadow-sm space-y-4">
+      <div className="flex items-center justify-between border-b border-[#DFE3E5] dark:border-[#293B52] pb-3">
         <div>
-          <h2 className="text-xs font-bold text-[#07203C] uppercase tracking-wider flex items-center gap-2">
-            <Repeat className="w-4 h-4 text-[#016A62]" />
+          <h2 className="text-xs font-bold text-[#07203C] dark:text-[#F1F5F9] uppercase tracking-wider flex items-center gap-2">
+            <Repeat className="w-4 h-4 text-[#016A62] dark:text-[#63D6C6]" />
             Official 48-Hour Room-Change Requests Inbox
           </h2>
-          <p className="text-[11px] text-[#44474D] mt-0.5">
+          <p className="text-[11px] text-[#44474D] dark:text-[#91A4BA] mt-0.5">
             Review and approve or reject atomic seat transfers requested during the 48-hour post-allocation period.
           </p>
         </div>
@@ -30,7 +30,7 @@ export const AdminRoomChangeRequestsTable: React.FC<AdminRoomChangeRequestsTable
       {requests.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-[#181C1E]">
-            <thead className="bg-[#F0F4F6] text-[11px] uppercase font-bold text-[#44474D] border-b border-[#DFE3E5] tracking-wider">
+            <thead className="bg-[#F0F4F6] dark:bg-[#0A1626] text-[11px] uppercase font-bold text-[#44474D] dark:text-[#91A4BA] border-b border-[#DFE3E5] dark:border-[#293B52] tracking-wider">
               <tr>
                 <th className="py-2.5 px-4">Student</th>
                 <th className="py-2.5 px-4">Current Allocation</th>
@@ -43,24 +43,24 @@ export const AdminRoomChangeRequestsTable: React.FC<AdminRoomChangeRequestsTable
             <tbody className="divide-y divide-[#DFE3E5]">
               {requests.map((r: any) => (
                 <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
-                  <td className="py-3 px-4 font-semibold text-[#07203C]">
+                  <td className="py-3 px-4 font-semibold text-[#07203C] dark:text-[#F1F5F9]">
                     {r.student_name}
                     <div className="text-[10px] text-[#74777F] font-normal">{r.student_college_id}</div>
                   </td>
                   <td className="py-3 px-4 font-mono font-bold text-[#001E2F]">
                     {r.current_seat_id || 'None'}
                   </td>
-                  <td className="py-3 px-4 font-semibold text-[#016A62]">
+                  <td className="py-3 px-4 font-semibold text-[#016A62] dark:text-[#63D6C6]">
                     Room {r.target_room_number}
                   </td>
-                  <td className="py-3 px-4 text-[#44474D] max-w-xs truncate" title={r.reason}>
+                  <td className="py-3 px-4 text-[#44474D] dark:text-[#91A4BA] max-w-xs truncate" title={r.reason}>
                     {r.reason}
                   </td>
                   <td className="py-3 px-4">
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         r.status === 'APPROVED'
-                          ? 'bg-[#EBFDF9] text-[#016A62]'
+                          ? 'bg-[#EBFDF9] text-[#016A62] dark:text-[#63D6C6]'
                           : r.status === 'REJECTED'
                           ? 'bg-[#FEECEC] text-[#BA1A1A]'
                           : 'bg-[#FAF4E6] text-[#9C7A2E]'
