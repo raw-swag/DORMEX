@@ -401,14 +401,14 @@ export const PortalSelectionView: React.FC = () => {
       <main className="max-w-xl mx-auto px-3 sm:px-6 py-6 sm:py-12 flex-1 flex flex-col justify-center w-full">
         {/* Institutional Header Banner */}
         <div className="text-center mb-5 sm:mb-8 space-y-1.5 sm:space-y-2">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-[#E7F2ED] border border-[#2C8279]/30 text-[#2C8279] rounded-full text-[11px] sm:text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-[#2C8279]" aria-hidden="true" />
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-[#E7F2ED] dark:bg-[#0E2F2B] border border-[#2C8279]/30 dark:border-[#2C8279]/50 text-[#2C8279] dark:text-[#84D5CA] rounded-full text-[11px] sm:text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-[#2C8279] dark:text-[#84D5CA]" aria-hidden="true" />
             <span>DORMEX Allocation Platform</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#203653] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#203653] dark:text-[#F1F5F9] tracking-tight">
             Institutional Sign In
           </h1>
-          <p className="text-[#627084] text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
+          <p className="text-[#627084] dark:text-[#94A3B8] text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
             Select your account type and enter your credentials to access the allocation workspace.
           </p>
         </div>
@@ -563,7 +563,7 @@ export const PortalSelectionView: React.FC = () => {
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="institutional-id-input"
-                  className="text-xs font-semibold text-[#203653] flex items-center gap-1"
+                  className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1"
                 >
                   <span>
                     {selectedPortal === 'STUDENT'
@@ -572,7 +572,7 @@ export const PortalSelectionView: React.FC = () => {
                       ? 'Staff ID / Administrator ID'
                       : 'Office Desk ID'}
                   </span>
-                  <span className="text-[#C93B3B] font-bold" aria-hidden="true">*</span>
+                  <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
                   <span className="sr-only">(required)</span>
                 </label>
               </div>
@@ -606,10 +606,10 @@ export const PortalSelectionView: React.FC = () => {
                       ? 'e.g. ADM001 or WRD001'
                       : 'e.g. OFF001'
                   }
-                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#E2E8F0] transition-all outline-none disabled:opacity-60 ${
+                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] transition-all outline-none disabled:opacity-60 ${
                     authIdTouched && authIdError
-                      ? 'border-[#C93B3B] ring-2 ring-[#C93B3B]/20 bg-[#FDF2F2] dark:bg-[#3D1414]'
-                      : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-2 focus:ring-[#016A62]'
+                      ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2A1215]'
+                      : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-2 focus:ring-[#016A62] dark:focus:ring-[#84D5CA]/30'
                   }`}
                 />
                 <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084] dark:text-[#94A3B8]">
@@ -685,10 +685,10 @@ export const PortalSelectionView: React.FC = () => {
                   aria-invalid={passwordTouched && !!passwordError}
                   aria-describedby={passwordTouched && passwordError ? 'password-credential-error' : undefined}
                   placeholder="Enter account password..."
-                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#E2E8F0] transition-all outline-none disabled:opacity-60 ${
+                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] transition-all outline-none disabled:opacity-60 ${
                     passwordTouched && passwordError
-                      ? 'border-[#C93B3B] ring-2 ring-[#C93B3B]/20 bg-[#FDF2F2] dark:bg-[#3D1414]'
-                      : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-2 focus:ring-[#016A62]'
+                      ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2A1215]'
+                      : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-2 focus:ring-[#016A62] dark:focus:ring-[#84D5CA]/30'
                   }`}
                 />
                 <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084] dark:text-[#94A3B8]">
@@ -709,8 +709,8 @@ export const PortalSelectionView: React.FC = () => {
             </div>
 
             {/* Session Security Information (Confirmed by Fastify server cookie configuration) */}
-            <div className="flex items-center gap-1.5 text-[11px] text-[#627084] pt-0.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#016A62] shrink-0" aria-hidden="true" />
+            <div className="flex items-center gap-1.5 text-[11px] text-[#627084] dark:text-[#94A3B8] pt-0.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA] shrink-0" aria-hidden="true" />
               <span>
                 Protected 24-hour institutional session. Securely bound to your browser via HttpOnly cookie.
               </span>
@@ -721,7 +721,7 @@ export const PortalSelectionView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isAuthenticating}
-                className="w-full min-h-[48px] py-3 px-4 bg-[#016A62] hover:bg-[#0d6f66] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62] focus-visible:ring-offset-2"
+                className="w-full min-h-[48px] py-3 px-4 bg-[#016A62] hover:bg-[#0d6f66] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A1929]"
               >
                 {isAuthenticating ? (
                   <>
@@ -741,64 +741,64 @@ export const PortalSelectionView: React.FC = () => {
                   ref={forgotPasswordTriggerRef}
                   type="button"
                   onClick={openRecoveryModal}
-                  className="text-xs text-[#016A62] hover:underline font-semibold flex items-center gap-1 rounded py-1 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+                  className="text-xs text-[#016A62] dark:text-[#84D5CA] hover:underline font-semibold flex items-center gap-1 rounded py-1 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
                 >
                   <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>Forgot password or lost credential?</span>
                 </button>
 
-                <span className="text-[11px] text-[#627084]">15-min single-use link</span>
+                <span className="text-[11px] text-[#627084] dark:text-[#94A3B8]">15-min single-use link</span>
               </div>
             </div>
 
             {/* Section 2: Hardware authentication progressive disclosure */}
-            <div className="pt-3 border-t border-[#E2E6E8]">
+            <div className="pt-3 border-t border-[#E2E6E8] dark:border-[#1E293B]">
               <button
                 type="button"
                 onClick={() => setShowMoreAuthOptions(!showMoreAuthOptions)}
                 aria-expanded={showMoreAuthOptions}
                 aria-controls="more-auth-options-panel"
-                className="w-full py-2 px-3 text-xs font-semibold text-[#203653] hover:text-[#016A62] flex items-center justify-between rounded-lg hover:bg-[#F0F4F6] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+                className="w-full py-2 px-3 text-xs font-semibold text-[#203653] dark:text-[#CBD5E1] hover:text-[#016A62] dark:hover:text-[#84D5CA] flex items-center justify-between rounded-lg hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
               >
                 <div className="flex items-center gap-2">
-                  <Fingerprint className="w-4 h-4 text-[#1E7B54]" aria-hidden="true" />
+                  <Fingerprint className="w-4 h-4 text-[#1E7B54] dark:text-[#84D5CA]" aria-hidden="true" />
                   <span>More sign-in options</span>
                 </div>
                 {showMoreAuthOptions ? (
-                  <ChevronUp className="w-4 h-4 text-[#627084]" aria-hidden="true" />
+                  <ChevronUp className="w-4 h-4 text-[#627084] dark:text-[#94A3B8]" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-[#627084]" aria-hidden="true" />
+                  <ChevronDown className="w-4 h-4 text-[#627084] dark:text-[#94A3B8]" aria-hidden="true" />
                 )}
               </button>
 
               {showMoreAuthOptions && (
-                <div id="more-auth-options-panel" className="mt-2.5 space-y-3 p-3 bg-[#F7F9FA] rounded-xl border border-[#E2E6E8] animate-fadeIn">
+                <div id="more-auth-options-panel" className="mt-2.5 space-y-3 p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] animate-fadeIn">
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
-                      <Laptop className="w-3.5 h-3.5 text-[#1E7B54]" aria-hidden="true" />
+                    <p className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
+                      <Laptop className="w-3.5 h-3.5 text-[#1E7B54] dark:text-[#84D5CA]" aria-hidden="true" />
                       <span>Device Biometrics & Hardware Keys</span>
                     </p>
-                    <p className="text-[11px] text-[#627084] leading-relaxed">
+                    <p className="text-[11px] text-[#627084] dark:text-[#94A3B8] leading-relaxed">
                       Sign in using your device&apos;s built-in authenticator (Windows Hello, Touch ID, Face ID, or Android screen lock). Password sign-in remains the standard institutional method.
                     </p>
                   </div>
 
                   {!webAuthnSupported ? (
-                    <div className="p-2.5 bg-[#FFF0E6] border border-[#FFD1B3] rounded-lg text-[#E06A26] text-xs flex items-start gap-2">
+                    <div className="p-2.5 bg-[#FFF0E6] dark:bg-[#3D1E0E] border border-[#FFD1B3] dark:border-[#7A3614] rounded-lg text-[#E06A26] dark:text-[#FDBA74] text-xs flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                       <div>
                         <span className="font-bold">Browser Not Supported:</span> Your current browser does not support WebAuthn hardware biometric authentication. Please continue with your institutional password above.
                       </div>
                     </div>
                   ) : demoSessionInfo ? (
-                    <div className="p-3 bg-[#E7F2ED] border border-[#A8D5C2] rounded-xl flex items-center justify-between">
+                    <div className="p-3 bg-[#E7F2ED] dark:bg-[#0D2821] border border-[#A8D5C2] dark:border-[#1A5C47] rounded-xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-[#1E7B54]" aria-hidden="true" />
+                        <ShieldCheck className="w-4 h-4 text-[#1E7B54] dark:text-[#84D5CA]" aria-hidden="true" />
                         <div>
-                          <p className="text-xs font-bold text-[#1E7B54]">
+                          <p className="text-xs font-bold text-[#1E7B54] dark:text-[#84D5CA]">
                             Hardware-Bound Demo Active ({demoSessionInfo.slot_id})
                           </p>
-                          <p className="text-[11px] text-[#2C8279]">
+                          <p className="text-[11px] text-[#2C8279] dark:text-[#A7F3D0]">
                             Device: {demoSessionInfo.device_label}
                           </p>
                         </div>
@@ -819,13 +819,13 @@ export const PortalSelectionView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowDemoAuthModal(true)}
-                      className="w-full py-2.5 px-3 bg-white hover:bg-[#E5EFF5] border border-[#D0DFE8] text-[#203653] text-xs font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62] shadow-xs"
+                      className="w-full py-2.5 px-3 bg-white dark:bg-[#0E243A] hover:bg-[#E5EFF5] dark:hover:bg-[#153450] border border-[#D0DFE8] dark:border-[#1E3A5F] text-[#203653] dark:text-[#E2E8F0] text-xs font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62] shadow-xs"
                     >
                       <div className="flex items-center gap-1.5">
-                        <Fingerprint className="w-4 h-4 text-[#1E7B54] shrink-0" aria-hidden="true" />
+                        <Fingerprint className="w-4 h-4 text-[#1E7B54] dark:text-[#84D5CA] shrink-0" aria-hidden="true" />
                         <span className="font-bold">Use device biometrics</span>
                       </div>
-                      <span className="text-[11px] text-[#627084] font-normal sm:border-l sm:border-[#D0DFE8] sm:pl-2">
+                      <span className="text-[11px] text-[#627084] dark:text-[#94A3B8] font-normal sm:border-l sm:border-[#D0DFE8] dark:sm:border-[#1E3A5F] sm:pl-2">
                         Fingerprint, Face ID or Windows Hello
                       </span>
                     </button>
@@ -903,29 +903,29 @@ export const PortalSelectionView: React.FC = () => {
         {isDemoAccessEnabled && (
           <aside
             aria-labelledby="demo-access-guidance-title"
-            className="mt-6 p-4 sm:p-5 bg-white rounded-2xl border border-[#D5DCDF] shadow-xs text-xs space-y-3"
+            className="mt-6 p-4 sm:p-5 bg-white dark:bg-[#0A1929] rounded-2xl border border-[#D5DCDF] dark:border-[#1E293B] shadow-xs text-xs space-y-3"
           >
-            <div className="flex items-center gap-2 border-b border-[#E2E6E8] pb-2.5">
-              <Info className="w-4 h-4 text-[#016A62] shrink-0" aria-hidden="true" />
-              <h3 id="demo-access-guidance-title" className="font-bold text-[#203653]">
+            <div className="flex items-center gap-2 border-b border-[#E2E6E8] dark:border-[#1E293B] pb-2.5">
+              <Info className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0" aria-hidden="true" />
+              <h3 id="demo-access-guidance-title" className="font-bold text-[#203653] dark:text-[#F8FAFC]">
                 Authorized Reviewer & Demo Access Guidance
               </h3>
             </div>
 
-            <p className="text-[#627084] leading-relaxed text-[11px]">
+            <p className="text-[#627084] dark:text-[#94A3B8] leading-relaxed text-[11px]">
               DORMEX provides isolated demo profiles for institutional audit and review. Selecting a role below prefills only the public institutional identifier. Authentication credentials must be verified via standard server validation.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
               {/* Student Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] rounded-xl border border-[#E2E6E8] flex flex-col justify-between">
+              <div className="p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] mb-1">
-                    <GraduationCap className="w-3.5 h-3.5 text-[#016A62]" aria-hidden="true" />
+                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F8FAFC] mb-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" aria-hidden="true" />
                     <span>Student Testing</span>
                   </div>
-                  <p className="text-[11px] text-[#627084]">
-                    ID: <code className="bg-white px-1 rounded text-[#203653] border border-[#E2E6E8]">DEMO-001</code> (Rank #1) to <code className="bg-white px-1 rounded text-[#203653] border border-[#E2E6E8]">DEMO-010</code>.
+                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
+                    ID: <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">DEMO-001</code> (Rank #1) to <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">DEMO-010</code>.
                   </p>
                 </div>
                 <button
@@ -935,21 +935,21 @@ export const PortalSelectionView: React.FC = () => {
                     setAuthIdInput('DEMO-001');
                     setAuthIdError(null);
                   }}
-                  className="mt-2.5 text-[11px] font-bold text-[#016A62] hover:text-[#0d6f66] self-start focus:underline"
+                  className="mt-2.5 text-[11px] font-bold text-[#016A62] dark:text-[#84D5CA] hover:text-[#0d6f66] dark:hover:text-[#A7F3D0] self-start focus:underline"
                 >
                   Use Student ID →
                 </button>
               </div>
 
               {/* Admin Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] rounded-xl border border-[#E2E6E8] flex flex-col justify-between">
+              <div className="p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] mb-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#203653]" aria-hidden="true" />
+                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F8FAFC] mb-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#203653] dark:text-[#84D5CA]" aria-hidden="true" />
                     <span>Admin Testing</span>
                   </div>
-                  <p className="text-[11px] text-[#627084]">
-                    ID: <code className="bg-white px-1 rounded text-[#203653] border border-[#E2E6E8]">ADM001</code> (Chief Warden) or <code className="bg-white px-1 rounded text-[#203653] border border-[#E2E6E8]">WRD001</code>.
+                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
+                    ID: <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">ADM001</code> (Chief Warden) or <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">WRD001</code>.
                   </p>
                 </div>
                 <button
@@ -959,21 +959,21 @@ export const PortalSelectionView: React.FC = () => {
                     setAuthIdInput('ADM001');
                     setAuthIdError(null);
                   }}
-                  className="mt-2.5 text-[11px] font-bold text-[#016A62] hover:text-[#0d6f66] self-start focus:underline"
+                  className="mt-2.5 text-[11px] font-bold text-[#016A62] dark:text-[#84D5CA] hover:text-[#0d6f66] dark:hover:text-[#A7F3D0] self-start focus:underline"
                 >
                   Use Admin ID →
                 </button>
               </div>
 
               {/* Hostel Office Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] rounded-xl border border-[#E2E6E8] flex flex-col justify-between">
+              <div className="p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] mb-1">
-                    <Building className="w-3.5 h-3.5 text-[#9C7A2E]" aria-hidden="true" />
+                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F8FAFC] mb-1">
+                    <Building className="w-3.5 h-3.5 text-[#9C7A2E] dark:text-[#FBBF24]" aria-hidden="true" />
                     <span>Office Testing</span>
                   </div>
-                  <p className="text-[11px] text-[#627084]">
-                    ID: <code className="bg-white px-1 rounded text-[#203653] border border-[#E2E6E8]">OFF001</code> (Hostel Admissions Officer).
+                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
+                    ID: <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">OFF001</code> (Hostel Admissions Officer).
                   </p>
                 </div>
                 <button
@@ -983,7 +983,7 @@ export const PortalSelectionView: React.FC = () => {
                     setAuthIdInput('OFF001');
                     setAuthIdError(null);
                   }}
-                  className="mt-2.5 text-[11px] font-bold text-[#016A62] hover:text-[#0d6f66] self-start focus:underline"
+                  className="mt-2.5 text-[11px] font-bold text-[#016A62] dark:text-[#84D5CA] hover:text-[#0d6f66] dark:hover:text-[#A7F3D0] self-start focus:underline"
                 >
                   Use Office ID →
                 </button>
@@ -1042,22 +1042,22 @@ export const PortalSelectionView: React.FC = () => {
 
           <div
             ref={modalContainerRef}
-            className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#E2E6E8] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+            className="bg-white dark:bg-[#0A1929] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#E2E6E8] dark:border-[#1E293B] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
           >
             {/* Mobile Sheet Handle */}
-            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" aria-hidden="true" />
+            <div className="w-10 h-1 bg-[#D5DCDF] dark:bg-[#334155] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" aria-hidden="true" />
 
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3">
+            <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] text-[#1E7B54] flex items-center justify-center font-bold shrink-0">
-                  <KeyRound className="w-5 h-5 text-[#1E7B54]" aria-hidden="true" />
+                <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] flex items-center justify-center font-bold shrink-0">
+                  <KeyRound className="w-5 h-5 text-[#1E7B54] dark:text-[#84D5CA]" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 id="recovery-modal-title" className="text-base font-bold text-[#203653]">
+                  <h3 id="recovery-modal-title" className="text-base font-bold text-[#203653] dark:text-[#F8FAFC]">
                     Institutional Password Recovery
                   </h3>
-                  <p id="recovery-modal-description" className="text-xs text-[#627084]">
+                  <p id="recovery-modal-description" className="text-xs text-[#627084] dark:text-[#94A3B8]">
                     Single-use cryptographic token reset (expires in 15 minutes)
                   </p>
                 </div>
@@ -1067,7 +1067,7 @@ export const PortalSelectionView: React.FC = () => {
                 type="button"
                 onClick={closeRecoveryModal}
                 aria-label="Close recovery modal"
-                className="p-1 rounded-lg text-[#627084] hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
+                className="p-1 rounded-lg text-[#627084] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#016A62]"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -1080,8 +1080,8 @@ export const PortalSelectionView: React.FC = () => {
                 aria-live="polite"
                 className={`p-3.5 rounded-lg text-xs font-medium space-y-1.5 flex items-start gap-2 ${
                   forgotResult.type === 'success'
-                    ? 'bg-[#E7F2ED] border border-[#A8D5C2] text-[#1E7B54]'
-                    : 'bg-[#FDE8E8] border border-[#F8B4B4] text-[#C93B3B]'
+                    ? 'bg-[#E7F2ED] dark:bg-[#0D2821] border border-[#A8D5C2] dark:border-[#1A5C47] text-[#1E7B54] dark:text-[#84D5CA]'
+                    : 'bg-[#FDE8E8] dark:bg-[#2A1215] border border-[#F8B4B4] dark:border-[#7F1D1D] text-[#C93B3B] dark:text-[#FCA5A5]'
                 }`}
               >
                 {forgotResult.type === 'success' ? (
@@ -1131,10 +1131,10 @@ export const PortalSelectionView: React.FC = () => {
                   <div>
                     <label
                       htmlFor="recovery-identifier-input"
-                      className="text-xs font-semibold text-[#203653] flex items-center gap-1 mb-1"
+                      className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1 mb-1"
                     >
                       <span>Institutional ID or Registered Email</span>
-                      <span className="text-[#C93B3B] font-bold" aria-hidden="true">*</span>
+                      <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
                       <span className="sr-only">(required)</span>
                     </label>
                     <input
@@ -1156,14 +1156,14 @@ export const PortalSelectionView: React.FC = () => {
                       aria-invalid={forgotIdentifierTouched && !!forgotIdentifierError}
                       aria-describedby={forgotIdentifierTouched && forgotIdentifierError ? 'recovery-id-error' : undefined}
                       placeholder="e.g. 1SI21CS094 or admin@college.edu"
-                      className={`w-full text-xs font-mono bg-[#F7F6F1] border rounded-xl px-3.5 py-2.5 text-[#203653] outline-none transition-all ${
+                      className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3.5 py-2.5 text-[#203653] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] outline-none transition-all ${
                         forgotIdentifierTouched && forgotIdentifierError
-                          ? 'border-[#C93B3B] ring-2 ring-[#C93B3B]/20 bg-[#FDF2F2]'
-                          : 'border-[#E2E6E8] focus:border-[#016A62] focus:ring-1 focus:ring-[#016A62]'
+                          ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2A1215]'
+                          : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-1 focus:ring-[#016A62]'
                       }`}
                     />
                     {forgotIdentifierTouched && forgotIdentifierError && (
-                      <p id="recovery-id-error" role="alert" className="text-xs text-[#C93B3B] mt-1 flex items-center gap-1 font-medium">
+                      <p id="recovery-id-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                         <span>{forgotIdentifierError}</span>
                       </p>
@@ -1187,8 +1187,8 @@ export const PortalSelectionView: React.FC = () => {
                 </form>
 
                 {/* Step 2: Redeem Token & Set New Password */}
-                <div className="pt-3 border-t border-[#E2E6E8] space-y-3">
-                  <h4 className="text-xs font-bold text-[#203653] uppercase tracking-wider">
+                <div className="pt-3 border-t border-[#E2E6E8] dark:border-[#1E293B] space-y-3">
+                  <h4 className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] uppercase tracking-wider">
                     Have a Reset Token? Set New Password
                   </h4>
                   <form
@@ -1235,10 +1235,10 @@ export const PortalSelectionView: React.FC = () => {
                     <div>
                       <label
                         htmlFor="recovery-reset-token-input"
-                        className="text-[11px] font-semibold text-[#627084] flex items-center gap-1 mb-1"
+                        className="text-[11px] font-semibold text-[#627084] dark:text-[#94A3B8] flex items-center gap-1 mb-1"
                       >
                         <span>Reset Token</span>
-                        <span className="text-[#C93B3B] font-bold" aria-hidden="true">*</span>
+                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
                         <span className="sr-only">(required)</span>
                       </label>
                       <input
@@ -1260,14 +1260,14 @@ export const PortalSelectionView: React.FC = () => {
                         aria-invalid={resetTokenTouched && !!resetTokenError}
                         aria-describedby={resetTokenTouched && resetTokenError ? 'recovery-token-error' : undefined}
                         placeholder="Paste single-use token..."
-                        className={`w-full text-xs font-mono bg-[#F7F6F1] border rounded-xl px-3 py-2 text-[#203653] outline-none transition-all ${
+                        className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] outline-none transition-all ${
                           resetTokenTouched && resetTokenError
-                            ? 'border-[#C93B3B] ring-2 ring-[#C93B3B]/20 bg-[#FDF2F2]'
-                            : 'border-[#E2E6E8] focus:border-[#016A62] focus:ring-1 focus:ring-[#016A62]'
+                            ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2A1215]'
+                            : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-1 focus:ring-[#016A62]'
                         }`}
                       />
                       {resetTokenTouched && resetTokenError && (
-                        <p id="recovery-token-error" role="alert" className="text-xs text-[#C93B3B] mt-1 flex items-center gap-1 font-medium">
+                        <p id="recovery-token-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>{resetTokenError}</span>
                         </p>
@@ -1277,10 +1277,10 @@ export const PortalSelectionView: React.FC = () => {
                     <div>
                       <label
                         htmlFor="recovery-new-password-input"
-                        className="text-[11px] font-semibold text-[#627084] flex items-center gap-1 mb-1"
+                        className="text-[11px] font-semibold text-[#627084] dark:text-[#94A3B8] flex items-center gap-1 mb-1"
                       >
                         <span>New Password (min. 8 characters)</span>
-                        <span className="text-[#C93B3B] font-bold" aria-hidden="true">*</span>
+                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
                         <span className="sr-only">(required)</span>
                       </label>
                       <input
@@ -1303,14 +1303,14 @@ export const PortalSelectionView: React.FC = () => {
                         aria-invalid={newPasswordTouched && !!newPasswordError}
                         aria-describedby={newPasswordTouched && newPasswordError ? 'recovery-new-pw-error' : undefined}
                         placeholder="Enter new secure password..."
-                        className={`w-full text-xs font-mono bg-[#F7F6F1] border rounded-xl px-3 py-2 text-[#203653] outline-none transition-all ${
+                        className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#071321] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] outline-none transition-all ${
                           newPasswordTouched && newPasswordError
-                            ? 'border-[#C93B3B] ring-2 ring-[#C93B3B]/20 bg-[#FDF2F2]'
-                            : 'border-[#E2E6E8] focus:border-[#016A62] focus:ring-1 focus:ring-[#016A62]'
+                            ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2A1215]'
+                            : 'border-[#E2E6E8] dark:border-[#1E293B] focus:border-[#016A62] dark:focus:border-[#84D5CA] focus:ring-1 focus:ring-[#016A62]'
                         }`}
                       />
                       {newPasswordTouched && newPasswordError && (
-                        <p id="recovery-new-pw-error" role="alert" className="text-xs text-[#C93B3B] mt-1 flex items-center gap-1 font-medium">
+                        <p id="recovery-new-pw-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>{newPasswordError}</span>
                         </p>
@@ -1350,7 +1350,7 @@ export const PortalSelectionView: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="bg-white border-t border-[#E2E6E8] px-6 py-4 text-center text-xs text-[#627084]">
+      <footer className="bg-white dark:bg-[#0A1929] border-t border-[#E2E6E8] dark:border-[#1E293B] px-6 py-4 text-center text-xs text-[#627084] dark:text-[#94A3B8] transition-colors">
         DORMEX College Hostel Allocation Platform • BVB Block Floor 2 Pilot • Authorized Institutional Access Only
       </footer>
     </div>

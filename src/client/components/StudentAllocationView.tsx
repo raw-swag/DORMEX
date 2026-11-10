@@ -799,10 +799,10 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         }}
         className={`room-btn group flex flex-col items-center justify-center p-2 rounded-lg transition-all text-left relative min-h-[48px] min-w-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] focus-visible:ring-offset-1 select-none ${
           isSelected
-            ? 'bg-white ring-2 ring-[#1D63B8] shadow-md z-10 border-transparent'
+            ? 'bg-white dark:bg-[#0E243A] ring-2 ring-[#1D63B8] dark:ring-[#84D5CA] shadow-md z-10 border-transparent'
             : isFull
-            ? 'bg-[#dfe3e5] hover:bg-[#d6dbdd] shadow-xs border border-transparent'
-            : 'bg-white hover:bg-[#e5e9eb] shadow-xs border border-[#d2d7d9]'
+            ? 'bg-[#dfe3e5] dark:bg-[#1E293B]/70 hover:bg-[#d6dbdd] dark:hover:bg-[#1E293B] shadow-xs border border-transparent'
+            : 'bg-white dark:bg-[#0A1929] hover:bg-[#e5e9eb] dark:hover:bg-[#152E4A] shadow-xs border border-[#d2d7d9] dark:border-[#1E293B]'
         }`}
       >
         {isTarget202 && !isSelected && (
@@ -813,7 +813,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         )}
         <span
           className={`text-xs font-bold font-mono tracking-tight ${
-            isSelected ? 'text-[#07203c]' : isFull ? 'text-[#44474d]' : 'text-[#181c1e]'
+            isSelected ? 'text-[#07203c] dark:text-[#F8FAFC]' : isFull ? 'text-[#44474d] dark:text-[#94A3B8]' : 'text-[#181c1e] dark:text-[#E2E8F0]'
           }`}
         >
           {roomNum}
@@ -829,7 +829,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         </div>
         <span
           className={`text-[9px] font-semibold mt-0.5 ${
-            isFull ? 'text-[#ba1a1a]' : 'text-[#1E7B54]'
+            isFull ? 'text-[#ba1a1a] dark:text-[#F87171]' : 'text-[#1E7B54] dark:text-[#84D5CA]'
           }`}
         >
           {isFull ? 'Full' : `${vacantCount} Vac`}
@@ -963,18 +963,18 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       )}
 
       {/* Student Onboarding & Operational Sub-Navigation: Clean Segmented Stepper */}
-      <div className="bg-white p-3.5 rounded-xl border border-[#E2E6E8] shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#0A1929] p-3.5 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex flex-wrap items-center justify-between gap-4 transition-colors">
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setActiveSubTab('workflow')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'workflow'
-                ? 'bg-[#203653] text-white shadow-xs'
-                : 'text-[#627084] hover:bg-[#F7F6F1] hover:text-[#263345]'
+                ? 'bg-[#203653] dark:bg-[#016A62] text-white shadow-xs'
+                : 'text-[#627084] dark:text-[#94A3B8] hover:bg-[#F7F6F1] dark:hover:bg-[#0E243A] hover:text-[#263345] dark:hover:text-[#F8FAFC]'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-              activeSubTab === 'workflow' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] text-[#627084]'
+              activeSubTab === 'workflow' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] dark:bg-[#1E293B] text-[#627084] dark:text-[#94A3B8]'
             }`}>1</span>
             <span>Registration & Terms</span>
           </button>
@@ -983,12 +983,12 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             onClick={() => setActiveSubTab('allocation_map')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
               activeSubTab === 'allocation_map'
-                ? 'bg-[#203653] text-white shadow-xs'
-                : 'text-[#627084] hover:bg-[#F7F6F1] hover:text-[#263345]'
+                ? 'bg-[#203653] dark:bg-[#016A62] text-white shadow-xs'
+                : 'text-[#627084] dark:text-[#94A3B8] hover:bg-[#F7F6F1] dark:hover:bg-[#0E243A] hover:text-[#263345] dark:hover:text-[#F8FAFC]'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-              activeSubTab === 'allocation_map' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] text-[#627084]'
+              activeSubTab === 'allocation_map' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] dark:bg-[#1E293B] text-[#627084] dark:text-[#94A3B8]'
             }`}>2</span>
             <span>Live Floor Map & Selection</span>
           </button>
@@ -998,12 +998,12 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               onClick={() => setActiveSubTab('room_change')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 activeSubTab === 'room_change'
-                  ? 'bg-[#203653] text-white shadow-xs'
-                  : 'text-[#627084] hover:bg-[#F7F6F1] hover:text-[#263345]'
+                  ? 'bg-[#203653] dark:bg-[#016A62] text-white shadow-xs'
+                  : 'text-[#627084] dark:text-[#94A3B8] hover:bg-[#F7F6F1] dark:hover:bg-[#0E243A] hover:text-[#263345] dark:hover:text-[#F8FAFC]'
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                activeSubTab === 'room_change' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] text-[#627084]'
+                activeSubTab === 'room_change' ? 'bg-white/20 text-white' : 'bg-[#E5E9EB] dark:bg-[#1E293B] text-[#627084] dark:text-[#94A3B8]'
               }`}>3</span>
               <span>48-Hour Room Change</span>
             </button>
@@ -1013,16 +1013,16 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         {/* Clean right status pills */}
         <div className="flex items-center gap-2 text-xs">
           <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-            termsStatus?.accepted 
-              ? 'bg-[#E7F2ED] text-[#1E7B54] border-[#A8D5C2]' 
-              : 'bg-[#FAF4E6] text-[#9C7A2E] border-[#D4B779]'
+            termsStatus?.accepted
+              ? 'bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] border-[#A8D5C2] dark:border-[#1A5C47]'
+              : 'bg-[#FAF4E6] dark:bg-[#2C210B] text-[#9C7A2E] dark:text-[#FBBF24] border-[#D4B779] dark:border-[#7A5B14]'
           }`}>
             Terms: {termsStatus?.accepted ? 'Accepted Accord' : 'Pending Sign-off'}
           </span>
           <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
             myProfile?.fee_status === 'VERIFIED'
-              ? 'bg-[#E7F2ED] text-[#1E7B54] border-[#A8D5C2]'
-              : 'bg-[#FAF4E6] text-[#9C7A2E] border-[#D4B779]'
+              ? 'bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] border-[#A8D5C2] dark:border-[#1A5C47]'
+              : 'bg-[#FAF4E6] dark:bg-[#2C210B] text-[#9C7A2E] dark:text-[#FBBF24] border-[#D4B779] dark:border-[#7A5B14]'
           }`}>
             Fee: {myProfile?.fee_status === 'VERIFIED' ? 'Verified' : 'Pending Audit'}
           </span>
@@ -1143,28 +1143,28 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           />
 
           {/* Dedicated Status Legend Section */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E2E6E8] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white dark:bg-[#0A1929] p-3.5 sm:p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
             <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
-              <span className="text-[11px] uppercase font-bold text-[#627084] tracking-wider w-full sm:w-auto">Status Legend:</span>
+              <span className="text-[11px] uppercase font-bold text-[#627084] dark:text-[#94A3B8] tracking-wider w-full sm:w-auto">Status Legend:</span>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#1E7B54] border border-[#166041] shrink-0" />
-                <span className="text-xs font-semibold text-[#1E7B54]">Available</span>
+                <span className="w-3.5 h-3.5 rounded bg-[#1E7B54] border border-[#166041] dark:border-[#84D5CA]/50 shrink-0" />
+                <span className="text-xs font-semibold text-[#1E7B54] dark:text-[#84D5CA]">Available</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#E06A26] border border-[#b35118] shrink-0" />
-                <span className="text-xs font-semibold text-[#E06A26]">Roommate Intent</span>
+                <span className="w-3.5 h-3.5 rounded bg-[#E06A26] border border-[#b35118] dark:border-[#FDBA74]/50 shrink-0" />
+                <span className="text-xs font-semibold text-[#E06A26] dark:text-[#FB923C]">Roommate Intent</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#C93B3B] border border-[#a12828] shrink-0" />
-                <span className="text-xs font-semibold text-[#C93B3B]">Occupied</span>
+                <span className="w-3.5 h-3.5 rounded bg-[#C93B3B] border border-[#a12828] dark:border-[#F87171]/50 shrink-0" />
+                <span className="text-xs font-semibold text-[#C93B3B] dark:text-[#F87171]">Occupied</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-[#1D63B8] border border-[#134887] shrink-0" />
-                <span className="text-xs font-semibold text-[#1D63B8]">Active Selection</span>
+                <span className="w-3.5 h-3.5 rounded bg-[#1D63B8] border border-[#134887] dark:border-[#60A5FA]/50 shrink-0" />
+                <span className="text-xs font-semibold text-[#1D63B8] dark:text-[#60A5FA]">Active Selection</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-[#627084] leading-tight">
+            <div className="text-[11px] text-[#627084] dark:text-[#94A3B8] leading-tight">
               Roommate intent is non-binding until confirmed during an active turn.
             </div>
           </div>
@@ -1179,22 +1179,22 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
             return (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#1E7B54]">Vacant Beds</div>
-                  <div className="text-2xl font-bold font-mono text-[#1E7B54]">{vacantCount}</div>
-                  <div className="text-[11px] text-[#627084]">Open for selection by active candidate</div>
+                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#1E7B54] dark:text-[#84D5CA]">Vacant Beds</div>
+                  <div className="text-2xl font-bold font-mono text-[#1E7B54] dark:text-[#84D5CA]">{vacantCount}</div>
+                  <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Open for selection by active candidate</div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#E06A26]">Intent Reservations</div>
-                  <div className="text-2xl font-bold font-mono text-[#E06A26]">{intentCount}</div>
-                  <div className="text-[11px] text-[#627084]">Provisional roommate group requests</div>
+                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#E06A26] dark:text-[#FB923C]">Intent Reservations</div>
+                  <div className="text-2xl font-bold font-mono text-[#E06A26] dark:text-[#FB923C]">{intentCount}</div>
+                  <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Provisional roommate group requests</div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#203653]">Confirmed Occupancy</div>
-                  <div className="text-2xl font-bold font-mono text-[#203653]">{occupiedCount}</div>
-                  <div className="text-[11px] text-[#627084]">Finalized authoritative seat assignments</div>
+                <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-1 transition-colors">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#203653] dark:text-[#93C5FD]">Confirmed Occupancy</div>
+                  <div className="text-2xl font-bold font-mono text-[#203653] dark:text-[#93C5FD]">{occupiedCount}</div>
+                  <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Finalized authoritative seat assignments</div>
                 </div>
               </div>
             );
@@ -1243,20 +1243,20 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           {/* Master-Detail Layout: 70% Floor Map, 30% Room Inspector */}
           <div id="room-matrix-container" tabIndex={-1} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start focus:outline-none">
             {/* 70% Map Panel (8 cols on lg) */}
-            <div className="lg:col-span-8 bg-white p-3.5 sm:p-5 rounded-xl border border-[#E2E6E8] shadow-xs space-y-4 overflow-hidden">
+            <div className="lg:col-span-8 bg-white dark:bg-[#0A1929] p-3.5 sm:p-5 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-4 overflow-hidden transition-colors">
               {/* Floor Plan Header Overlay */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-1 bg-[#F0F4F6] px-3 py-2 rounded-lg gap-2 border border-[#E5E9EB]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-1 bg-[#F0F4F6] dark:bg-[#071321] px-3 py-2 rounded-lg gap-2 border border-[#E5E9EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4 text-[#016A62]" />
-                  <span className="text-[11px] uppercase tracking-wider text-[#181C1E] font-bold">
+                  <Building className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
+                  <span className="text-[11px] uppercase tracking-wider text-[#181C1E] dark:text-[#F8FAFC] font-bold">
                     BVB RESIDENTIAL BLOCK · LEVEL 02 GEOMETRIC LAYOUT
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-[#44474D]">
+                <div className="flex items-center gap-3 text-[11px] text-[#44474D] dark:text-[#94A3B8]">
                   <span>Grid Pitch: 4.8m × 3.6m Standard Unit</span>
-                  <span className="w-1 h-1 rounded-full bg-[#74777E]" />
-                  <span className="flex items-center gap-1 font-semibold text-[#07203C]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#016A62]" /> North Facing
+                  <span className="w-1 h-1 rounded-full bg-[#74777E] dark:bg-[#64748B]" />
+                  <span className="flex items-center gap-1 font-semibold text-[#07203C] dark:text-[#E2E8F0]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#016A62] dark:bg-[#84D5CA]" /> North Facing
                   </span>
                 </div>
               </div>
@@ -1265,12 +1265,12 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               <div className="flex flex-col gap-4">
                 {/* NORTH WING (Rooms 201 - 224) */}
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'NORTH') && (
-                  <div className="p-3.5 bg-[#EAEEF0] rounded-xl border border-[#DFE3E5] transition-all space-y-2.5">
+                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] transition-all space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-wider font-bold text-[#07203C]">
+                      <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                         North Wing Corridor · Rooms 201–224
                       </span>
-                      <span className="text-[11px] text-[#44474D]">
+                      <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">
                         Courtyard Exposure · Optimal Natural Airflow
                       </span>
                     </div>
@@ -1281,9 +1281,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     </div>
 
                     {/* North Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 dark:bg-[#0E243A] rounded flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
                       <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>NW-2A</span>
-                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ NORTH CORRIDOR (2.4M) ▶</span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] dark:text-[#CBD5E1] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ NORTH CORRIDOR (2.4M) ▶</span>
                       <span className="flex items-center gap-1 shrink-0">🚿 <span className="hidden xs:inline">North </span>Sanitization</span>
                     </div>
 
@@ -1298,23 +1298,23 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'EAST') && (
                   <div className="flex flex-col md:flex-row gap-3 items-stretch">
                     {/* Central Courtyard Graphic */}
-                    <div className="flex-1 bg-[#F0F4F6] rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[120px] border border-[#DFE3E5]">
-                      <div className="text-[#016A62] text-2xl mb-1">🌿</div>
-                      <span className="text-xs uppercase tracking-widest text-[#44474D] font-bold">
+                    <div className="flex-1 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[120px] border border-[#DFE3E5] dark:border-[#1E293B]">
+                      <div className="text-[#016A62] dark:text-[#84D5CA] text-2xl mb-1">🌿</div>
+                      <span className="text-xs uppercase tracking-widest text-[#44474D] dark:text-[#E2E8F0] font-bold">
                         Open Green Central Courtyard & Lightwell
                       </span>
-                      <span className="text-[11px] text-[#74777E] mt-0.5">
+                      <span className="text-[11px] text-[#74777E] dark:text-[#94A3B8] mt-0.5">
                         Vertical ventilation shaft · Levels G through 4
                       </span>
                     </div>
 
                     {/* EAST WING CONNECTOR (Rooms 249 - 252 hub view) */}
-                    <div className="w-full md:w-72 bg-[#EAEEF0] rounded-xl p-3 border border-[#DFE3E5] flex flex-col justify-between space-y-2">
+                    <div className="w-full md:w-72 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl p-3 border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wider font-bold text-[#07203C]">
+                        <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                           East Wing Hub (249-272)
                         </span>
-                        <span className="text-[10px] text-[#44474D] font-semibold bg-white px-1.5 py-0.5 rounded border border-[#DFE3E5]">
+                        <span className="text-[10px] text-[#44474D] dark:text-[#CBD5E1] font-semibold bg-white dark:bg-[#0E243A] px-1.5 py-0.5 rounded border border-[#DFE3E5] dark:border-[#1E3A5F]">
                           Elevator Block E1
                         </span>
                       </div>
@@ -1323,9 +1323,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                         {["249","250","251","252"].map((rNum) => renderRoomButton(rNum))}
                       </div>
 
-                      <div className="text-[10px] text-[#44474D] flex items-center justify-between pt-1 bg-[#F0F4F6] px-2 py-1 rounded border border-[#DFE3E5]">
+                      <div className="text-[10px] text-[#44474D] dark:text-[#94A3B8] flex items-center justify-between pt-1 bg-[#F0F4F6] dark:bg-[#0E243A] px-2 py-1 rounded border border-[#DFE3E5] dark:border-[#1E3A5F]">
                         <span>East Wing Extension →</span>
-                        <span className="font-semibold text-[#016A62]">Rooms 253–272 In Corridor</span>
+                        <span className="font-semibold text-[#016A62] dark:text-[#84D5CA]">Rooms 253–272 In Corridor</span>
                       </div>
                     </div>
                   </div>
@@ -1333,12 +1333,12 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
                 {/* SOUTH WING (Rooms 225 - 248) */}
                 {(selectedWingFilter === 'ALL' || selectedWingFilter === 'SOUTH') && (
-                  <div className="p-3.5 bg-[#EAEEF0] rounded-xl border border-[#DFE3E5] transition-all space-y-2.5">
+                  <div className="p-3.5 bg-[#EAEEF0] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] transition-all space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-wider font-bold text-[#07203C]">
+                      <span className="text-xs uppercase tracking-wider font-bold text-[#07203C] dark:text-[#F8FAFC]">
                         South Wing Corridor · Rooms 225–248
                       </span>
-                      <span className="text-[11px] text-[#44474D]">
+                      <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">
                         Facing SIT Campus Sports Oval · High Solar Profile
                       </span>
                     </div>
@@ -1349,10 +1349,10 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     </div>
 
                     {/* South Corridor Central Runway Indicator */}
-                    <div className="py-1 px-3 bg-[#DFE3E5]/80 rounded flex items-center justify-between text-[#44474D] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
+                    <div className="py-1 px-3 bg-[#DFE3E5]/80 dark:bg-[#0E243A] rounded flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-[10px] tracking-wider my-1 font-medium gap-1 overflow-hidden">
                       <span className="flex items-center gap-1 shrink-0">🏢 <span className="hidden xs:inline">Staircase </span>SW-2B</span>
-                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ SOUTH CORRIDOR (2.4M) ▶</span>
-                      <span className="flex items-center gap-1 shrink-0 text-[#C93B3B]">🔥 Fire Exit<span className="hidden xs:inline"> S2</span></span>
+                      <span className="uppercase tracking-wider sm:tracking-widest text-[#74777E] dark:text-[#CBD5E1] font-bold truncate text-center text-[9px] sm:text-[10px]">◀ SOUTH CORRIDOR (2.4M) ▶</span>
+                      <span className="flex items-center gap-1 shrink-0 text-[#C93B3B] dark:text-[#F87171]">🔥 Fire Exit<span className="hidden xs:inline"> S2</span></span>
                     </div>
 
                     {/* South Wing Grid Row 2 (237-248) */}
@@ -1364,33 +1364,33 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               </div>
 
               {/* BVB Block Heritage Elevation Card */}
-              <div className="mt-3 p-3 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="mt-3 p-3 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    className="w-14 h-12 object-cover rounded-lg shadow-xs border border-[#DFE3E5]"
+                    className="w-14 h-12 object-cover rounded-lg shadow-xs border border-[#DFE3E5] dark:border-[#1E293B]"
                     alt="BVB Block Heritage Elevation"
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRb8sQRBzS2mOkrQEvneAs4Xc2ONT0NLaJKlsApWfo483uxY7Ir4oKEzKwdgBdiZC9tZgdxzKwumsikImvdycT2WL4wCKXA6ZVn7SPA1oWP7XV1Z8f7tdFTdiliZpxN1wk7MbHhRDfh_XCG2YIlXatPoWOPw0EyS2IbTxunPMsoLVkWxl8_pmt3_kemFIyn9GGvDtHAhl0NolQyqW8zYmfN4KQxPOn2PprCGUdHRALrY_ZWxKBFsGdaA"
                   />
                   <div>
-                    <div className="text-xs font-bold text-[#181C1E]">BVB Block Heritage Elevation</div>
-                    <div className="text-[11px] text-[#44474D]">Floor 2 North Quadrangle Facing SIT Temple Hill</div>
+                    <div className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">BVB Block Heritage Elevation</div>
+                    <div className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Floor 2 North Quadrangle Facing SIT Temple Hill</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-[11px] text-[#44474D]">
+                <div className="flex items-center gap-4 text-[11px] text-[#44474D] dark:text-[#94A3B8]">
                   <div className="flex items-center gap-1.5 font-medium">
-                    <Wifi className="w-3.5 h-3.5 text-[#016A62]" />
+                    <Wifi className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" />
                     <span>SIT-Mesh-202 Active</span>
                   </div>
                   <div className="flex items-center gap-1.5 font-medium">
-                    <Sun className="w-3.5 h-3.5 text-[#016A62]" />
+                    <Sun className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" />
                     <span>Solar Water Supply Verified</span>
                   </div>
                 </div>
               </div>
 
               {/* Floor Plan Architectural Footnote */}
-              <div className="pt-2 flex flex-wrap items-center justify-between text-[11px] text-[#74777E] border-t border-[#E5E9EB]">
+              <div className="pt-2 flex flex-wrap items-center justify-between text-[11px] text-[#74777E] dark:text-[#64748B] border-t border-[#E5E9EB] dark:border-[#1E293B]">
                 <span>SIT Department of Civil Works & Campus Planning · Structural Scale 1:100</span>
                 <span>All room portals equipped with 1Gbps SIT-WLAN access points</span>
               </div>
@@ -1461,10 +1461,10 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               }}
               className={`
                 /* Desktop Baseline (>= 1024px) */
-                lg:static lg:col-span-4 lg:z-auto lg:h-auto lg:max-h-none lg:rounded-xl lg:shadow-xs lg:border lg:border-[#E2E6E8] lg:block lg:translate-y-0 lg:p-5 lg:space-y-4 lg:visible
+                lg:static lg:col-span-4 lg:z-auto lg:h-auto lg:max-h-none lg:bg-white dark:lg:bg-[#0A1929] lg:rounded-xl lg:shadow-xs lg:border lg:border-[#E2E6E8] dark:lg:border-[#1E293B] lg:block lg:translate-y-0 lg:p-5 lg:space-y-4 lg:visible transition-colors
 
                 /* Mobile & Tablet Bottom Sheet (< 1024px) */
-                max-lg:fixed max-lg:inset-x-0 max-lg:z-40 max-lg:bg-white max-lg:rounded-t-2xl max-lg:shadow-2xl max-lg:border-t max-lg:border-[#DFE3E5] max-lg:flex max-lg:flex-col max-lg:transition-transform max-lg:duration-200 max-lg:ease-out
+                max-lg:fixed max-lg:inset-x-0 max-lg:z-40 max-lg:bg-white dark:max-lg:bg-[#0A1929] max-lg:rounded-t-2xl max-lg:shadow-2xl max-lg:border-t max-lg:border-[#DFE3E5] dark:max-lg:border-[#1E293B] max-lg:flex max-lg:flex-col max-lg:transition-transform max-lg:duration-200 max-lg:ease-out
 
                 /* Breakpoint Clearance (< 768px vs 768px-1023px) */
                 max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:max-lg:bottom-[env(safe-area-inset-bottom,0px)]
@@ -1475,11 +1475,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
               `}
             >
               {/* Sheet Header */}
-              <div className="flex items-start justify-between border-b border-[#E2E6E8] pb-3 max-lg:p-4 max-lg:pb-3 max-lg:shrink-0">
+              <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3 max-lg:p-4 max-lg:pb-3 max-lg:shrink-0">
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#016A62]" />
-                    <span className="text-[11px] uppercase tracking-wider text-[#44474D] font-bold">
+                    <span className="w-2 h-2 rounded-full bg-[#016A62] dark:bg-[#84D5CA]" />
+                    <span className="text-[11px] uppercase tracking-wider text-[#44474D] dark:text-[#94A3B8] font-bold">
                       Active Room Inspector
                     </span>
                   </div>
@@ -1487,7 +1487,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     ref={inspectorHeadingRef}
                     id="active-room-inspector-heading"
                     tabIndex={-1}
-                    className="text-lg font-bold text-[#07203C] mt-0.5 tracking-tight focus:outline-none"
+                    className="text-lg font-bold text-[#07203C] dark:text-[#F8FAFC] mt-0.5 tracking-tight focus:outline-none"
                   >
                     {selectedRoomNumber
                       ? `Room ${selectedRoomNumber} (${
@@ -1506,8 +1506,8 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     <span
                       className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
                         getRoomMetrics(selectedRoomNumber).vacant > 0
-                          ? 'bg-[#E7F2ED] text-[#1E7B54]'
-                          : 'bg-[#FDE8E8] text-[#C93B3B]'
+                          ? 'bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA]'
+                          : 'bg-[#FDE8E8] dark:bg-[#2A1215] text-[#C93B3B] dark:text-[#F87171]'
                       }`}
                     >
                       {getRoomMetrics(selectedRoomNumber).vacant > 0
@@ -1522,7 +1522,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                       type="button"
                       onClick={() => setIsMobileInspectorExpanded(!isMobileInspectorExpanded)}
                       aria-label={isMobileInspectorExpanded ? "Collapse room inspector" : "Expand room inspector"}
-                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] hover:text-[#07203C] hover:bg-[#F0F4F6] flex items-center justify-center transition-colors"
+                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] dark:text-[#94A3B8] hover:text-[#07203C] dark:hover:text-[#F8FAFC] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] flex items-center justify-center transition-colors"
                     >
                       {isMobileInspectorExpanded ? (
                         <Minimize2 className="w-4 h-4" />
@@ -1548,7 +1548,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                         }
                       }}
                       aria-label="Close room inspector"
-                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] hover:text-[#07203C] hover:bg-[#F0F4F6] flex items-center justify-center transition-colors"
+                      className="p-1.5 min-h-[44px] min-w-[44px] rounded-lg text-[#627084] dark:text-[#94A3B8] hover:text-[#07203C] dark:hover:text-[#F8FAFC] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] flex items-center justify-center transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1561,16 +1561,16 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                   {/* Scrollable Body Container (min-h-0 guarantees scroll integrity above virtual keyboards) */}
                   <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-lg:p-4 max-lg:pt-2 space-y-4">
                     {/* Room Specs Card */}
-                    <div className="p-3 bg-[#F0F4F6] rounded-xl border border-[#DFE3E5] flex flex-col gap-1.5 text-xs text-[#181C1E]">
+                    <div className="p-3 bg-[#F0F4F6] dark:bg-[#071321] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] flex flex-col gap-1.5 text-xs text-[#181C1E] dark:text-[#E2E8F0]">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#44474D]">Classification:</span>
-                        <span className="font-semibold text-[#07203C]">
+                        <span className="text-[#44474D] dark:text-[#94A3B8]">Classification:</span>
+                        <span className="font-semibold text-[#07203C] dark:text-[#F8FAFC]">
                           Provisional {getRoomMetrics(selectedRoomNumber).capacity}-Seater
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[#44474D]">Exposure:</span>
-                        <span className="text-[#44474D]">
+                        <span className="text-[#44474D] dark:text-[#94A3B8]">Exposure:</span>
+                        <span className="text-[#44474D] dark:text-[#CBD5E1]">
                           {parseInt(selectedRoomNumber) <= 224
                             ? 'Well-ventilated exterior courtyard'
                             : parseInt(selectedRoomNumber) <= 248
@@ -1579,8 +1579,8 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[#44474D]">Furnishing:</span>
-                        <span className="text-[#44474D]">
+                        <span className="text-[#44474D] dark:text-[#94A3B8]">Furnishing:</span>
+                        <span className="text-[#44474D] dark:text-[#CBD5E1]">
                           {getRoomMetrics(selectedRoomNumber).capacity}× Steel Bedstead, {getRoomMetrics(selectedRoomNumber).capacity}× Study Desk
                         </span>
                       </div>
@@ -1589,10 +1589,10 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     {/* Seat Allocation Inventory Matrix for Selected Room */}
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wider font-bold text-[#44474D]">
+                        <span className="text-xs uppercase tracking-wider font-bold text-[#44474D] dark:text-[#CBD5E1]">
                           Room {selectedRoomNumber} Bed Matrix ({getRoomMetrics(selectedRoomNumber).capacity})
                         </span>
-                        <span className="text-[11px] text-[#74777E]">Click bed unit to target</span>
+                        <span className="text-[11px] text-[#74777E] dark:text-[#94A3B8]">Click bed unit to target</span>
                       </div>
 
                       {/* Bed Units List */}
@@ -1620,27 +1620,27 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               return (
                                 <div
                                   key={st.id}
-                                  className="p-3 rounded-xl bg-[#EAEEF0]/70 flex items-start justify-between border border-[#DFE3E5]"
+                                  className="p-3 rounded-xl bg-[#EAEEF0]/70 dark:bg-[#071321] flex items-start justify-between border border-[#DFE3E5] dark:border-[#1E293B]"
                                 >
                                   <div className="flex items-start gap-2.5">
-                                    <span className="p-1.5 rounded-lg bg-[#FDE8E8] text-[#C93B3B] mt-0.5">
+                                    <span className="p-1.5 rounded-lg bg-[#FDE8E8] dark:bg-[#2A1215] text-[#C93B3B] dark:text-[#F87171] mt-0.5">
                                       <ShieldAlert className="w-4 h-4" />
                                     </span>
                                     <div className="flex flex-col">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-bold text-[#181C1E]">
+                                        <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">
                                           Seat {selectedRoomNumber}-{st.label}
                                         </span>
-                                        <span className="px-1.5 py-0.5 rounded bg-[#FDE8E8] text-[#C93B3B] text-[10px] font-bold">
+                                        <span className="px-1.5 py-0.5 rounded bg-[#FDE8E8] dark:bg-[#2A1215] text-[#C93B3B] dark:text-[#F87171] text-[10px] font-bold">
                                           Occupied
                                         </span>
                                       </div>
-                                      <span className="text-xs text-[#181C1E] font-medium">Seat Claimed</span>
-                                      <span className="text-[11px] text-[#44474D]">Confirmed in current allocation cycle</span>
-                                      <span className="text-[10px] text-[#74777E]">Server-authoritative lock active</span>
+                                      <span className="text-xs text-[#181C1E] dark:text-[#CBD5E1] font-medium">Seat Claimed</span>
+                                      <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Confirmed in current allocation cycle</span>
+                                      <span className="text-[10px] text-[#74777E] dark:text-[#64748B]">Server-authoritative lock active</span>
                                     </div>
                                   </div>
-                                  <Lock className="w-4 h-4 text-[#74777E]" />
+                                  <Lock className="w-4 h-4 text-[#74777E] dark:text-[#64748B]" />
                                 </div>
                               );
                             }
@@ -1660,29 +1660,29 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                       priorityIndex: intentPeer?.priority ? `#${intentPeer.priority}` : 'Active',
                                     });
                                   }}
-                                  className="p-3 rounded-xl bg-[#FFF0E6]/80 hover:bg-[#FFF0E6] cursor-pointer transition-colors flex items-start justify-between group border border-[#FFD1B3] shadow-xs"
+                                  className="p-3 rounded-xl bg-[#FFF0E6]/80 dark:bg-[#20150E] hover:bg-[#FFF0E6] dark:hover:bg-[#2C1C12] cursor-pointer transition-colors flex items-start justify-between group border border-[#FFD1B3] dark:border-[#7A3614] shadow-xs"
                                 >
                                   <div className="flex items-start gap-2.5">
-                                    <span className="p-1.5 rounded-lg bg-[#FFF0E6] text-[#E06A26] mt-0.5">
+                                    <span className="p-1.5 rounded-lg bg-[#FFF0E6] dark:bg-[#3D1E0E] text-[#E06A26] dark:text-[#FB923C] mt-0.5">
                                       <Users className="w-4 h-4" />
                                     </span>
                                     <div className="flex flex-col">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-bold text-[#181C1E]">
+                                        <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">
                                           Seat {selectedRoomNumber}-{st.label}
                                         </span>
-                                        <span className="px-1.5 py-0.5 rounded bg-[#FFF0E6] text-[#E06A26] text-[10px] font-bold">
+                                        <span className="px-1.5 py-0.5 rounded bg-[#FFF0E6] dark:bg-[#3D1E0E] text-[#E06A26] dark:text-[#FB923C] text-[10px] font-bold">
                                           Roommate Intent
                                         </span>
                                       </div>
-                                      <span className="text-xs text-[#181C1E] font-medium">{intentPeer?.leaderName || 'Roommate Group Coordinator'}</span>
-                                      <span className="text-[11px] text-[#44474D]">Pending group pairing</span>
-                                      <span className="text-[10px] text-[#E06A26] font-medium flex items-center gap-1 mt-0.5">
+                                      <span className="text-xs text-[#181C1E] dark:text-[#CBD5E1] font-medium">{intentPeer?.leaderName || 'Roommate Group Coordinator'}</span>
+                                      <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Pending group pairing</span>
+                                      <span className="text-[10px] text-[#E06A26] dark:text-[#FB923C] font-medium flex items-center gap-1 mt-0.5">
                                         <AlertCircle className="w-3 h-3" /> Disruption warning applies
                                       </span>
                                     </div>
                                   </div>
-                                  <Info className="w-4 h-4 text-[#E06A26] group-hover:translate-x-0.5 transition-transform" />
+                                  <Info className="w-4 h-4 text-[#E06A26] dark:text-[#FB923C] group-hover:translate-x-0.5 transition-transform" />
                                 </div>
                               );
                             }
@@ -1700,28 +1700,28 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                 }}
                                 className={`w-full p-3 rounded-xl cursor-pointer transition-all flex items-start justify-between border text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D63B8] ${
                                   isSelected || isMine
-                                    ? 'bg-[#EBF3FC] ring-2 ring-[#1D63B8] border-[#1D63B8] shadow-sm'
-                                    : 'bg-white hover:bg-[#F0F4F6] border-[#DFE3E5]'
+                                    ? 'bg-[#EBF3FC] dark:bg-[#0E243A] ring-2 ring-[#1D63B8] dark:ring-[#84D5CA] border-[#1D63B8] dark:border-[#84D5CA] shadow-sm'
+                                    : 'bg-white dark:bg-[#071321] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] border-[#DFE3E5] dark:border-[#1E293B]'
                                 }`}
                               >
                                 <div className="flex items-start gap-2.5">
-                                  <span className="p-1.5 rounded-lg bg-[#E7F2ED] text-[#1E7B54] mt-0.5">
-                                    <CheckCircle2 className="w-4 h-4 text-[#1E7B54]" />
+                                  <span className="p-1.5 rounded-lg bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] mt-0.5">
+                                    <CheckCircle2 className="w-4 h-4 text-[#1E7B54] dark:text-[#84D5CA]" />
                                   </span>
                                   <div className="flex flex-col">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-xs font-bold text-[#07203C]">
+                                      <span className="text-xs font-bold text-[#07203C] dark:text-[#F8FAFC]">
                                         Seat {selectedRoomNumber}-{st.label}
                                       </span>
-                                      <span className="px-1.5 py-0.5 rounded bg-[#E7F2ED] text-[#1E7B54] text-[10px] font-bold">
+                                      <span className="px-1.5 py-0.5 rounded bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] text-[10px] font-bold">
                                         {isMine ? 'Allocated to You' : 'Available Now'}
                                       </span>
                                     </div>
-                                    <span className="text-xs text-[#016A62] font-semibold">Ready for Direct Allocation</span>
-                                    <span className="text-[11px] text-[#44474D]">Window Bed · Direct Southern breeze</span>
+                                    <span className="text-xs text-[#016A62] dark:text-[#84D5CA] font-semibold">Ready for Direct Allocation</span>
+                                    <span className="text-[11px] text-[#44474D] dark:text-[#94A3B8]">Window Bed · Direct Southern breeze</span>
                                     {(isSelected || isMine) && (
-                                      <span className="text-[10px] text-[#1D63B8] font-bold mt-0.5 flex items-center gap-1">
-                                        <Check className="w-3 h-3 text-[#1D63B8]" /> Active Target for {session?.fullName || 'Student'}
+                                      <span className="text-[10px] text-[#1D63B8] dark:text-[#60A5FA] font-bold mt-0.5 flex items-center gap-1">
+                                        <Check className="w-3 h-3 text-[#1D63B8] dark:text-[#60A5FA]" /> Active Target for {session?.fullName || 'Student'}
                                       </span>
                                     )}
                                   </div>
@@ -1730,7 +1730,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                   className={`px-2 py-1 rounded text-[11px] font-bold shrink-0 ${
                                     isSelected || isMine
                                       ? 'bg-[#1D63B8] text-white'
-                                      : 'bg-[#F0F4F6] text-[#44474D] border border-[#DFE3E5]'
+                                      : 'bg-[#F0F4F6] dark:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] border border-[#DFE3E5] dark:border-[#1E293B]'
                                   }`}
                                 >
                                   {isSelected || isMine ? 'Selected' : 'Pick'}
@@ -1744,22 +1744,22 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
                     {/* Roommate Group Intent Warning Modal Overlay (Conditional Alert) */}
                     {inspectorWarningDialog?.show && (
-                      <div className="p-4 rounded-xl bg-[#FFF0E6] text-[#181C1E] shadow-md border border-[#FFD1B3] space-y-2.5">
+                      <div className="p-4 rounded-xl bg-[#FFF0E6] dark:bg-[#20150E] text-[#181C1E] dark:text-[#E2E8F0] shadow-md border border-[#FFD1B3] dark:border-[#7A3614] space-y-2.5">
                         <div className="flex items-start gap-2.5">
-                          <AlertCircle className="w-5 h-5 text-[#E06A26] shrink-0 mt-0.5" />
+                          <AlertCircle className="w-5 h-5 text-[#E06A26] dark:text-[#FB923C] shrink-0 mt-0.5" />
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs font-bold text-[#E06A26]">
+                            <span className="text-xs font-bold text-[#E06A26] dark:text-[#FB923C]">
                               Roommate Coordination Intent Warning
                             </span>
-                            <p className="text-xs text-[#181C1E] leading-relaxed">
-                              Selecting <strong className="text-[#07203C]">{inspectorWarningDialog.seatLabel}</strong> will invalidate{' '}
-                              <strong className="text-[#07203C]">{inspectorWarningDialog.studentName}</strong>'s pending roommate coordination preference for BVB Floor 2.
+                            <p className="text-xs text-[#181C1E] dark:text-[#CBD5E1] leading-relaxed">
+                              Selecting <strong className="text-[#07203C] dark:text-[#F8FAFC]">{inspectorWarningDialog.seatLabel}</strong> will invalidate{' '}
+                              <strong className="text-[#07203C] dark:text-[#F8FAFC]">{inspectorWarningDialog.studentName}</strong>'s pending roommate coordination preference for BVB Floor 2.
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <button
                                 type="button"
                                 onClick={() => setInspectorWarningDialog(null)}
-                                className="px-3 py-1.5 bg-[#203653] text-white text-xs font-bold rounded-lg hover:bg-[#17283B] transition-colors min-h-[44px]"
+                                className="px-3 py-1.5 bg-[#203653] dark:bg-[#016A62] text-white text-xs font-bold rounded-lg hover:bg-[#17283B] transition-colors min-h-[44px]"
                               >
                                 Choose Another Seat
                               </button>
@@ -1771,7 +1771,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                   setInspectorWarningDialog(null);
                                   setSuccessMsg('Intent acknowledged. Overriding preference queue.');
                                 }}
-                                className="px-3 py-1.5 bg-white text-[#44474D] hover:text-[#ba1a1a] text-xs font-semibold rounded-lg border border-[#DFE3E5] transition-colors min-h-[44px]"
+                                className="px-3 py-1.5 bg-white dark:bg-[#071321] text-[#44474D] dark:text-[#CBD5E1] hover:text-[#ba1a1a] dark:hover:text-[#F87171] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] transition-colors min-h-[44px]"
                               >
                                 Continue Anyway
                               </button>
@@ -1782,18 +1782,18 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     )}
 
                     {/* Roommate Priority Coordination Form */}
-                    <div className="p-4 bg-white rounded-xl border border-[#E2E6E8] space-y-3">
-                      <div className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-[#2C8279]" />
+                    <div className="p-4 bg-white dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] space-y-3">
+                      <div className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
                         <span>Coordinate Roommates (Priority Ranks)</span>
                       </div>
-                      <p className="text-[11px] text-[#627084]">
+                      <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
                         Enter peer priority ranks to propose sharing Room {selectedRoomNumber}. Intent generates an orange badge.
                       </p>
 
                       {roommateMsg && (
                         <div className={`p-2.5 rounded text-xs font-medium ${
-                          roommateMsg.type === 'success' ? 'bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2]' : 'bg-[#FDE8E8] text-[#C93B3B] border border-[#F8B4B4]'
+                          roommateMsg.type === 'success' ? 'bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] border border-[#A8D5C2] dark:border-[#1A5C47]' : 'bg-[#FDE8E8] dark:bg-[#2A1215] text-[#C93B3B] dark:text-[#F87171] border border-[#F8B4B4] dark:border-[#7F1D1D]'
                         }`}>
                           {roommateMsg.text}
                         </div>
@@ -1802,7 +1802,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                       <form onSubmit={handleCreateRoommateGroup} className="space-y-2.5">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 1 Rank #</label>
+                            <label className="text-[10px] font-semibold text-[#627084] dark:text-[#94A3B8] block mb-1">Roommate 1 Rank #</label>
                             <input
                               type="number"
                               min="1"
@@ -1810,11 +1810,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               value={roommatePriority1}
                               onChange={(e) => setRoommatePriority1(e.target.value)}
                               placeholder="e.g. 2"
-                              className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#0A1929] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-semibold text-[#627084] block mb-1">Roommate 2 Rank #</label>
+                            <label className="text-[10px] font-semibold text-[#627084] dark:text-[#94A3B8] block mb-1">Roommate 2 Rank #</label>
                             <input
                               type="number"
                               min="1"
@@ -1822,14 +1822,14 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               value={roommatePriority2}
                               onChange={(e) => setRoommatePriority2(e.target.value)}
                               placeholder="e.g. 3"
-                              className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
+                              className="w-full text-xs bg-[#F7F6F1] dark:bg-[#0A1929] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279] min-h-[40px]"
                             />
                           </div>
                         </div>
 
                         <button
                           type="submit"
-                          className="w-full py-2.5 px-3 bg-[#203653] hover:bg-[#17283B] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 min-h-[44px]"
+                          className="w-full py-2.5 px-3 bg-[#203653] dark:bg-[#016A62] hover:bg-[#17283B] dark:hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 min-h-[44px]"
                         >
                           <Send className="w-3.5 h-3.5" />
                           Send Roommate Proposal
@@ -1843,16 +1843,16 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                     - Non-shrinking footer (shrink-0)
                     - Sticky at bottom of sheet on mobile, static on desktop
                   */}
-                  <div className="shrink-0 p-4 bg-[#F0F4F6] border-t border-[#DFE3E5] space-y-3 lg:rounded-b-xl max-lg:shadow-lg">
+                  <div className="shrink-0 p-4 bg-[#F0F4F6] dark:bg-[#071321] border-t border-[#DFE3E5] dark:border-[#1E293B] space-y-3 lg:rounded-b-xl max-lg:shadow-lg">
                     {/* STEP 1: Standard Review Trigger */}
                     {!isConfirmReviewStep ? (
                       <div className="space-y-3">
                         <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-wider text-[#74777E] font-semibold">
+                          <span className="text-[10px] uppercase tracking-wider text-[#74777E] dark:text-[#94A3B8] font-semibold">
                             Target Bed Candidate:
                           </span>
-                          <div className="flex items-center justify-between text-[#181C1E] mt-0.5">
-                            <span className="text-xs font-bold text-[#07203C]">
+                          <div className="flex items-center justify-between text-[#181C1E] dark:text-[#E2E8F0] mt-0.5">
+                            <span className="text-xs font-bold text-[#07203C] dark:text-[#F8FAFC]">
                               {buildings.find((b: any) => b.id === selectedBuildingId)?.name ? `${buildings.find((b: any) => b.id === selectedBuildingId)?.name} > ` : ''}
                               {floors.find((f: any) => f.id === floorId)?.name || (floors.find((f: any) => f.id === floorId)?.floor_number != null ? `Floor ${floors.find((f: any) => f.id === floorId)?.floor_number} > ` : '')}
                               Room {selectedRoomNumber} &gt;{' '}
@@ -1865,7 +1865,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                                 : 'No Seat Targeted'}
                             </span>
                             {myProfile?.fee_status ? (
-                              <span className="text-xs text-[#016A62] font-bold">Payment status: {myProfile.fee_status}</span>
+                              <span className="text-xs text-[#016A62] dark:text-[#84D5CA] font-bold">Payment status: {myProfile.fee_status}</span>
                             ) : null}
                           </div>
                         </div>
@@ -1892,24 +1892,24 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                           onClick={() => {
                             setSuccessMsg(`Room ${selectedRoomNumber} saved to roommate preference draft.`);
                           }}
-                          className="w-full h-9 px-4 bg-white text-[#181C1E] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] border border-[#DFE3E5] transition-colors flex items-center justify-center gap-1.5 min-h-[40px]"
+                          className="w-full h-9 px-4 bg-white dark:bg-[#0A1929] text-[#181C1E] dark:text-[#E2E8F0] text-xs font-semibold rounded-lg shadow-xs hover:bg-[#DFE3E5] dark:hover:bg-[#0E243A] border border-[#DFE3E5] dark:border-[#1E293B] transition-colors flex items-center justify-center gap-1.5 min-h-[40px]"
                         >
-                          <BookmarkPlus className="w-3.5 h-3.5 text-[#016A62]" />
+                          <BookmarkPlus className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" />
                           <span>Save to Roommate Preference Draft</span>
                         </button>
                       </div>
                     ) : (
                       /* STEP 2: Explicit Confirmation Review Panel (Accidental Confirmation Barrier) */
-                      <div className="p-3 bg-white rounded-xl border border-[#A8D5C2] shadow-sm space-y-3 animate-fadeIn">
+                      <div className="p-3 bg-white dark:bg-[#0A1929] rounded-xl border border-[#A8D5C2] dark:border-[#1A5C47] shadow-sm space-y-3 animate-fadeIn">
                         <div className="flex items-start gap-2.5">
-                          <span className="p-1 rounded-lg bg-[#E7F2ED] text-[#1E7B54] shrink-0 mt-0.5">
+                          <span className="p-1 rounded-lg bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] shrink-0 mt-0.5">
                             <CheckSquare className="w-4 h-4" />
                           </span>
                           <div className="flex flex-col text-xs leading-snug">
-                            <span className="font-bold text-[#07203C] uppercase tracking-wider text-[11px]">
+                            <span className="font-bold text-[#07203C] dark:text-[#F8FAFC] uppercase tracking-wider text-[11px]">
                               Confirm Allocation Details
                             </span>
-                            <span className="text-[#44474D] mt-0.5">
+                            <span className="text-[#44474D] dark:text-[#CBD5E1] mt-0.5">
                               {buildings.find((b: any) => b.id === selectedBuildingId)?.name && (
                                 <strong>{buildings.find((b: any) => b.id === selectedBuildingId)?.name} </strong>
                               )}
@@ -1929,7 +1929,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                               ) : null}
                             </span>
                             {(session?.fullName || session?.collegeId) && (
-                              <span className="text-[11px] text-[#74777E]">
+                              <span className="text-[11px] text-[#74777E] dark:text-[#94A3B8]">
                                 Candidate: {session?.fullName || ''}{' '}
                                 {session?.collegeId ? `(${session.collegeId})` : ''}
                               </span>
@@ -1941,7 +1941,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                           <button
                             type="button"
                             onClick={() => setIsConfirmReviewStep(false)}
-                            className="flex-1 h-10 px-3 bg-white hover:bg-[#F0F4F6] text-[#44474D] text-xs font-semibold rounded-lg border border-[#DFE3E5] transition-colors min-h-[44px]"
+                            className="flex-1 h-10 px-3 bg-white dark:bg-[#071321] hover:bg-[#F0F4F6] dark:hover:bg-[#0E243A] text-[#44474D] dark:text-[#CBD5E1] text-xs font-semibold rounded-lg border border-[#DFE3E5] dark:border-[#1E293B] transition-colors min-h-[44px]"
                           >
                             Back / Change
                           </button>
@@ -1971,16 +1971,16 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
                       </div>
                     )}
 
-                    <p className="text-[10px] text-[#74777E] text-center leading-tight">
+                    <p className="text-[10px] text-[#74777E] dark:text-[#64748B] text-center leading-tight">
                       Allocations are provisional until digitally counter-verified by SIT Chief Warden & Hostel Office.
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="p-8 bg-[#F7F6F1] rounded-xl border border-[#E2E6E8] text-center space-y-2 max-lg:m-4">
-                  <Info className="w-6 h-6 mx-auto text-[#627084]" />
-                  <div className="text-xs font-semibold text-[#203653]">No Room Selected</div>
-                  <p className="text-[11px] text-[#627084] leading-relaxed">
+                <div className="p-8 bg-[#F7F6F1] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] text-center space-y-2 max-lg:m-4 transition-colors">
+                  <Info className="w-6 h-6 mx-auto text-[#627084] dark:text-[#84D5CA]" />
+                  <div className="text-xs font-semibold text-[#203653] dark:text-[#F8FAFC]">No Room Selected</div>
+                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8] leading-relaxed">
                     Select a room on the floor map to view its beds, live availability, and roommate coordination controls.
                   </p>
                 </div>

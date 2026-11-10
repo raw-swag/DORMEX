@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.28.0] - 2026-11-10
 
 ### Fixed
+- **Dark Mode Visual Consistency**: Corrected nested hardcoded light-theme surfaces across login, student allocation, room floor map, inspector, complaints, and mess menu:
+  - `PortalSelectionView.tsx`: Enhanced institutional typography contrast, input background and border tokens (`dark:bg-[#071321]`, `dark:border-[#1E293B]`), placeholder visibility, biometric hardware accordion (`dark:bg-[#071321]`, `dark:border-[#1E293B]`), and converted the horizontal footer strip to a dark institutional surface.
+  - `TurnStatusRibbon.tsx`: Resolved white cycle-not-started notice and lifecycle explanation cards with dark secondary tokens (`dark:bg-[#0A1929]`, `dark:border-[#1E293B]`) and status accents.
+  - `StudentAllocationView.tsx`: Dark-mode theme consistency across the registration stepper container, status legend, vacant bed/intent/occupancy metric cards, CAD workspace corridors, courtyard/elevation footers, individual room tiles, empty and active room inspector drawers, and seat matrices.
+  - `FloorMapFiltersBar.tsx`: Integrated BVB Block / Floor 2 map header panel, wing pills, room search input, and zoom controls with dark tokens.
+  - `ComplaintsView.tsx` & `MessMenuView.tsx`: Replaced hardcoded metric card backgrounds, filter dropdowns, search inputs, modal sheets, and headers with responsive dark variants.
 - **Student Allocation Error Feedback**: Added centralized error handling via `src/client/utils/studentErrorFeedback.ts` replacing technical raw error strings (`NO_MATCHING_POOL`, `INELIGIBLE`, `TERMS_NOT_ACCEPTED`, `CYCLE_CLOSED`, `SEAT_UNAVAILABLE`, network timeouts, and SQL errors) with student-friendly, actionable guidance without exposing technical stack traces or database schema internals.
 - **Allocation Queue Button & Lifecycle State**: Updated `TurnStatusRibbon.tsx` to handle all cycle lifecycle states authoritatively:
   - Cycle not started: Renders disabled button labeled "Waiting for Allocation to Open" with supporting text "The Hostel Office has not started the allocation cycle yet."

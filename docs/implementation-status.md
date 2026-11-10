@@ -22,6 +22,13 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Dark Mode Visual Consistency & UI Correction (Video-Based QA)**:
+  - **Login & Portal Selection**: Improved typography contrast, form inputs, placeholder readability, biometric accordion, and login footer dark styling in `PortalSelectionView.tsx`.
+  - **Student Allocation & Status**: Upgraded Registration & Terms stepper, dormant cycle notices, and status badges in `StudentAllocationView.tsx` and `TurnStatusRibbon.tsx`.
+  - **Floor Map CAD Workspace & Filters**: Replaced light surfaces with theme tokens across wing filters, search, zoom bar, corridor blocks, green quadrangle, room tiles, and heritage elevation footer.
+  - **Room Inspector**: Enhanced empty state panel, active room drawer, bed unit cards, and roommate coordination forms for seamless dark mode experience.
+  - **Complaints & Mess Menu**: Extended dark tokens to ticket metrics, filters, modal forms, and dining notice boards.
+  - **Verification**: 396/396 automated tests passing across 44 test files, 0 TypeScript errors, clean client/server builds.
 - [x] **Student Experience Phase 1: Friendly Error Handling & Allocation Queue Entry**:
   - **Student-Facing Error Formatter**: Implemented `src/client/utils/studentErrorFeedback.ts` categorizing raw backend codes (`NO_MATCHING_POOL`, `TERMS_NOT_ACCEPTED`, `INELIGIBLE`, `CYCLE_CLOSED`, `SEAT_UNAVAILABLE`, timeouts, network drops) into student-friendly, actionable feedback without leaking SQL or database schemas.
   - **Queue Entry Button & Lifecycle Management**: Enhanced `TurnStatusRibbon.tsx` to handle dormant cycles with disabled button and clear waiting copy, active cycles with single-click locked entry and spinners, and active queue positions (`Position #X in Queue`).
