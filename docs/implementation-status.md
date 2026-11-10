@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-11-08
+Last Updated: 2026-11-10
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,11 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Student Experience Phase 1: Friendly Error Handling & Allocation Queue Entry**:
+  - **Student-Facing Error Formatter**: Implemented `src/client/utils/studentErrorFeedback.ts` categorizing raw backend codes (`NO_MATCHING_POOL`, `TERMS_NOT_ACCEPTED`, `INELIGIBLE`, `CYCLE_CLOSED`, `SEAT_UNAVAILABLE`, timeouts, network drops) into student-friendly, actionable feedback without leaking SQL or database schemas.
+  - **Queue Entry Button & Lifecycle Management**: Enhanced `TurnStatusRibbon.tsx` to handle dormant cycles with disabled button and clear waiting copy, active cycles with single-click locked entry and spinners, and active queue positions (`Position #X in Queue`).
+  - **Accessibility & Contrast**: Enhanced `StudentAllocationView.tsx` with accessible alerts (`role="alert"`, `aria-live="assertive"`, dismiss controls), accessible status badges, and full light/dark theme support.
+  - **Verification**: 396/396 automated tests passing across 44 test files, 10 new dedicated Phase 1 tests passing, 0 TypeScript errors, clean client/server builds.
 - [x] **Phase 45: Frontend Feature Decomposition & Component Modularization**:
   - **StudentAllocationView Modularization**: Decomposed monolithic allocation view by extracting RoomChangeTab.tsx and MobileInspectorBottomSheet.tsx.
   - **AdminDashboard Decomposition**: Extracted AdminRoomChangeRequestsTable.tsx for atomic review workflows.

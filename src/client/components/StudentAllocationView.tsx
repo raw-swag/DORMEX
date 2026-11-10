@@ -4,6 +4,7 @@ import { FloorMapFiltersBar } from './allocation/FloorMapFiltersBar.js';
 import { AllocationOnboardingModal, isAllocationOnboardingCompleted } from './allocation/AllocationOnboardingModal.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch, useAuth } from '../context/AuthContext.js';
+import { formatStudentAllocationError } from '../utils/studentErrorFeedback.js';
 import { 
   Clock, 
   MapPin, 
@@ -319,6 +320,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
       setWaitingEntry(data);
+      setSuccessMsg('Successfully joined the allocation queue.');
 
       const advRes = await apiFetch(`/api/allocation-pools/${data.poolId}/active-turn`);
       if (advRes.ok) {
@@ -329,7 +331,8 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
       }
       setActiveSubTab('allocation_map');
     } catch (err: any) {
-      setErrorMsg(err.message);
+      const feedback = formatStudentAllocationError(err);
+      setErrorMsg(feedback.friendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -1081,16 +1084,44 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
           />
 
           {errorMsg && (
-            <div className="p-3.5 bg-[#FDE8E8] border border-[#F8B4B4] text-[#C93B3B] text-xs font-medium rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-[#C93B3B] shrink-0" />
-              <span>{errorMsg}</span>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3.5 bg-[#FDE8E8] dark:bg-rose-950/40 border border-[#F8B4B4] dark:border-rose-900/50 text-[#C93B3B] dark:text-rose-300 text-xs font-medium rounded-lg flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#C93B3B] dark:text-rose-400 shrink-0" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMsg(null)}
+                aria-label="Dismiss error message"
+                className="text-[#C93B3B] dark:text-rose-400 hover:opacity-75 focus:outline-none p-0.5 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-[#E7F2ED] border border-[#A8D5C2] text-[#1E7B54] text-xs font-medium rounded-lg flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-[#1E7B54] shrink-0" />
-              <span>{successMsg}</span>
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-3.5 bg-[#E7F2ED] dark:bg-emerald-950/40 border border-[#A8D5C2] dark:border-emerald-900/50 text-[#1E7B54] dark:text-emerald-300 text-xs font-medium rounded-lg flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-[#1E7B54] dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                <span>{successMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSuccessMsg(null)}
+                aria-label="Dismiss success message"
+                className="text-[#1E7B54] dark:text-emerald-400 hover:opacity-75 focus:outline-none p-0.5 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
