@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.28.0] - 2026-11-10
+
+### Fixed
+- **Student Allocation Error Feedback**: Added centralized error handling via `src/client/utils/studentErrorFeedback.ts` replacing technical raw error strings (`NO_MATCHING_POOL`, `INELIGIBLE`, `TERMS_NOT_ACCEPTED`, `CYCLE_CLOSED`, `SEAT_UNAVAILABLE`, network timeouts, and SQL errors) with student-friendly, actionable guidance without exposing technical stack traces or database schema internals.
+- **Allocation Queue Button & Lifecycle State**: Updated `TurnStatusRibbon.tsx` to handle all cycle lifecycle states authoritatively:
+  - Cycle not started: Renders disabled button labeled "Waiting for Allocation to Open" with supporting text "The Hostel Office has not started the allocation cycle yet."
+  - Cycle active & eligible: Renders enabled "Enter Allocation Queue" with single-click lock, loading spinner, and duplicate submission prevention.
+  - In queue: Renders live position indicator (`Position #X in Queue`) and suppresses entry button.
+  - Paused / Completed: Renders appropriate lifecycle banners ("Temporarily Paused", "Cycle Concluded") and prevents submission.
+- **Student Accessibility Feedback**: Added `role="alert"` and `aria-live="assertive"` to allocation error alerts, dismiss buttons, and accessible busy indicators.
+
+---
+
 ## [2.27.0] - 2026-11-08
 
 ### Added

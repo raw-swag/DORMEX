@@ -163,16 +163,55 @@ export const TurnStatusRibbon: React.FC<TurnStatusRibbonProps> = ({
           </p>
         </div>
 
-        {/* Action Button */}
-        {!waitingEntry && !myAllocation && !isNotStarted && !isPaused && (
+        {/* Action Button & Lifecycle State */}
+        {waitingEntry ? (
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-[#EBF3FC] text-[#1D63B8] border border-[#B9D5F7] rounded-lg text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-[#1D63B8] animate-pulse" />
+            <span>Position #{waitingEntry.queuePosition || waitingEntry.priorityNumber || '—'} in Queue</span>
+          </div>
+        ) : myAllocation ? (
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2] rounded-lg text-xs font-bold">
+            <Check className="w-4 h-4 text-[#1E7B54]" />
+            <span>Seat Confirmed</span>
+          </div>
+        ) : isPublished ? (
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#F0F4F6] text-[#203653] border border-[#D2D7D9] rounded-lg text-xs font-semibold">
+            <span>Cycle Concluded</span>
+          </div>
+        ) : isPaused ? (
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#FAF4E6] text-[#9C7A2E] border border-[#D4B779] rounded-lg text-xs font-semibold">
+            <span>Temporarily Paused</span>
+          </div>
+        ) : isNotStarted ? (
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="py-2 px-3.5 bg-slate-200 text-slate-500 cursor-not-allowed text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2"
+            >
+              <span>Waiting for Allocation to Open</span>
+            </button>
+            <span className="text-[10px] text-slate-500">
+              The Hostel Office has not started the allocation cycle yet.
+            </span>
+          </div>
+        ) : (
           <button
             type="button"
             onClick={onJoinWaitingRoom}
             disabled={loading || (myProfile && myProfile.eligibility_status !== 'ELIGIBLE')}
-            className="shrink-0 py-2 px-3.5 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            aria-busy={loading}
+            className="shrink-0 py-2 px-3.5 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#84D5CA]"
           >
-            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            <span>Enter Allocation Queue</span>
+            {loading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                <span>Entering Queue...</span>
+              </>
+            ) : (
+              <span>Enter Allocation Queue</span>
+            )}
           </button>
         )}
       </div>
