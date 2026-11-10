@@ -405,21 +405,21 @@ export const StudentRegistryView: React.FC = () => {
             </div>
 
             {/* Table Card */}
-            <div className="bg-white rounded-xl border border-[#DFE3E5] shadow-xs overflow-hidden flex flex-col justify-between">
-              <div className="px-4 py-3 bg-[#F0F4F6] border-b border-[#DFE3E5] flex items-center justify-between">
+            <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-xs overflow-hidden flex flex-col justify-between transition-colors">
+              <div className="px-4 py-3 bg-[#F0F4F6] dark:bg-[#071321] border-b border-[#DFE3E5] dark:border-[#1E293B] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#181C1E]">Registered Student Applications</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#DFE3E5] text-[#181C1E] font-medium">
+                  <span className="text-xs font-bold text-[#181C1E] dark:text-[#F8FAFC]">Registered Student Applications</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#DFE3E5] dark:bg-[#1E293B] text-[#181C1E] dark:text-[#E2E8F0] font-medium">
                     {displayedStudents.length} of {students.length} Records
                   </span>
                 </div>
-                <div className="text-xs text-[#74777E]">BVB Memorial Block Cohort</div>
+                <div className="text-xs text-[#74777E] dark:text-[#94A3B8]">BVB Memorial Block Cohort</div>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-[#181C1E]">
+                <table className="w-full text-left text-xs text-[#181C1E] dark:text-[#E2E8F0]">
                   <thead>
-                    <tr className="bg-[#F0F4F6] text-[10px] uppercase font-bold text-[#44474D] tracking-wider border-b border-[#DFE3E5]">
+                    <tr className="bg-[#F0F4F6] dark:bg-[#071321] text-[10px] uppercase font-bold text-[#44474D] dark:text-[#94A3B8] tracking-wider border-b border-[#DFE3E5] dark:border-[#1E293B]">
                       <th className="py-2.5 px-3">Queue #</th>
                       <th className="py-2.5 px-3">Candidate Details</th>
                       <th className="py-2.5 px-3">Branch</th>
@@ -520,9 +520,9 @@ export const StudentRegistryView: React.FC = () => {
           {/* RIGHT PANEL: Structured Applicant Dossier (5 Cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4 sticky top-6">
             {activeDossier ? (
-              <div className="bg-white rounded-xl border border-[#DFE3E5] shadow-sm overflow-hidden flex flex-col">
+              <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#DFE3E5] dark:border-[#1E293B] shadow-sm overflow-hidden flex flex-col transition-colors">
                 {/* Dossier Header */}
-                <div className="p-4 bg-[#07203C] text-white flex items-start justify-between">
+                <div className="p-4 bg-[#07203C] dark:bg-[#05101C] text-white flex items-start justify-between border-b border-[#203653] dark:border-[#122438]">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg bg-[#203653] text-white flex items-center justify-center font-bold text-lg shadow-xs">
                       {activeDossier.full_name?.slice(0, 2).toUpperCase() || 'ST'}
@@ -543,11 +543,13 @@ export const StudentRegistryView: React.FC = () => {
                 </div>
 
                 {/* Dossier Tabs */}
-                <div className="flex items-center bg-[#E5E9EB] px-2 pt-2 gap-1 border-b border-[#DFE3E5] text-xs">
+                <div className="flex items-center bg-[#E5E9EB] dark:bg-[#071321] px-2 pt-2 gap-1 border-b border-[#DFE3E5] dark:border-[#1E293B] text-xs transition-colors">
                   <button
                     onClick={() => setDossierTab('fee')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
-                      dossierTab === 'fee' ? 'bg-white text-[#07203C] shadow-xs' : 'text-[#44474D] hover:text-[#181C1E]'
+                      dossierTab === 'fee'
+                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
                     Fee Evidence
@@ -555,7 +557,9 @@ export const StudentRegistryView: React.FC = () => {
                   <button
                     onClick={() => setDossierTab('profile')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
-                      dossierTab === 'profile' ? 'bg-white text-[#07203C] shadow-xs' : 'text-[#44474D] hover:text-[#181C1E]'
+                      dossierTab === 'profile'
+                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
                     Profile
@@ -563,7 +567,9 @@ export const StudentRegistryView: React.FC = () => {
                   <button
                     onClick={() => setDossierTab('guardian')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
-                      dossierTab === 'guardian' ? 'bg-white text-[#07203C] shadow-xs' : 'text-[#44474D] hover:text-[#181C1E]'
+                      dossierTab === 'guardian'
+                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
                     Guardian
@@ -571,7 +577,9 @@ export const StudentRegistryView: React.FC = () => {
                   <button
                     onClick={() => setDossierTab('proctor')}
                     className={`px-3 py-1.5 rounded-t font-bold transition-all ${
-                      dossierTab === 'proctor' ? 'bg-white text-[#07203C] shadow-xs' : 'text-[#44474D] hover:text-[#181C1E]'
+                      dossierTab === 'proctor'
+                        ? 'bg-white dark:bg-[#0A1929] text-[#07203C] dark:text-[#F8FAFC] shadow-xs'
+                        : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#181C1E] dark:hover:text-[#F8FAFC]'
                     }`}
                   >
                     Proctor

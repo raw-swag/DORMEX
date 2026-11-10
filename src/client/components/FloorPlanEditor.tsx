@@ -522,21 +522,21 @@ export const FloorPlanEditor: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6FAFC] font-sans text-[#181C1E] flex flex-col">
+    <div className="min-h-screen bg-[#F6FAFC] dark:bg-[#071321] font-sans text-[#181C1E] dark:text-[#E2E8F0] flex flex-col transition-colors">
       {/* Top Utility Context Bar */}
-      <div className="w-full bg-[#E5E9EB] px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#DFE3E5] text-xs">
+      <div className="w-full bg-[#E5E9EB] dark:bg-[#0A1929] px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#DFE3E5] dark:border-[#1E293B] text-xs transition-colors">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#016A62] animate-pulse" />
-          <span className="font-bold text-[#07203C]">Hostel Office CAD & Spatial Geometry Suite</span>
-          <span className="text-[#74777E]">·</span>
-          <span className="text-[#44474D]">Active Building: <code className="font-mono text-[#07203C] font-bold">BVB Block (bld_bvb)</code></span>
+          <div className="w-2.5 h-2.5 rounded-full bg-[#016A62] dark:bg-[#84D5CA] animate-pulse" />
+          <span className="font-bold text-[#07203C] dark:text-[#F8FAFC]">Hostel Office CAD & Spatial Geometry Suite</span>
+          <span className="text-[#74777E] dark:text-[#94A3B8]">·</span>
+          <span className="text-[#44474D] dark:text-[#94A3B8]">Active Building: <code className="font-mono text-[#07203C] dark:text-[#84D5CA] font-bold">BVB Block (bld_bvb)</code></span>
         </div>
-        <div className="flex items-center gap-4 text-[#44474D]">
+        <div className="flex items-center gap-4 text-[#44474D] dark:text-[#94A3B8]">
           <div className="flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5 text-[#016A62]" />
-            <span>Grid Pitch: <strong className="text-[#07203C]">4.8m × 3.6m Standard Unit</strong></span>
+            <Compass className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" />
+            <span>Grid Pitch: <strong className="text-[#07203C] dark:text-[#F8FAFC]">4.8m × 3.6m Standard Unit</strong></span>
           </div>
-          <div className="flex items-center gap-1.5 bg-[#A0F1E6]/50 text-[#005049] px-2 py-0.5 rounded font-semibold text-[11px]">
+          <div className="flex items-center gap-1.5 bg-[#A0F1E6]/50 dark:bg-[#016A62]/30 text-[#005049] dark:text-[#84D5CA] px-2 py-0.5 rounded font-semibold text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Authoritative Geometry Lock</span>
           </div>
@@ -544,19 +544,19 @@ export const FloorPlanEditor: React.FC = () => {
       </div>
 
       {/* Main Workspace Bar & Executive Action Controls */}
-      <div className="px-6 py-4 bg-[#F0F4F6] border-b border-[#E5E9EB] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      <div className="px-6 py-4 bg-[#F0F4F6] dark:bg-[#0A1929] border-b border-[#E5E9EB] dark:border-[#1E293B] flex flex-col xl:flex-row xl:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E7F2ED] text-[#016A62] uppercase tracking-wider">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E7F2ED] dark:bg-[#016A62]/30 text-[#016A62] dark:text-[#84D5CA] uppercase tracking-wider">
               Level 02 Geometric Architecture
             </span>
-            <span className="text-xs text-[#74777E]">ViewBox: 900 × 650 Canvas</span>
+            <span className="text-xs text-[#74777E] dark:text-[#94A3B8]">ViewBox: 900 × 650 Canvas</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-[#07203C] tracking-tight mt-1 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-[#016A62]" />
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#07203C] dark:text-[#F8FAFC] tracking-tight mt-1 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-[#016A62] dark:text-[#84D5CA]" />
             BVB Block — Floor 2 Map Builder & CAD Editor
           </h1>
-          <p className="text-xs text-[#44474D] mt-0.5">
+          <p className="text-xs text-[#44474D] dark:text-[#94A3B8] mt-0.5">
             Design, calibrate, and verify physical bed markers and corridor geometry. Synchronized with the student floor map interface.
           </p>
         </div>
@@ -564,14 +564,14 @@ export const FloorPlanEditor: React.FC = () => {
         {/* Global Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Switch View Mode: Blueprint vs CAD Precision Canvas */}
-          <div className="flex items-center bg-white p-1 rounded-lg border border-[#E2E6E8] shadow-xs">
+          <div className="flex items-center bg-white dark:bg-[#071321] p-1 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs">
             <button
               type="button"
               onClick={() => setViewMode('blueprint')}
               className={`px-3 py-1.5 rounded text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'blueprint'
-                  ? 'bg-[#07203C] text-white shadow-xs'
-                  : 'text-[#44474D] hover:text-[#07203C]'
+                  ? 'bg-[#07203C] dark:bg-[#0E243A] text-white shadow-xs'
+                  : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#07203C] dark:hover:text-[#F8FAFC]'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -582,8 +582,8 @@ export const FloorPlanEditor: React.FC = () => {
               onClick={() => setViewMode('cad')}
               className={`px-3 py-1.5 rounded text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'cad'
-                  ? 'bg-[#07203C] text-white shadow-xs'
-                  : 'text-[#44474D] hover:text-[#07203C]'
+                  ? 'bg-[#07203C] dark:bg-[#0E243A] text-white shadow-xs'
+                  : 'text-[#44474D] dark:text-[#94A3B8] hover:text-[#07203C] dark:hover:text-[#F8FAFC]'
               }`}
             >
               <FileCode className="w-3.5 h-3.5" />
@@ -708,33 +708,33 @@ export const FloorPlanEditor: React.FC = () => {
 
         {/* Bento Statistics Cards */}
         <div className="flex items-center gap-3">
-          <div className="bg-white px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] shadow-xs flex items-center gap-2.5">
-            <Building className="w-4 h-4 text-[#016A62]" />
+          <div className="bg-white dark:bg-[#071321] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex items-center gap-2.5 transition-colors">
+            <Building className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA]" />
             <div>
-              <div className="text-[10px] uppercase font-bold text-[#74777E] tracking-wider">Total Rooms</div>
-              <div className="text-xs font-extrabold text-[#07203C]">{roomCount} Units</div>
+              <div className="text-[10px] uppercase font-bold text-[#74777E] dark:text-[#94A3B8] tracking-wider">Total Rooms</div>
+              <div className="text-xs font-extrabold text-[#07203C] dark:text-[#F8FAFC]">{roomCount} Units</div>
             </div>
           </div>
-          <div className="bg-white px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] shadow-xs flex items-center gap-2.5">
-            <Bed className="w-4 h-4 text-[#07203C]" />
+          <div className="bg-white dark:bg-[#071321] px-3.5 py-1.5 rounded-lg border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs flex items-center gap-2.5 transition-colors">
+            <Bed className="w-4 h-4 text-[#07203C] dark:text-[#84D5CA]" />
             <div>
-              <div className="text-[10px] uppercase font-bold text-[#74777E] tracking-wider">Configured Beds</div>
-              <div className="text-xs font-extrabold text-[#07203C]">{seatCount} Beds</div>
+              <div className="text-[10px] uppercase font-bold text-[#74777E] dark:text-[#94A3B8] tracking-wider">Configured Beds</div>
+              <div className="text-xs font-extrabold text-[#07203C] dark:text-[#F8FAFC]">{seatCount} Beds</div>
             </div>
           </div>
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 border border-[#E2E6E8] rounded-lg p-1 bg-white shadow-xs">
+          <div className="flex items-center gap-1 border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg p-1 bg-white dark:bg-[#071321] shadow-xs transition-colors">
             <button
               onClick={() => setZoomLevel((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
-              className="p-1 hover:bg-[#E5E9EB] rounded text-[#44474D]"
+              className="p-1 hover:bg-[#E5E9EB] dark:hover:bg-[#1E293B] rounded text-[#44474D] dark:text-[#94A3B8]"
               title="Zoom Out"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] font-mono font-bold px-1 text-[#07203C]">{Math.round(zoomLevel * 100)}%</span>
+            <span className="text-[10px] font-mono font-bold px-1 text-[#07203C] dark:text-[#84D5CA]">{Math.round(zoomLevel * 100)}%</span>
             <button
               onClick={() => setZoomLevel((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
-              className="p-1 hover:bg-[#E5E9EB] rounded text-[#44474D]"
+              className="p-1 hover:bg-[#E5E9EB] dark:hover:bg-[#1E293B] rounded text-[#44474D] dark:text-[#94A3B8]"
               title="Zoom In"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -794,9 +794,9 @@ export const FloorPlanEditor: React.FC = () => {
                     )}
                   </div>
                   {/* Central Hallway Pathway */}
-                  <div className="py-1 px-3 bg-[#DFE3E5] rounded flex items-center justify-between text-[#44474D] text-[10px] font-medium tracking-wider">
+                  <div className="py-1 px-3 bg-[#DFE3E5] dark:bg-[#1E293B] rounded flex items-center justify-between text-[#44474D] dark:text-[#94A3B8] text-[10px] font-medium tracking-wider transition-colors">
                     <span>Staircase NW-2A</span>
-                    <span className="uppercase tracking-widest text-[#74777E]">◀ NORTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
+                    <span className="uppercase tracking-widest text-[#74777E] dark:text-[#94A3B8]">◀ NORTH CORRIDOR RUNWAY (WIDTH 2.4M) ▶</span>
                     <span>North Sanitization Block</span>
                   </div>
                   {/* Row 2: 213-224 */}

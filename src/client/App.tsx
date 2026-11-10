@@ -1,7 +1,9 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { ThemeProvider } from './context/ThemeContext.js';
 import { PWAInstallProvider } from './context/PWAInstallContext.js';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt.js';
+import { NetworkStatusBanner } from './components/NetworkStatusBanner.js';
 import { AppLayout } from './components/AppLayout.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
 import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary.js';
@@ -35,6 +37,7 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated || !session) {
     return (
       <>
+        <NetworkStatusBanner />
         <PortalSelectionView />
         <PWAInstallPrompt />
       </>
@@ -47,6 +50,7 @@ const AppContent: React.FC = () => {
 
   return (
     <>
+      <NetworkStatusBanner />
       <AppLayout currentTab={currentTab} setCurrentTab={setCurrentTab}>
         <ChunkLoadErrorBoundary>
           <Suspense
@@ -78,10 +82,12 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <PWAInstallProvider>
-        <AppContent />
-      </PWAInstallProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <PWAInstallProvider>
+          <AppContent />
+        </PWAInstallProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };

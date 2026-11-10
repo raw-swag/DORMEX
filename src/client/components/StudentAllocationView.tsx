@@ -1,6 +1,7 @@
 import { RoomChangeTab } from './allocation/RoomChangeTab.js';
 import { TurnStatusRibbon } from './allocation/TurnStatusRibbon.js';
 import { FloorMapFiltersBar } from './allocation/FloorMapFiltersBar.js';
+import { AllocationOnboardingModal, isAllocationOnboardingCompleted } from './allocation/AllocationOnboardingModal.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch, useAuth } from '../context/AuthContext.js';
 import { 
@@ -137,6 +138,9 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
   // Roommate Acceptance Allocation Confirmation Dialog state
   const [showRoommateConfirmModal, setShowRoommateConfirmModal] = useState(false);
   const [roommateConfirmContext, setRoommateConfirmContext] = useState<RoommateAllocationDialogContext | null>(null);
+
+  // Student First-Time Allocation Onboarding Guide
+  const [showOnboardingGuide, setShowOnboardingGuide] = useState(() => !isAllocationOnboardingCompleted());
 
   // Load student profile & terms status
   const fetchMyData = async () => {
@@ -833,6 +837,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Optional First-Time Student Allocation Onboarding Guide */}
+      {showOnboardingGuide && (
+        <AllocationOnboardingModal onClose={() => setShowOnboardingGuide(false)} />
+      )}
+
       {/* Terms Acknowledgement Modal (Blocking) */}
       {showTermsModal && (
         <TermsAcknowledgementModal
@@ -1068,6 +1077,7 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             myAllocation={myAllocation}
             loading={loading}
             onJoinWaitingRoom={handleJoinWaitingRoom}
+            onOpenGuide={() => setShowOnboardingGuide(true)}
           />
 
           {errorMsg && (

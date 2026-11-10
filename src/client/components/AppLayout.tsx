@@ -18,6 +18,7 @@ import {
 import { DormexLogo } from './DormexLogo.js';
 import { NotificationCenter } from './NotificationCenter.js';
 import { MobileBottomNav } from './MobileBottomNav.js';
+import { ThemeToggle } from './ThemeToggle.js';
 import { getNavigationForRole } from '../config/navigation.js';
 import { usePWAInstall } from '../context/PWAInstallContext.js';
 
@@ -42,12 +43,12 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
   const currentTitle = activeTabMeta ? activeTabMeta.label : 'Allocation Platform';
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#F7F6F1] font-sans antialiased text-[#263345]">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#F7F6F1] dark:bg-[#071321] font-sans antialiased text-[#263345] dark:text-[#E2E8F0] transition-colors duration-150">
       {/* 
         COMPACT MOBILE HEADER (Sticky, 56px, Safe-Area Padded)
         Visible only on < md (768px). Eliminates clutter, provides institution branding + quick notifications.
       */}
-      <header className="md:hidden sticky top-0 z-30 bg-[#07203C] text-white border-b border-[#203653] px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm pt-[calc(0.625rem+env(safe-area-inset-top,0px))]">
+      <header className="md:hidden sticky top-0 z-30 bg-[#07203C] dark:bg-[#05101C] text-white border-b border-[#203653] dark:border-[#122438] px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm pt-[calc(0.625rem+env(safe-area-inset-top,0px))]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <DormexLogo theme="white" size="custom" className="h-6 w-auto shrink-0 max-w-[90px] xs:max-w-none" />
           <div className="flex flex-col min-w-0">
@@ -61,6 +62,7 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <ThemeToggle />
           <NotificationCenter onNavigateTab={setCurrentTab} />
 
           {/* Quick Drawer trigger for Persona switch / Logout on mobile */}
@@ -236,15 +238,15 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
       {/* Main View Area with Clean Header */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Spacious Desktop Navigation Header (64px) - hidden on mobile in favor of compact mobile header */}
-        <header className="hidden md:flex h-16 bg-white border-b border-[#E2E6E8] px-6 items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
+        <header className="hidden md:flex h-16 bg-white dark:bg-[#0A1929] border-b border-[#E2E6E8] dark:border-[#1E293B] px-6 items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
           {/* Breadcrumb Path */}
           <div className="flex items-center gap-2 text-xs min-w-0">
-            <span className="text-[#627084] font-medium">Campus Hostels</span>
-            <ChevronRight className="w-3.5 h-3.5 text-[#627084] opacity-60" />
-            <span className="text-[#627084] font-medium">BVB Block</span>
-            <ChevronRight className="w-3.5 h-3.5 text-[#627084] opacity-60" />
-            <span className="text-[#203653] font-bold truncate">{currentTitle}</span>
-            <span className="hidden lg:inline-flex items-center ml-2 px-2 py-0.5 rounded-full bg-[#F7F6F1] border border-[#E2E6E8] text-[10px] text-[#627084] font-semibold">
+            <span className="text-[#627084] dark:text-[#94A3B8] font-medium">Campus Hostels</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8] opacity-60" />
+            <span className="text-[#627084] dark:text-[#94A3B8] font-medium">BVB Block</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8] opacity-60" />
+            <span className="text-[#203653] dark:text-[#F8FAFC] font-bold truncate">{currentTitle}</span>
+            <span className="hidden lg:inline-flex items-center ml-2 px-2 py-0.5 rounded-full bg-[#F7F6F1] dark:bg-[#0E243A] border border-[#E2E6E8] dark:border-[#203653] text-[10px] text-[#627084] dark:text-[#94A3B8] font-semibold">
               AY 2024–25
             </span>
           </div>
@@ -258,7 +260,9 @@ export const AppLayout: React.FC<LayoutProps> = ({ currentTab, setCurrentTab, ch
 
             <NotificationCenter onNavigateTab={setCurrentTab} />
 
-            <div className="h-6 w-px bg-[#E2E6E8]" />
+            <ThemeToggle />
+
+            <div className="h-6 w-px bg-[#E2E6E8] dark:bg-[#203653]" />
 
             <div className="flex items-center gap-2 pl-1">
               <div className="text-right">
