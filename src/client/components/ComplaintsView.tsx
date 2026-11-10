@@ -198,60 +198,60 @@ export const ComplaintsView: React.FC = () => {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-sm space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084]">Open Tickets</div>
-          <div className="text-2xl font-bold text-[#E06A26] font-mono">{totalOpen}</div>
-          <div className="text-[11px] text-[#627084]">Awaiting initial staff triage or assignment</div>
+        <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-sm space-y-1 transition-colors">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084] dark:text-[#94A3B8]">Open Tickets</div>
+          <div className="text-2xl font-bold text-[#E06A26] dark:text-[#FB923C] font-mono">{totalOpen}</div>
+          <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Awaiting initial staff triage or assignment</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-sm space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084]">In Progress / Assigned</div>
-          <div className="text-2xl font-bold text-[#203653] font-mono">{totalAssigned}</div>
-          <div className="text-[11px] text-[#2C8279]">Allocated to maintenance technicians / wardens</div>
+        <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-sm space-y-1 transition-colors">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084] dark:text-[#94A3B8]">In Progress / Assigned</div>
+          <div className="text-2xl font-bold text-[#203653] dark:text-[#93C5FD] font-mono">{totalAssigned}</div>
+          <div className="text-[11px] text-[#2C8279] dark:text-[#84D5CA]">Allocated to maintenance technicians / wardens</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-sm space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084]">Resolved & Closed</div>
-          <div className="text-2xl font-bold text-[#1E7B54] font-mono">{totalResolved}</div>
-          <div className="text-[11px] text-[#627084]">Verified with documented resolution notes</div>
+        <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-sm space-y-1 transition-colors">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#627084] dark:text-[#94A3B8]">Resolved & Closed</div>
+          <div className="text-2xl font-bold text-[#1E7B54] dark:text-[#84D5CA] font-mono">{totalResolved}</div>
+          <div className="text-[11px] text-[#627084] dark:text-[#94A3B8]">Verified with documented resolution notes</div>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl border border-[#E2E6E8] shadow-sm flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white dark:bg-[#0A1929] p-4 rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] shadow-sm flex flex-wrap items-center justify-between gap-3 transition-colors">
         <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 text-[#627084] absolute left-3 top-2.5" />
+          <Search className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8] absolute left-3 top-2.5" />
           <input
             type="text"
             placeholder="Search tickets by title or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded pl-8 pr-3 py-1.5 text-[#263345] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+            className="w-full text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded pl-8 pr-3 py-1.5 text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 text-xs text-[#627084] font-semibold">
-            <Filter className="w-3.5 h-3.5 text-[#627084]" />
+          <div className="flex items-center gap-1.5 text-xs text-[#627084] dark:text-[#94A3B8] font-semibold">
+            <Filter className="w-3.5 h-3.5 text-[#627084] dark:text-[#94A3B8]" />
             <span>Type:</span>
           </div>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345]"
+            className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0]"
           >
             <option value="ALL">All Types</option>
             <option value="PUBLIC">Public Facilities</option>
             <option value="PRIVATE">Private Confidential</option>
           </select>
 
-          <div className="flex items-center gap-1.5 text-xs text-[#627084] font-semibold ml-2">
+          <div className="flex items-center gap-1.5 text-xs text-[#627084] dark:text-[#94A3B8] font-semibold ml-2">
             <span>Status:</span>
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-2.5 py-1.5 text-[#263345]"
+            className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-2.5 py-1.5 text-[#263345] dark:text-[#E2E8F0]"
           >
             <option value="ALL">All Statuses</option>
             <option value="OPEN">Open</option>
@@ -266,19 +266,19 @@ export const ComplaintsView: React.FC = () => {
       {/* New Complaint Modal */}
       {showNewModal && (
         <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
-            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-            <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
-              <h3 className="text-sm font-bold text-[#203653] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#2C8279]" />
+          <div className="bg-white dark:bg-[#0A1929] rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] dark:border-[#1E293B] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] dark:bg-[#334155] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
+            <div className="flex items-center justify-between border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3">
+              <h3 className="text-sm font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-2">
+                <Plus className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
                 Submit New Hostel Complaint
               </h3>
-              <button onClick={() => setShowNewModal(false)} className="text-[#627084] hover:text-[#203653] text-xs">✕</button>
+              <button onClick={() => setShowNewModal(false)} className="text-[#627084] dark:text-[#94A3B8] hover:text-[#203653] dark:hover:text-[#F8FAFC] text-xs">✕</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Complaint Classification</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Complaint Classification</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -286,7 +286,7 @@ export const ComplaintsView: React.FC = () => {
                     className={`py-2 px-3 text-xs font-semibold rounded border flex items-center justify-center gap-2 transition-colors ${
                       type === 'PUBLIC'
                         ? 'bg-[#2C8279] text-white border-[#2C8279]'
-                        : 'bg-[#F7F6F1] text-[#263345] border-[#E2E6E8]'
+                        : 'bg-[#F7F6F1] dark:bg-[#071321] text-[#263345] dark:text-[#E2E8F0] border-[#E2E6E8] dark:border-[#1E293B]'
                     }`}
                   >
                     <Globe className="w-4 h-4" />
@@ -298,14 +298,14 @@ export const ComplaintsView: React.FC = () => {
                     className={`py-2 px-3 text-xs font-semibold rounded border flex items-center justify-center gap-2 transition-colors ${
                       type === 'PRIVATE'
                         ? 'bg-[#2C8279] text-white border-[#2C8279]'
-                        : 'bg-[#F7F6F1] text-[#263345] border-[#E2E6E8]'
+                        : 'bg-[#F7F6F1] dark:bg-[#071321] text-[#263345] dark:text-[#E2E8F0] border-[#E2E6E8] dark:border-[#1E293B]'
                     }`}
                   >
                     <Lock className="w-4 h-4" />
                     Private Room
                   </button>
                 </div>
-                <p className="text-[10px] text-[#627084] mt-1.5">
+                <p className="text-[10px] text-[#627084] dark:text-[#94A3B8] mt-1.5">
                   {type === 'PUBLIC'
                     ? 'Public issues appear on the community board for peer verification and voting.'
                     : 'Private complaints are strictly confidential between you and hostel administration.'}
@@ -313,11 +313,11 @@ export const ComplaintsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Hostel Building / Block</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Hostel Building / Block</label>
                 <select
                   value={buildingId}
                   onChange={(e) => setBuildingId(e.target.value)}
-                  className="w-full text-xs border border-[#E2E6E8] rounded p-2.5 bg-[#F7F6F1] text-[#263345] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+                  className="w-full text-xs border border-[#E2E6E8] dark:border-[#1E293B] rounded p-2.5 bg-[#F7F6F1] dark:bg-[#071321] text-[#263345] dark:text-[#E2E8F0] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                 >
                   {buildings.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -329,34 +329,34 @@ export const ComplaintsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Issue Title</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Issue Title</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Water dispenser filter replacement on Floor 2"
-                  className="w-full text-xs border border-[#E2E6E8] rounded p-2.5 bg-[#F7F6F1] text-[#263345] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+                  className="w-full text-xs border border-[#E2E6E8] dark:border-[#1E293B] rounded p-2.5 bg-[#F7F6F1] dark:bg-[#071321] text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Detailed Description & Location</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Detailed Description & Location</label>
                 <textarea
                   required
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Provide precise location, room/floor details, and problem description..."
-                  className="w-full text-xs border border-[#E2E6E8] rounded p-2.5 bg-[#F7F6F1] text-[#263345] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+                  className="w-full text-xs border border-[#E2E6E8] dark:border-[#1E293B] rounded p-2.5 bg-[#F7F6F1] dark:bg-[#071321] text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E6E8]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E6E8] dark:border-[#1E293B]">
                 <button
                   type="button"
                   onClick={() => setShowNewModal(false)}
-                  className="px-3.5 py-2 text-xs font-semibold text-[#627084] hover:bg-[#F7F6F1] rounded"
+                  className="px-3.5 py-2 text-xs font-semibold text-[#627084] dark:text-[#94A3B8] hover:bg-[#F7F6F1] dark:hover:bg-[#0E243A] rounded"
                 >
                   Cancel
                 </button>
@@ -377,23 +377,23 @@ export const ComplaintsView: React.FC = () => {
       {/* Staff Update & Assign Modal */}
       {selectedComplaint && (
         <div className="fixed inset-0 bg-[#203653]/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
-            <div className="w-10 h-1 bg-[#D5DCDF] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-            <div className="flex items-center justify-between border-b border-[#E2E6E8] pb-3">
+          <div className="bg-white dark:bg-[#0A1929] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border-t sm:border border-[#E2E6E8] dark:border-[#1E293B] max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="w-10 h-1 bg-[#D5DCDF] dark:bg-[#334155] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
+            <div className="flex items-center justify-between border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3">
               <div>
-                <h3 className="text-sm font-bold text-[#203653]">Manage Complaint #{selectedComplaint.id.slice(-6)}</h3>
-                <p className="text-[11px] text-[#627084] truncate max-w-xs">{selectedComplaint.title}</p>
+                <h3 className="text-sm font-bold text-[#203653] dark:text-[#F8FAFC]">Manage Complaint #{selectedComplaint.id.slice(-6)}</h3>
+                <p className="text-[11px] text-[#627084] dark:text-[#94A3B8] truncate max-w-xs">{selectedComplaint.title}</p>
               </div>
-              <button onClick={() => setSelectedComplaint(null)} className="text-[#627084] hover:text-[#203653] text-xs">✕</button>
+              <button onClick={() => setSelectedComplaint(null)} className="text-[#627084] dark:text-[#94A3B8] hover:text-[#203653] dark:hover:text-[#F8FAFC] text-xs">✕</button>
             </div>
 
             <form onSubmit={handleUpdateStatus} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Status Workflow Stage</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Status Workflow Stage</label>
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-3 py-2 text-[#263345]"
+                  className="w-full text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-3 py-2 text-[#263345] dark:text-[#E2E8F0]"
                 >
                   <option value="OPEN">OPEN — Awaiting Action</option>
                   <option value="ASSIGNED">ASSIGNED — Assigned to Personnel</option>
@@ -404,32 +404,32 @@ export const ComplaintsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Assign Staff / Contractor</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Assign Staff / Contractor</label>
                 <input
                   type="text"
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                   placeholder="e.g. Electrical Maintenance Team / usr_warden_bvb"
-                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-3 py-2 text-[#263345]"
+                  className="w-full text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-3 py-2 text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#263345] block mb-1">Official Resolution Notes</label>
+                <label className="text-xs font-semibold text-[#263345] dark:text-[#E2E8F0] block mb-1">Official Resolution Notes</label>
                 <textarea
                   rows={3}
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                   placeholder="Detail official findings, parts replaced, or corrective maintenance completed..."
-                  className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded px-3 py-2 text-[#263345]"
+                  className="w-full text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded px-3 py-2 text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E6E8]">
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E6E8] dark:border-[#1E293B]">
                 <button
                   type="button"
                   onClick={() => setSelectedComplaint(null)}
-                  className="px-3 py-1.5 text-xs text-[#627084] rounded"
+                  className="px-3 py-1.5 text-xs text-[#627084] dark:text-[#94A3B8] rounded"
                 >
                   Cancel
                 </button>

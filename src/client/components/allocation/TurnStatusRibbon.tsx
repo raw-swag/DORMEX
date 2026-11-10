@@ -143,43 +143,43 @@ export const TurnStatusRibbon: React.FC<TurnStatusRibbonProps> = ({
       </div>
 
       {/* Explanatory Context Banner based on Real Lifecycle State */}
-      <div className="p-3.5 bg-white border border-[#E2E6E8] rounded-xl text-xs text-[#203653] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+      <div className="p-3.5 bg-white dark:bg-[#0A1929] border border-[#E2E6E8] dark:border-[#1E293B] rounded-xl text-xs text-[#203653] dark:text-[#E2E8F0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs transition-colors">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-              myAllocation ? 'bg-[#E7F2ED] text-[#1E7B54]' :
-              activeSession ? 'bg-[#E7F2ED] text-[#016A62]' :
-              isPaused ? 'bg-[#FAF4E6] text-[#9C7A2E]' :
-              isNotStarted ? 'bg-[#F0F4F6] text-[#627084]' :
-              waitingEntry ? 'bg-[#EBF3FC] text-[#1D63B8]' :
-              'bg-[#F0F4F6] text-[#203653]'
+              myAllocation ? 'bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA]' :
+              activeSession ? 'bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#016A62] dark:text-[#84D5CA]' :
+              isPaused ? 'bg-[#FAF4E6] dark:bg-[#2C210B] text-[#9C7A2E] dark:text-[#FBBF24]' :
+              isNotStarted ? 'bg-[#F0F4F6] dark:bg-[#0E243A] text-[#627084] dark:text-[#94A3B8]' :
+              waitingEntry ? 'bg-[#EBF3FC] dark:bg-[#0F2644] text-[#1D63B8] dark:text-[#60A5FA]' :
+              'bg-[#F0F4F6] dark:bg-[#0E243A] text-[#203653] dark:text-[#E2E8F0]'
             }`}>
               {stateBadge}
             </span>
-            <span className="font-bold text-[#07203C]">{stateTitle}</span>
+            <span className="font-bold text-[#07203C] dark:text-[#F8FAFC]">{stateTitle}</span>
           </div>
-          <p className="text-[11px] text-[#627084] leading-relaxed">
+          <p className="text-[11px] text-[#627084] dark:text-[#94A3B8] leading-relaxed">
             {stateDescription}
           </p>
         </div>
 
         {/* Action Button & Lifecycle State */}
         {waitingEntry ? (
-          <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-[#EBF3FC] text-[#1D63B8] border border-[#B9D5F7] rounded-lg text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-[#1D63B8] animate-pulse" />
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-[#EBF3FC] dark:bg-[#0F2644] text-[#1D63B8] dark:text-[#60A5FA] border border-[#B9D5F7] dark:border-[#1E3A5F] rounded-lg text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-[#1D63B8] dark:bg-[#60A5FA] animate-pulse" />
             <span>Position #{waitingEntry.queuePosition || waitingEntry.priorityNumber || '—'} in Queue</span>
           </div>
         ) : myAllocation ? (
-          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2] rounded-lg text-xs font-bold">
-            <Check className="w-4 h-4 text-[#1E7B54]" />
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] border border-[#A8D5C2] dark:border-[#1A5C47] rounded-lg text-xs font-bold">
+            <Check className="w-4 h-4 text-[#1E7B54] dark:text-[#84D5CA]" />
             <span>Seat Confirmed</span>
           </div>
         ) : isPublished ? (
-          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#F0F4F6] text-[#203653] border border-[#D2D7D9] rounded-lg text-xs font-semibold">
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#F0F4F6] dark:bg-[#0E243A] text-[#203653] dark:text-[#E2E8F0] border border-[#D2D7D9] dark:border-[#1E293B] rounded-lg text-xs font-semibold">
             <span>Cycle Concluded</span>
           </div>
         ) : isPaused ? (
-          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#FAF4E6] text-[#9C7A2E] border border-[#D4B779] rounded-lg text-xs font-semibold">
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#FAF4E6] dark:bg-[#2C210B] text-[#9C7A2E] dark:text-[#FBBF24] border border-[#D4B779] dark:border-[#7A5B14] rounded-lg text-xs font-semibold">
             <span>Temporarily Paused</span>
           </div>
         ) : isNotStarted ? (
@@ -188,11 +188,11 @@ export const TurnStatusRibbon: React.FC<TurnStatusRibbonProps> = ({
               type="button"
               disabled
               aria-disabled="true"
-              className="py-2 px-3.5 bg-slate-200 text-slate-500 cursor-not-allowed text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2"
+              className="py-2 px-3.5 bg-slate-200 dark:bg-[#0E243A] text-slate-500 dark:text-[#94A3B8] border border-transparent dark:border-[#1E293B] cursor-not-allowed text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2"
             >
               <span>Waiting for Allocation to Open</span>
             </button>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-500 dark:text-[#94A3B8]">
               The Hostel Office has not started the allocation cycle yet.
             </span>
           </div>

@@ -192,21 +192,21 @@ export const MessMenuView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F7F6F1] min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#F7F6F1] dark:bg-[#071321] min-h-screen transition-colors">
       {/* Top Banner */}
-      <div className="bg-white border-b border-[#E2E6E8] px-8 py-6">
+      <div className="bg-white dark:bg-[#0A1929] border-b border-[#E2E6E8] dark:border-[#1E293B] px-8 py-6 transition-colors">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs text-[#627084] font-medium mb-1">
+            <div className="flex items-center gap-2 text-xs text-[#627084] dark:text-[#94A3B8] font-medium mb-1">
               <span>Campus Services</span>
               <span className="opacity-60">/</span>
-              <span className="text-[#2C8279] font-bold">Hostel Dining</span>
+              <span className="text-[#2C8279] dark:text-[#84D5CA] font-bold">Hostel Dining</span>
             </div>
-            <h1 className="text-2xl font-black text-[#203653] tracking-tight flex items-center gap-2">
-              <Utensils className="w-6 h-6 text-[#2C8279]" />
+            <h1 className="text-2xl font-black text-[#203653] dark:text-[#F8FAFC] tracking-tight flex items-center gap-2">
+              <Utensils className="w-6 h-6 text-[#2C8279] dark:text-[#84D5CA]" />
               <span>Weekly Mess Menu</span>
             </h1>
-            <p className="text-xs text-[#627084] mt-1">
+            <p className="text-xs text-[#627084] dark:text-[#94A3B8] mt-1">
               Authoritative digital mess menu notice board for SIT Tumakuru campus residents.
             </p>
           </div>
@@ -218,7 +218,7 @@ export const MessMenuView: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'current'
                   ? 'bg-[#2C8279] text-white shadow-sm'
-                  : 'bg-white text-[#203653] border border-[#D5DCDF] hover:bg-[#F7F6F1]'
+                  : 'bg-white dark:bg-[#0E243A] text-[#203653] dark:text-[#E2E8F0] border border-[#D5DCDF] dark:border-[#1E3A5F] hover:bg-[#F7F6F1] dark:hover:bg-[#153450]'
               }`}
             >
               <Calendar className="w-4 h-4" />
@@ -230,7 +230,7 @@ export const MessMenuView: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'history'
                   ? 'bg-[#2C8279] text-white shadow-sm'
-                  : 'bg-white text-[#203653] border border-[#D5DCDF] hover:bg-[#F7F6F1]'
+                  : 'bg-white dark:bg-[#0E243A] text-[#203653] dark:text-[#E2E8F0] border border-[#D5DCDF] dark:border-[#1E3A5F] hover:bg-[#F7F6F1] dark:hover:bg-[#153450]'
               }`}
             >
               <History className="w-4 h-4" />
@@ -243,7 +243,7 @@ export const MessMenuView: React.FC = () => {
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
                   activeTab === 'manage'
                     ? 'bg-[#07203C] text-white shadow-sm'
-                    : 'bg-white text-[#07203C] border border-[#D5DCDF] hover:bg-[#F7F6F1]'
+                    : 'bg-white dark:bg-[#0E243A] text-[#07203C] dark:text-[#E2E8F0] border border-[#D5DCDF] dark:border-[#1E3A5F] hover:bg-[#F7F6F1] dark:hover:bg-[#153450]'
                 }`}
               >
                 <Upload className="w-4 h-4" />
@@ -259,25 +259,25 @@ export const MessMenuView: React.FC = () => {
         {/* Banner Alert Message */}
         {msg && (
           <div className={`p-4 rounded-xl border text-xs flex items-center justify-between shadow-xs ${
-            msg.type === 'success' 
-              ? 'bg-[#84d5ca]/15 border-[#2C8279]/30 text-[#07203C]' 
-              : 'bg-rose-50 border-rose-200 text-rose-800'
+            msg.type === 'success'
+              ? 'bg-[#84d5ca]/15 dark:bg-[#0D2821] border-[#2C8279]/30 dark:border-[#1A5C47] text-[#07203C] dark:text-[#84D5CA]'
+              : 'bg-rose-50 dark:bg-[#2A1215] border-rose-200 dark:border-[#7F1D1D] text-rose-800 dark:text-[#FCA5A5]'
           }`}>
             <div className="flex items-center gap-2.5">
-              {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-[#2C8279]" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
+              {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" /> : <AlertCircle className="w-4 h-4 text-rose-600 dark:text-[#F87171]" />}
               <span className="font-semibold">{msg.text}</span>
             </div>
-            <button onClick={() => setMsg(null)} className="text-slate-400 hover:text-slate-700">
+            <button onClick={() => setMsg(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Global Scope & Week Selector Bar */}
-        <div className="bg-white rounded-xl border border-[#E2E6E8] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="bg-white dark:bg-[#0A1929] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs transition-colors">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
-              <Utensils className="w-4 h-4 text-[#2C8279]" />
+            <span className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
+              <Utensils className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
               <span>Dining Hall Scope:</span>
             </span>
             <select
@@ -286,7 +286,7 @@ export const MessMenuView: React.FC = () => {
                 setSelectedScope(e.target.value);
                 setSelectedMenuId(null);
               }}
-              className="text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3 py-1.5 font-semibold text-[#203653] focus:outline-none focus:border-[#2C8279]"
+              className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#D5DCDF] dark:border-[#1E293B] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
             >
               <option value="ALL">All Campus Dining Halls</option>
               <option value="CAMPUS_CENTRAL">Campus Central Dining Hall</option>
@@ -296,14 +296,14 @@ export const MessMenuView: React.FC = () => {
 
           {activeTab === 'current' && menuHistory.length > 0 && (
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-bold text-[#203653] flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#2C8279]" />
+              <span className="text-xs font-bold text-[#203653] dark:text-[#F8FAFC] flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[#2C8279] dark:text-[#84D5CA]" />
                 <span>Selected Week:</span>
               </span>
               <select
                 value={selectedMenuId || (activeMenu?.id ?? '')}
                 onChange={(e) => setSelectedMenuId(e.target.value)}
-                className="text-xs bg-[#F7F6F1] border border-[#D5DCDF] rounded-lg px-3 py-1.5 font-semibold text-[#203653] focus:outline-none focus:border-[#2C8279]"
+                className="text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#D5DCDF] dark:border-[#1E293B] rounded-lg px-3 py-1.5 font-semibold text-[#203653] dark:text-[#E2E8F0] focus:outline-none focus:border-[#2C8279]"
               >
                 {menuHistory.map((m) => (
                   <option key={m.id} value={m.id}>

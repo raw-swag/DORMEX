@@ -42,19 +42,19 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
   ];
 
   return (
-    <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#E2E6E8] shadow-xs space-y-4">
+    <div className="bg-white dark:bg-[#0A1929] rounded-xl p-4 sm:p-5 border border-[#E2E6E8] dark:border-[#1E293B] shadow-xs space-y-4 transition-colors">
       {/* First Row: Title & Context */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E6E8] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E6E8] dark:border-[#1E293B] pb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base sm:text-lg font-bold text-[#203653] tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[#203653] dark:text-[#F8FAFC] tracking-tight">
               BVB Block — Floor 2 Allocation Map
             </h2>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E7F2ED] text-[#1E7B54] border border-[#A8D5C2] px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E7F2ED] dark:bg-[#0D2821] text-[#1E7B54] dark:text-[#84D5CA] border border-[#A8D5C2] dark:border-[#1A5C47] px-2 py-0.5 rounded-full">
               Pilot Active
             </span>
           </div>
-          <p className="text-xs text-[#627084] mt-0.5">
+          <p className="text-xs text-[#627084] dark:text-[#94A3B8] mt-0.5">
             Official 72-room residential layout (Rooms 201–272). Select any room to inspect bed matrix and configure roommate intent.
           </p>
         </div>
@@ -64,7 +64,7 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
           <select
             value={selectedBuildingId}
             onChange={(e) => onSelectBuildingId(e.target.value)}
-            className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+            className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] dark:text-[#E2E8F0] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
           >
             {buildings.map((b) => (
               <option key={b.id} value={b.id}>
@@ -76,7 +76,7 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
           <select
             value={floorId}
             onChange={(e) => onSelectFloorId(e.target.value)}
-            className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+            className="flex-1 sm:flex-none text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] dark:text-[#E2E8F0] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
           >
             {floors.map((f) => (
               <option key={f.id} value={f.id}>
@@ -92,7 +92,7 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Wing Filter Pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-bold text-[#627084] uppercase mr-1">Wings:</span>
+          <span className="text-[11px] font-bold text-[#627084] dark:text-[#94A3B8] uppercase mr-1">Wings:</span>
           {wingButtons.map((w) => (
             <button
               key={w.id}
@@ -103,8 +103,8 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
               }}
               className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 selectedWingFilter === w.id
-                  ? 'bg-[#203653] text-white border-[#203653]'
-                  : 'bg-[#F7F6F1] text-[#627084] border-[#E2E6E8] hover:bg-slate-200/60 hover:text-[#263345]'
+                  ? 'bg-[#203653] dark:bg-[#016A62] text-white border-[#203653] dark:border-[#016A62]'
+                  : 'bg-[#F7F6F1] dark:bg-[#071321] text-[#627084] dark:text-[#94A3B8] border-[#E2E6E8] dark:border-[#1E293B] hover:bg-slate-200/60 dark:hover:bg-[#0E243A] hover:text-[#263345] dark:hover:text-[#F8FAFC]'
               }`}
             >
               {w.label}
@@ -121,28 +121,28 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
               placeholder="Search room (e.g. 202)..."
               value={selectedRoomNumber || ''}
               onChange={(e) => onSelectRoomNumber(e.target.value.trim() || null)}
-              className="w-full sm:w-44 text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
+              className="w-full sm:w-44 text-xs bg-[#F7F6F1] dark:bg-[#071321] border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg px-3 py-2 sm:py-1.5 text-[#263345] dark:text-[#E2E8F0] placeholder-[#627084]/60 dark:placeholder-[#64748B] font-mono focus:outline-none focus:ring-1 focus:ring-[#2C8279]"
             />
           </div>
 
           {/* SVG Zoom Controls */}
-          <div className="flex items-center border border-[#E2E6E8] rounded-lg bg-[#F7F6F1] p-0.5 shrink-0">
+          <div className="flex items-center border border-[#E2E6E8] dark:border-[#1E293B] rounded-lg bg-[#F7F6F1] dark:bg-[#071321] p-0.5 shrink-0">
             <button
               type="button"
               onClick={() => onZoomChange((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
               title="Zoom Out"
-              className="p-1.5 text-[#627084] hover:text-[#203653] hover:bg-white rounded transition-colors"
+              className="p-1.5 text-[#627084] dark:text-[#94A3B8] hover:text-[#203653] dark:hover:text-[#F8FAFC] hover:bg-white dark:hover:bg-[#0E243A] rounded transition-colors"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[11px] font-mono font-bold px-1.5 text-[#203653]">
+            <span className="text-[11px] font-mono font-bold px-1.5 text-[#203653] dark:text-[#F8FAFC]">
               {Math.round(zoomLevel * 100)}%
             </span>
             <button
               type="button"
               onClick={() => onZoomChange((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
               title="Zoom In"
-              className="p-1.5 text-[#627084] hover:text-[#203653] hover:bg-white rounded transition-colors"
+              className="p-1.5 text-[#627084] dark:text-[#94A3B8] hover:text-[#203653] dark:hover:text-[#F8FAFC] hover:bg-white dark:hover:bg-[#0E243A] rounded transition-colors"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -150,7 +150,7 @@ export const FloorMapFiltersBar: React.FC<FloorMapFiltersBarProps> = ({
               type="button"
               onClick={onZoomReset}
               title="Reset Zoom"
-              className="p-1.5 text-[#627084] hover:text-[#203653] hover:bg-white rounded border-l border-[#E2E6E8] ml-0.5 transition-colors"
+              className="p-1.5 text-[#627084] dark:text-[#94A3B8] hover:text-[#203653] dark:hover:text-[#F8FAFC] hover:bg-white dark:hover:bg-[#0E243A] rounded border-l border-[#E2E6E8] dark:border-[#1E293B] ml-0.5 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
