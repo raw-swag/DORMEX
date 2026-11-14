@@ -539,6 +539,66 @@ CREATE TABLE IF NOT EXISTS governance_actions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+
+-- Real Institutional Student Population (USN Primary Key)
+CREATE TABLE IF NOT EXISTS students (
+    usn TEXT PRIMARY KEY,
+    user_id TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    admission_year INT NOT NULL,
+    branch TEXT NOT NULL,
+    academic_year INT NOT NULL DEFAULT 1,
+    current_semester INT NOT NULL DEFAULT 1,
+    gender TEXT NOT NULL DEFAULT 'MALE',
+    account_status TEXT NOT NULL DEFAULT 'ACTIVE',
+    eligibility_status TEXT NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Yearwise Priority Management by Academic Year, Building & Semester
+CREATE TABLE IF NOT EXISTS student_year_priority (
+    id TEXT PRIMARY KEY,
+    student_usn TEXT NOT NULL REFERENCES students(usn) ON DELETE CASCADE,
+    academic_year INT NOT NULL,
+    building_id TEXT REFERENCES buildings(id) ON DELETE SET NULL,
+    semester INT,
+    assigned_priority INT NOT NULL,
+    priority_source TEXT NOT NULL DEFAULT 'MANUAL',
+    override_reason TEXT,
+    assigned_by TEXT REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configurable Building Eligibility Policies & Student Exceptions
+CREATE TABLE IF NOT EXISTS building_eligibility_policies (
+    id TEXT PRIMARY KEY,
+    building_id TEXT NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    academic_year INT,
+    admission_year INT,
+    branch TEXT,
+    gender TEXT,
+    quota_category TEXT,
+    student_usn TEXT REFERENCES students(usn) ON DELETE CASCADE,
+    policy_type TEXT NOT NULL DEFAULT 'GRANT',
+    reason TEXT NOT NULL,
+    issued_by TEXT REFERENCES users(id),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    effective_from TIMESTAMP WITH TIME ZONE,
+    effective_until TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_student_year_priority_slot
+    ON student_year_priority (academic_year, building_id, assigned_priority)
+    WHERE building_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_student_year_priority_student
+    ON student_year_priority (student_usn, academic_year);
+
 CREATE TABLE IF NOT EXISTS governance_action_events (
     id TEXT PRIMARY KEY,
     action_id TEXT NOT NULL REFERENCES governance_actions(id) ON DELETE RESTRICT,

@@ -6,25 +6,40 @@ Welcome to **DORMEX**. This document is a strict, binding guide for all autonomo
 
 ## 1. Golden Rules of Contribution
 
-1. **Never Commit or Push Directly to `main`**:
-   - The `main` branch is production-frozen.
-   - All work must be conducted on designated feature branches (e.g., `panfam`).
-   - Merges to `main` must occur exclusively via reviewed Pull Requests or explicit maintainer approvals.
+1. **Development Directly on Local `main`**:
+   - All development work happens directly on the local `main` branch.
+   - Do NOT create arbitrary feature branches unless explicitly directed by the project lead.
+   - Always fetch, inspect, and safely integrate contributor changes before starting new work.
+   - Never discard or overwrite teammate work.
+   - **No remote push or deployment without explicit authorization**.
 
-2. **Documentation is Completely Unavoidable**:
-   - Before **any** commit is created, documentation **must** be checked and updated.
-   - If an API changes, update [`README.md`](./README.md) and [`docs/features.md`](./docs/features.md) / [`docs/system_design.md`](./docs/system_design.md).
-   - If a workflow or rule changes, update [`docs/workflow.md`](./docs/workflow.md) and [`docs/rules.md`](./docs/rules.md).
+2. **Real Institutional Identity & Authoritative Backend**:
+   - DORMEX is an institutional hostel management system operating on real institutional student population data.
+   - The `students` table uses **`usn`** as its **PRIMARY KEY** (format `1SI25<branch>XYZ` where `25` is admission year).
+   - A yearwise priority tracking table (`student_year_priority`) manages queue priority by academic year, building, and semester.
+   - No hardcoded demo identities (`DEMO-001`, `OFF001`, `ADM001`) in application logic or business rules.
+   - No mock data or fake success responses presented as real institutional operations.
+   - Backend PostgreSQL is strictly authoritative for permissions, eligibility, allocation, booking, and state transitions.
+
+3. **Database Rules & Data Safety**:
+   - Migrations must be versioned, reviewed, idempotent, and reversible where practical.
+   - Never silently delete institutional records.
+   - Preserve foreign-key integrity at all times.
+   - Multi-record workflows must execute within PostgreSQL transactions (`BEGIN ... COMMIT`).
+   - Explicitly handle concurrent requests and conflicts using row locks (`FOR UPDATE`) and database unique constraints.
+   - Never log passwords, tokens, secrets, or sensitive student PII.
+
+4. **Documentation is Completely Unavoidable**:
+   - Before any commit is created, documentation **must** be checked and updated.
+   - If an API or schema changes, update [`README.md`](./README.md) and [`docs/features.md`](./docs/features.md) / [`docs/system_design.md`](./docs/system_design.md).
    - Milestone progress **must** be recorded in [`docs/implementation-status.md`](./docs/implementation-status.md).
    - Every single meaningful change **must** be logged in [`CHANGELOG.md`](./CHANGELOG.md).
 
-3. **Verification Before Every Commit**:
+5. **Mandatory Verification Before Every Commit**:
    - Automated tests must run and achieve a 100% pass rate: `npm test`.
    - TypeScript must pass without type errors: `npm run typecheck`.
+   - Server build must succeed cleanly: `npm run build:server`.
    - Client build must succeed cleanly: `npm run build:client`.
-
-4. **Issue Tracking & Reporting**:
-   - Maintain GitHub tracking issues or Pull Requests referencing the committed work under the active branch so team members can review diffs and merge confidently.
 
 ---
 
@@ -41,9 +56,9 @@ We enforce standard **Conventional Commits**:
 ```
 
 ### Allowed Types:
-- `feat`: A new feature (e.g. `feat(allocation): add immediate turn advance on confirm`)
+- `feat`: A new feature (e.g. `feat(student): real USN primary key schema and yearwise priority`)
 - `fix`: A bug fix (e.g. `fix(db): handle idle client errors in pg pool`)
-- `docs`: Documentation updates only (e.g. `docs(status): document phase 5 postgres hardening`)
+- `docs`: Documentation updates only (e.g. `docs(status): document phase 46 migration`)
 - `test`: Adding or updating test cases (e.g. `test(disjoint): add pool inventory conflict test`)
 - `refactor`: Code changes that neither fix a bug nor add a feature
 - `perf`: Performance optimizations
@@ -61,9 +76,10 @@ Before running `git commit`, execute this exact mental checklist:
 [ ] 3. Did I update docs/implementation-status.md with the completed phase / details?
 [ ] 4. Did I verify all automated tests with `npm test`?
 [ ] 5. Did I run `npm run typecheck` to ensure 0 TypeScript errors?
-[ ] 6. Am I on the correct non-main branch (e.g. `panfam`)?
-[ ] 7. Commit with conventional commit message.
-[ ] 8. Push only to origin/<branch>.
+[ ] 6. Did I run `npm run build:server` and `npm run build:client` cleanly?
+[ ] 7. Am I on local `main` with clean working tree?
+[ ] 8. Commit with conventional commit message.
+[ ] 9. Do NOT push without explicit user request.
 ```
 
 ---
@@ -72,8 +88,8 @@ Before running `git commit`, execute this exact mental checklist:
 
 - **Modular Monolith**: Respect domain boundaries:
   - `src/auth`: Policy and authorization (`can(actor, action, resource)`).
+  - `src/student`: Institutional registry, real USN profiles, and yearwise priority eligibility.
   - `src/allocation`: Server-authoritative turn scheduling and seat confirmation transactions.
-  - `src/student`: Registry, profiles, and eligibility verification.
   - `src/inventory`: Buildings, floors, SVG maps, room definitions, and seats.
   - `src/preferences`: Room wishlists and one-hop recommendation invites.
   - `src/operations`: Complaints desk and 48-hour room change requests.

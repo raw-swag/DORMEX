@@ -13,6 +13,8 @@ import { seedDatabase } from './db/seed.js';
 import { AllocationEngineService } from './allocation/engine.js';
 import { FloorPlanService } from './inventory/floorPlan.js';
 import { StudentRegistryService } from './student/registry.js';
+import { InstitutionalStudentService } from './student/institutionalStudentService.js';
+import { BuildingEligibilityService } from './student/buildingEligibilityService.js';
 import { PreferencesService } from './preferences/service.js';
 import { OperationsService } from './operations/service.js';
 import { NotificationService } from './notifications/service.js';
@@ -171,6 +173,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const allocationEngine = new AllocationEngineService(database);
   const floorPlanService = new FloorPlanService(database);
   const studentRegistry = new StudentRegistryService(database);
+  const institutionalStudentService = new InstitutionalStudentService(database);
+  const buildingEligibilityService = new BuildingEligibilityService(database);
   const preferencesService = new PreferencesService(database);
   const operationsService = new OperationsService(database);
   const notificationService = new NotificationService(database);
@@ -465,6 +469,107 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send({ success: true, message: 'Student priority updated successfully' });
     } catch (err: any) {
       return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  // Real Institutional Student Registry (USN Primary Key)
+  app.get('/api/institutional-students', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const query = req.query || {};
+      const list = await institutionalStudentService.listStudents(query, actor);
+      return reply.send(list);
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/institutional-students', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const student = await institutionalStudentService.registerStudent(req.body, actor);
+      return reply.code(201).send(student);
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  app.get('/api/institutional-students/:usn', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const student = await institutionalStudentService.getStudentByUsn(req.params.usn, actor);
+      if (!student) return reply.code(404).send({ error: 'Student record not found' });
+      return reply.send(student);
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/institutional-students/import-csv', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const rows = Array.isArray(req.body) ? req.body : (req.body?.rows || []);
+      const report = await institutionalStudentService.importStudentsCsv(rows, actor);
+      return reply.send(report);
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  app.put('/api/institutional-students/:usn/year-priority', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { academicYear, assignedPriority, buildingId, semester, source, overrideReason } = req.body || {};
+      const priority = await institutionalStudentService.setStudentYearPriority(
+        {
+          studentUsn: req.params.usn,
+          academicYear: academicYear || 1,
+          assignedPriority,
+          buildingId,
+          semester,
+          source,
+          overrideReason,
+        },
+        actor
+      );
+      return reply.send({ success: true, priority });
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  // Building Eligibility Policies Engine
+  app.get('/api/buildings/:id/eligibility-policies', async (req: any, reply) => {
+    try {
+      const policies = await buildingEligibilityService.getPoliciesForBuilding(req.params.id);
+      return reply.send(policies);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/buildings/:id/eligibility-policies', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const policy = await buildingEligibilityService.createPolicy(
+        { ...req.body, buildingId: req.params.id },
+        actor
+      );
+      return reply.code(201).send(policy);
+    } catch (err: any) {
+      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/buildings/:id/evaluate-eligibility', async (req: any, reply) => {
+    try {
+      const evaluation = await buildingEligibilityService.evaluateEligibility({
+        ...req.body,
+        buildingId: req.params.id,
+      });
+      return reply.send(evaluation);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
     }
   });
 

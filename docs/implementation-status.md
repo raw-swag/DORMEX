@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-11-10
+Last Updated: 2026-11-14
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Real Institutional Student Identity & Building-Wise Priority Engine (Phase 47)**:
+  - **Authoritative Student Model**: Transitioned from synthetic student identifiers to real institutional USN (`1SI25<branch>XYZ`) as primary key on `students` table. Added `studentModel.ts` and normalized uppercase USN handling.
+  - **Batch CSV Import**: Transactional student CSV ingestion with real-time error auditing and rejection reporting via `POST /api/institutional-students/import-csv`.
+  - **Multi-Building Priority Table (`student_year_priority`)**: Implemented building-wise priority slot management with database partial unique constraint `(academic_year, building_id, assigned_priority) WHERE building_id IS NOT NULL`. Synchronizes with backward-compatible profile priority views.
+  - **Configurable Building Eligibility Engine (`building_eligibility_policies`)**: Added 4-tier precedence evaluation (Building Active -> Student Restriction -> Student Exemption Grant -> General Cohort Policies).
+  - **Verification**: 420/420 automated tests passing across 45 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Dark Mode Visual Consistency & UI Correction (Video-Based QA)**:
   - **Login & Portal Selection**: Improved typography contrast, form inputs, placeholder readability, biometric accordion, and login footer dark styling in `PortalSelectionView.tsx`.
   - **Student Allocation & Status**: Upgraded Registration & Terms stepper, dormant cycle notices, and status badges in `StudentAllocationView.tsx` and `TurnStatusRibbon.tsx`.

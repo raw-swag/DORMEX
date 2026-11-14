@@ -96,6 +96,9 @@ export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
     'governance.view',
   ],
   CHIEF_WARDEN: [
+    'student.view_self',
+    'student.manage',
+    'student.edit_priority',
     'inventory.view',
     'inventory.manage',
     'floor_plan.edit',

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.29.0] - 2026-11-14
+
+### Added
+- **Institutional Student Identity & Primary Key Architecture**:
+  - Implemented authoritative `students` table utilizing institutional USN (`1SI25<branch>XYZ`) as its **PRIMARY KEY** with normalized uppercase storage, eliminating surrogate mock identities.
+  - Added strict USN validation and parser utility `INSTITUTIONAL_USN_REGEX` enforcing the standard institutional format: admission batch year, 2-letter branch code, and 3-digit sequence.
+  - Created `src/student/institutionalStudentService.ts` providing full transactional student creation, filtered roster lookups, and batch CSV imports with real-time error auditing.
+  - Added institutional student management endpoints: `GET /api/institutional-students`, `POST /api/institutional-students`, `GET /api/institutional-students/:usn`, and `POST /api/institutional-students/import-csv`.
+- **Building-Wise & Yearwise Priority Engine (`student_year_priority`)**:
+  - Implemented `student_year_priority` tracking queue priority by academic year, building, and semester.
+  - Enforced PostgreSQL partial unique constraint `(academic_year, building_id, assigned_priority)` ensuring priority slot uniqueness within a building and study year while allowing identical rank numbers across different buildings.
+  - Added endpoint `PUT /api/institutional-students/:usn/year-priority` with automatic backward-compatibility synchronization to legacy profile priority stores.
+- **Configurable Building Eligibility Policies Engine (`building_eligibility_policies`)**:
+  - Implemented configurable building-level eligibility policies supporting multi-building/multi-cohort mappings and student-specific overrides.
+  - Built 4-tier authoritative precedence evaluator: Building Active Status -> Student-Specific Disciplinary Restrictions (fail-closed) -> Student-Specific Exemption Grants -> General Cohort Policies (academic year, branch, gender).
+  - Added endpoints `GET /api/buildings/:id/eligibility-policies`, `POST /api/buildings/:id/eligibility-policies`, and `POST /api/buildings/:id/evaluate-eligibility`.
+- **Institutional Identity & Priority Test Suite**:
+  - Created `tests/real_student_identity_and_priority.test.ts` with 13 comprehensive end-to-end tests verifying USN format rejection, duplicate prevention, RBAC authorization, batch CSV reporting, priority conflict handling, and 4-tier building eligibility policy precedence.
+
+---
+
 ## [2.28.0] - 2026-11-10
 
 ### Fixed
