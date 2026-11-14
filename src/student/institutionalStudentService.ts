@@ -203,6 +203,13 @@ export class InstitutionalStudentService {
         throw new Error(`STUDENT_NOT_FOUND: Student with USN ${cleanUsn} does not exist in institutional records`);
       }
 
+      // Check previous priority state for audit trail
+      const prevPriorityRes = await client.query(
+        'SELECT * FROM student_year_priority WHERE student_usn = $1 AND academic_year = $2',
+        [cleanUsn, params.academicYear]
+      );
+      const beforeState = prevPriorityRes.rows[0] ? JSON.stringify(prevPriorityRes.rows[0]) : null;
+
       // 2. Check conflict: building-wise unique priority for that study year
       if (params.buildingId) {
         const conflictRes = await client.query(
@@ -254,6 +261,21 @@ export class InstitutionalStudentService {
         // If updating legacy assigned_priority conflicts across different buildings, ignore the legacy sync
         // as student_year_priority is the server-authoritative multi-building priority store.
       }
+
+      // Record immutable administrative audit log
+      const auditId = `aud_syp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+         VALUES ($1, $2, 'PRIORITY_ASSIGNED', 'STUDENT_YEAR_PRIORITY', $3, $4, $5, $6)`,
+        [
+          auditId,
+          actor.id,
+          cleanUsn,
+          beforeState,
+          JSON.stringify(res.rows[0]),
+          params.overrideReason || 'Administrative priority update',
+        ]
+      );
 
       return res.rows[0];
     });

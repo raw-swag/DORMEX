@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.30.0] - 2026-11-15
+
+### Added
+- **Full End-to-End Real Student Allocation Workflow**:
+  - Integrated `students` USN identity into the authoritative actor resolution pipeline (`resolveAuthoritativeActor`, `/api/auth/me`).
+  - Added student account lifecycle verification: deactivated or suspended student accounts are strictly prevented from joining queues or confirming seat selections (`ACCOUNT_DEACTIVATED`).
+  - Integrated `student_year_priority` into the waiting-room queue engine: turn progression strictly sorts by building-wise/yearwise priority followed by FIFO entry timestamp (`wre.joined_at`).
+  - Implemented pre-flight building selection filtering in `GET /api/buildings`, automatically evaluating `buildingEligibilityService` for authenticated students so they only see eligible hostel buildings.
+  - Hardened `confirmSeat` transaction with atomic 4-tier building eligibility revalidation: verifies building active status, checks student-specific disciplinary restrictions, confirms student exemptions, and verifies cohort permissions immediately before inserting the allocation.
+  - Added immutable administrative audit logging to `setStudentYearPriority` recording before/after states, administrative actor IDs, and assignment reasons.
+- **End-to-End Concurrency & Invariant Test Suite**:
+  - Created `tests/real_student_journey_and_concurrency.test.ts` (7 tests) verifying identity mapping, student record privacy boundaries, full happy-path allocation journey (terms -> queue -> turn -> atomic reservation), account deactivation enforcement, building deactivation protection, dynamic student restriction failure, and partial unique constraint conflict prevention on concurrent double bookings.
+
+---
+
 ## [2.29.0] - 2026-11-14
 
 ### Added

@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-11-14
+Last Updated: 2026-11-15
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,13 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **End-to-End Real Student Allocation Workflow & Invariant Hardening (Phase 48)**:
+  - **Identity Lifecycle Binding**: Tied `students` record to `AuthActor` via `student_usn` and `/api/auth/me`. Enforced student isolation so students can view only their own record while staff retains population management.
+  - **Account Status Protection**: Enforced strict account deactivation checks in `joinWaitingRoom` and inside `confirmSeat`.
+  - **Priority Integration into Allocation**: Waiting room turn progression in `advancePoolTurn` now prioritizes building-wise priority (`syp.assigned_priority`), falling back to profile priority (`sp.assigned_priority`) and FIFO timestamp (`wre.joined_at`).
+  - **Building Eligibility Revalidation in Booking**: Inside `confirmSeat`, re-evaluates active building status, checks student-specific restrictions (fail-closed), student exemption grants, and cohort eligibility before writing the allocation.
+  - **Audit Logging**: Created immutable audit log entry in `audit_logs` for administrative priority changes.
+  - **Verification**: 427/427 automated tests passing across 46 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Real Institutional Student Identity & Building-Wise Priority Engine (Phase 47)**:
   - **Authoritative Student Model**: Transitioned from synthetic student identifiers to real institutional USN (`1SI25<branch>XYZ`) as primary key on `students` table. Added `studentModel.ts` and normalized uppercase USN handling.
   - **Batch CSV Import**: Transactional student CSV ingestion with real-time error auditing and rejection reporting via `POST /api/institutional-students/import-csv`.

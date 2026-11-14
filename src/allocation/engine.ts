@@ -114,13 +114,35 @@ export class AllocationEngineService {
 
       // 2. Authoritative check on student eligibility
       const stuRes = await client.query(
-        `SELECT id, academic_year, quota_category, eligibility_status, assigned_priority FROM student_profiles WHERE id = $1`,
+        `SELECT sp.id, sp.academic_year, sp.quota_category, sp.eligibility_status, sp.assigned_priority,
+                sp.gender, sp.department, sp.college_id, sp.user_id,
+                st.usn as student_usn, st.branch, st.admission_year, st.account_status,
+                syp.assigned_priority as yearwise_priority, syp.building_id as priority_building_id
+         FROM student_profiles sp
+         LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+         LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
+              AND syp.academic_year = sp.academic_year
+         WHERE sp.id = $1`,
         [studentProfileId]
       );
       if (stuRes.rows.length === 0) {
         throw new Error('NOT_FOUND: Student profile not found');
       }
       const student = stuRes.rows[0];
+
+      // Enforce institutional student account status (deactivated accounts cannot participate)
+      if (student.account_status && student.account_status !== 'ACTIVE') {
+        throw new Error(`ACCOUNT_DEACTIVATED: Student institutional account is ${student.account_status}`);
+      }
+
+      // Check user account status as well
+      if (student.user_id) {
+        const uRes = await client.query('SELECT is_active FROM users WHERE id = $1', [student.user_id]);
+        if (uRes.rows.length > 0 && !uRes.rows[0].is_active) {
+          throw new Error('ACCOUNT_DEACTIVATED: Student account is deactivated');
+        }
+      }
+
       if (student.eligibility_status !== 'ELIGIBLE') {
         throw new Error(`INELIGIBLE: Student eligibility status is ${student.eligibility_status}`);
       }
@@ -151,7 +173,8 @@ export class AllocationEngineService {
       const poolId = poolRes.rows[0].id;
 
       // 4. Server-computed priority (authoritative, cannot be supplied by client)
-      let priorityNumber = student.assigned_priority;
+      // Checks building-wise student_year_priority first, then profile assigned_priority, then FIFO
+      let priorityNumber = student.yearwise_priority || student.assigned_priority;
       if (!priorityNumber) {
         const countRes = await client.query(
           `SELECT COUNT(*) as cnt FROM waiting_room_entries WHERE pool_id = $1`,
@@ -281,14 +304,20 @@ export class AllocationEngineService {
         return null;
       }
 
-      // Pick next eligible student in waiting room ordered by priority_number
+      // Pick next eligible student in waiting room ordered by server-authoritative priority and FIFO
       const nextStuRes = await client.query(
         `SELECT wre.student_id, wre.cycle_id, ac.turn_duration_seconds
          FROM waiting_room_entries wre
          JOIN student_profiles sp ON wre.student_id = sp.id
          JOIN allocation_cycles ac ON wre.cycle_id = ac.id
+         LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+         LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
+              AND syp.academic_year = sp.academic_year
          WHERE wre.pool_id = $1 AND wre.status = 'WAITING'
-         ORDER BY COALESCE(sp.assigned_priority, wre.priority_number) ASC, wre.joined_at ASC, sp.college_id ASC, wre.id ASC
+         ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
+                  wre.joined_at ASC,
+                  sp.college_id ASC,
+                  wre.id ASC
          LIMIT 1`,
         [poolId]
       );
@@ -395,7 +424,8 @@ export class AllocationEngineService {
 
       // 2. Verify seat operational status & availability
       const seatRes = await client.query(
-        `SELECT s.id, s.status, s.room_id, r.room_number, r.is_blocked, r.floor_id, f.floor_number, b.name as building_name
+        `SELECT s.id, s.status, s.room_id, r.room_number, r.is_blocked, r.floor_id, f.floor_number,
+                b.id as building_id, b.name as building_name, b.is_active as building_active
          FROM seats s
          JOIN rooms r ON s.room_id = r.id
          JOIN floors f ON r.floor_id = f.id
@@ -408,8 +438,86 @@ export class AllocationEngineService {
         throw new Error('SEAT_NOT_FOUND: Selected seat does not exist');
       }
       const seat = seatRes.rows[0];
+      if (!seat.building_active) {
+        throw new Error('BUILDING_INACTIVE: Target building is deactivated for allocations');
+      }
       if (seat.status !== 'ACTIVE' || seat.is_blocked) {
         throw new Error('SEAT_NOT_ELIGIBLE: Seat is blocked or under maintenance');
+      }
+
+      // Re-verify student account status and building eligibility immediately before booking
+      const stuCheckRes = await client.query(
+        `SELECT sp.id, sp.college_id, sp.academic_year, sp.quota_category, sp.gender, sp.eligibility_status,
+                st.usn as student_usn, st.branch, st.admission_year, st.account_status, st.academic_year as st_academic_year
+         FROM student_profiles sp
+         LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+         WHERE sp.id = $1`,
+        [session.student_id]
+      );
+      if (stuCheckRes.rows.length === 0) {
+        throw new Error('STUDENT_NOT_FOUND: Student profile not found');
+      }
+      const stuData = stuCheckRes.rows[0];
+
+      if (stuData.account_status && stuData.account_status !== 'ACTIVE') {
+        throw new Error(`ACCOUNT_DEACTIVATED: Student institutional account is ${stuData.account_status}`);
+      }
+      if (stuData.eligibility_status !== 'ELIGIBLE') {
+        throw new Error(`INELIGIBLE: Student eligibility status changed to ${stuData.eligibility_status}`);
+      }
+
+      // Re-evaluate building-level policies inside the atomic transaction
+      const buildingId = seat.building_id;
+      const cleanUsn = (stuData.student_usn || stuData.college_id || '').trim().toUpperCase();
+      const studentYear = stuData.st_academic_year || stuData.academic_year;
+
+      const policiesRes = await client.query(
+        `SELECT * FROM building_eligibility_policies WHERE building_id = $1 AND is_active = TRUE`,
+        [buildingId]
+      );
+
+      const nowTime = new Date();
+      const activePolicies = policiesRes.rows.filter((p: any) => {
+        if (p.effective_from && new Date(p.effective_from) > nowTime) return false;
+        if (p.effective_until && new Date(p.effective_until) < nowTime) return false;
+        return true;
+      });
+
+      // 1. Explicit student restriction (fail-closed)
+      const studentRestr = activePolicies.find((p: any) => p.student_usn === cleanUsn && p.policy_type === 'RESTRICTION');
+      if (studentRestr) {
+        throw new Error(`BUILDING_ELIGIBILITY_RESTRICTED: Explicit student restriction applied: ${studentRestr.reason}`);
+      }
+
+      // 2. Explicit student grant (overrides cohort restrictions)
+      const studentGrant = activePolicies.find((p: any) => p.student_usn === cleanUsn && p.policy_type === 'GRANT');
+      if (!studentGrant) {
+        // 3. General restrictions
+        const generalPolicies = activePolicies.filter((p: any) => !p.student_usn);
+        for (const p of generalPolicies) {
+          if (p.policy_type === 'RESTRICTION') {
+            const yearMismatch = p.academic_year && p.academic_year === studentYear;
+            const branchMismatch = p.branch && p.branch === (stuData.branch || '').toUpperCase();
+            const genderMismatch = p.gender && p.gender === stuData.gender;
+            if (yearMismatch || branchMismatch || genderMismatch) {
+              throw new Error(`BUILDING_ELIGIBILITY_RESTRICTED: ${p.reason}`);
+            }
+          }
+        }
+
+        // 4. General grants
+        const grants = generalPolicies.filter((p: any) => p.policy_type === 'GRANT');
+        if (grants.length > 0) {
+          const matched = grants.some((p: any) => {
+            const yearMatches = !p.academic_year || p.academic_year === studentYear;
+            const branchMatches = !p.branch || p.branch === (stuData.branch || '').toUpperCase();
+            const genderMatches = !p.gender || p.gender === stuData.gender;
+            return yearMatches && branchMatches && genderMatches;
+          });
+          if (!matched) {
+            throw new Error(`BUILDING_ELIGIBILITY_RESTRICTED: Cohort (Year ${studentYear}) is not permitted in building ${seat.building_name || buildingId}`);
+          }
+        }
       }
 
       // Check if seat already allocated in this cycle

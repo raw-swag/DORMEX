@@ -49,6 +49,7 @@ export interface AuthActor {
   scope_type: 'SYSTEM' | 'BUILDING' | 'STUDENT';
   scope_id?: string | null;
   student_profile_id?: string | null;
+  student_usn?: string | null;
   active_appointment_id?: string | null;
   active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
   supervisor_warden_appt_id?: string | null;
@@ -232,6 +233,7 @@ export interface UserRoleRecord {
   scope_type: string;
   scope_id?: string | null;
   profile_id?: string | null;
+  student_usn?: string | null;
   active_appointment_id?: string | null;
   active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
   supervisor_warden_appt_id?: string | null;
@@ -408,6 +410,7 @@ export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
     scope_type: primary.scope_type as 'SYSTEM' | 'BUILDING' | 'STUDENT',
     scope_id: primary.scope_id || null,
     student_profile_id: primary.profile_id || null,
+    student_usn: primary.student_usn || null,
     active_appointment_id: primary.active_appointment_id || null,
     active_appointment_status: primary.active_appointment_status || null,
     supervisor_warden_appt_id: primary.supervisor_warden_appt_id || null,

@@ -251,6 +251,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     // Load live role, active appointment, and building binding directly from database
     const userRes = await database.query(
       `SELECT u.id, u.college_id, u.full_name, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id,
+              st.usn as student_usn,
               COALESCE(wa.id, da.id) as active_appointment_id,
               COALESCE(wa.appointment_status, da.appointment_status) as active_appointment_status,
               da.supervisor_warden_appt_id
@@ -258,6 +259,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
        JOIN user_roles ur ON u.id = ur.user_id
        JOIN roles r ON ur.role_id = r.id
        LEFT JOIN student_profiles sp ON u.id = sp.user_id
+       LEFT JOIN students st ON u.id = st.user_id
        LEFT JOIN warden_appointments wa ON u.id = wa.user_id AND wa.appointment_status = 'ACTIVE'
        LEFT JOIN deputy_appointments da ON u.id = da.user_id AND da.appointment_status = 'ACTIVE'
        WHERE u.id = $1`,
@@ -381,6 +383,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         scopeType: actor.scope_type,
         scopeId: actor.scope_id,
         profileId: actor.student_profile_id,
+        studentUsn: actor.student_usn || actor.college_id,
         activeAppointmentId: actor.active_appointment_id || null,
         activeAppointmentStatus: actor.active_appointment_status || null,
       });
@@ -574,9 +577,56 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   });
 
   // Buildings & Floors Inventory
-  app.get('/api/buildings', async () => {
+  app.get('/api/buildings', async (req: any) => {
+    let studentUsn: string | null = null;
+    let studentYear: number | null = null;
+    let studentBranch: string | null = null;
+    let studentGender: string | null = null;
+
+    try {
+      const actor = await extractActor(req);
+      if (actor && actor.role === 'STUDENT') {
+        const stuRes = await database.query(
+          `SELECT sp.academic_year, sp.gender, sp.college_id, st.usn, st.branch, st.academic_year as st_year, st.gender as st_gender
+           FROM student_profiles sp
+           LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+           WHERE sp.id = $1 OR sp.user_id = $2`,
+          [actor.student_profile_id || '', actor.id]
+        );
+        if (stuRes.rows.length > 0) {
+          const s = stuRes.rows[0];
+          studentUsn = s.usn || s.college_id;
+          studentYear = s.st_year || s.academic_year;
+          studentBranch = s.branch || null;
+          studentGender = s.st_gender || s.gender || null;
+        }
+      }
+    } catch (_) {
+      // Unauthenticated or administrative caller
+    }
+
     const res = await database.query(`SELECT * FROM buildings WHERE is_active = TRUE ORDER BY code ASC`);
-    return res.rows;
+    const allBuildings = res.rows;
+
+    // If caller is an authenticated student, filter/annotate eligible buildings
+    if (studentUsn && studentYear) {
+      const eligibleBuildings = [];
+      for (const bld of allBuildings) {
+        const evalRes = await buildingEligibilityService.evaluateEligibility({
+          buildingId: bld.id,
+          studentUsn,
+          academicYear: studentYear,
+          branch: studentBranch || undefined,
+          gender: studentGender || undefined,
+        });
+        if (evalRes.isEligible) {
+          eligibleBuildings.push({ ...bld, isEligible: true, eligibilityVerdict: evalRes.verdict });
+        }
+      }
+      return eligibleBuildings;
+    }
+
+    return allBuildings;
   });
 
   app.get('/api/buildings/:id/floors', async (req: any) => {
