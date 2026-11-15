@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Building Lifecycle & Inventory Preparation Endpoints**:
+  - Implemented `POST /api/buildings` allowing `HOSTEL_OFFICE` to draft/propose new buildings (`PROPOSED`, `is_active: false`) and `SUPER_ADMIN`/`CHIEF_WARDEN` to create active buildings.
+  - Implemented `PUT /api/buildings/:id/lifecycle` restricted to `SUPER_ADMIN` and `CHIEF_WARDEN` for formal approval and activation (`PROPOSED`, `APPROVED`, `ACTIVE`, `INACTIVE`) with reviewer notes, timestamps, and audit compliance.
+  - Implemented `POST /api/buildings/:id/floors` permitting `HOSTEL_OFFICE` and staff to provision floors with number ordering and human-readable wing/floor labels.
+  - Implemented `POST /api/floors/:id/rooms` permitting `HOSTEL_OFFICE` and staff to provision rooms with capacity and room types (`SINGLE`, `DOUBLE`, `TRIPLE`), automatically synchronizing child bed/seat units (`st_<roomId>_<label>`) to preserve relational capacity invariants.
 - **Waiting Room Participant Threshold Gate & Late-Entry Penalty**:
   - Activated server-side waiting room participant threshold check (`cycle.waiting_room_threshold`, default 45) in `advancePoolTurn` to enforce that turns do not begin advancing until the pool queue reaches the configured cohort size.
   - Formally validated the late-entry penalty calculation formula in `calculateLatePenalty`: 6-minute (360s) grace period with 0 penalty, linear turn degradation (1 turn per 120s over grace), and strict ceiling at 10 turns (22-26 min wait cap).
@@ -23,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enforced building scoping on Wardens/Deputies so they cannot inspect student allocations in foreign buildings.
 - **Comprehensive Lifecycle Integration Suite**:
   - Created `tests/hostel_lifecycle_complete.test.ts` (18 tests) verifying late penalty calculations, waiting room threshold gates, invite creation and acceptance idempotency, foreign building Warden rejection, and student allocation lookup permissions.
+  - Created `tests/phase51_institutional_workflows.test.ts` (9 tests) verifying end-to-end building proposal, floor/room creation, capacity-to-seat sync, Chief Warden activation, room change requests and atomic transfer, and anonymous complaint voting.
 
 ---
 

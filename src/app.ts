@@ -715,6 +715,138 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     return res.rows;
   });
 
+  // Building Lifecycle & Inventory Preparation Endpoints (Hostel Office / Admin)
+  app.post('/api/buildings', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to create or propose buildings' });
+      }
+
+      const { code, name, gender_designation, total_floors } = req.body || {};
+      if (!code || !name || !gender_designation) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: code, name, and gender_designation are required' });
+      }
+
+      const buildingId = `bld_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      const status = actor.role === 'SUPER_ADMIN' || actor.role === 'CHIEF_WARDEN' ? 'ACTIVE' : 'PROPOSED';
+      const isActive = status === 'ACTIVE';
+
+      await database.query(
+        `INSERT INTO buildings (id, code, name, gender_designation, total_floors, lifecycle_status, proposed_by, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (code) DO NOTHING`,
+        [buildingId, code.toUpperCase(), name, gender_designation, total_floors || 4, status, actor.id, isActive]
+      );
+
+      return reply.code(201).send({
+        success: true,
+        buildingId,
+        code: code.toUpperCase(),
+        name,
+        lifecycle_status: status,
+        is_active: isActive,
+      });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.put('/api/buildings/:id/lifecycle', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (!['SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only Chief Warden or Super Admin can approve/activate buildings' });
+      }
+
+      const { lifecycle_status, review_notes } = req.body || {};
+      if (!['PROPOSED', 'APPROVED', 'ACTIVE', 'INACTIVE'].includes(lifecycle_status)) {
+        return reply.code(400).send({ error: 'INVALID_STATUS: Must be PROPOSED, APPROVED, ACTIVE, or INACTIVE' });
+      }
+
+      const isActive = ['APPROVED', 'ACTIVE'].includes(lifecycle_status);
+      await database.query(
+        `UPDATE buildings 
+         SET lifecycle_status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, review_notes = $3, is_active = $4
+         WHERE id = $5`,
+        [lifecycle_status, actor.id, review_notes || null, isActive, req.params.id]
+      );
+
+      return reply.send({ success: true, buildingId: req.params.id, lifecycle_status, is_active: isActive });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/buildings/:id/floors', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to add floors' });
+      }
+
+      const { floor_number, label } = req.body || {};
+      if (floor_number === undefined || !label) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: floor_number and label are required' });
+      }
+
+      const floorId = `flr_${req.params.id}_${floor_number}`;
+      await database.query(
+        `INSERT INTO floors (id, building_id, floor_number, label)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (building_id, floor_number) DO UPDATE SET label = EXCLUDED.label`,
+        [floorId, req.params.id, floor_number, label]
+      );
+
+      return reply.code(201).send({ success: true, floorId, floor_number, label });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/floors/:id/rooms', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to add rooms' });
+      }
+
+      const { room_number, capacity, room_type } = req.body || {};
+      if (!room_number) {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: room_number is required' });
+      }
+
+      const cap = capacity || 2;
+      const type = room_type || (cap === 1 ? 'SINGLE' : cap === 2 ? 'DOUBLE' : 'TRIPLE');
+      const roomId = `rm_${req.params.id}_${room_number}`;
+
+      await database.transaction(async (client) => {
+        await client.query(
+          `INSERT INTO rooms (id, floor_id, room_number, capacity, room_type)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (floor_id, room_number) DO UPDATE SET capacity = EXCLUDED.capacity, room_type = EXCLUDED.room_type`,
+          [roomId, req.params.id, room_number, cap, type]
+        );
+
+        // Synchronize seats to match room capacity (A, B, C...)
+        const labels = ['A', 'B', 'C', 'D'].slice(0, cap);
+        for (const lbl of labels) {
+          const seatId = `st_${roomId}_${lbl}`;
+          await client.query(
+            `INSERT INTO seats (id, room_id, seat_label, status)
+             VALUES ($1, $2, $3, 'ACTIVE')
+             ON CONFLICT (room_id, seat_label) DO NOTHING`,
+            [seatId, roomId, lbl]
+          );
+        }
+      });
+
+      return reply.code(201).send({ success: true, roomId, room_number, capacity: cap, room_type: type });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
   app.get('/api/allocation-cycles', async (req: any) => {
     let studentYear: number | undefined;
     let studentQuota: string | undefined;
