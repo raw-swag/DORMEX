@@ -567,6 +567,14 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   });
 
   app.post('/api/auth/logout', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (req.body?.revokeAllSessions === true) {
+        await authService.revokeUserSessions(actor.id, actor.id, 'User requested global session revocation on logout');
+      }
+    } catch {
+      // Non-blocking: unauthenticated or already invalid sessions can still clear cookie
+    }
     reply.clearCookie('token', { path: '/' });
     return reply.send({ success: true, message: 'Logged out successfully' });
   });
@@ -800,7 +808,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
       const user = userRes.rows[0];
       const valid = await authService.consumeRecoveryCode(user.id, recoveryCode);
-      if (!valid) {
+      if (!valid || !valid.success) {
         return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid or already consumed recovery code' });
       }
 

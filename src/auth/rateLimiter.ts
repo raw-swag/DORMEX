@@ -47,51 +47,56 @@ export class DistributedRateLimiter {
 
     try {
       const now = new Date();
-      // First check if already blocked
+      const currentIso = now.toISOString();
+      // Query existing record to calculate transition
       const existingRes = await this.db.query(
         `SELECT attempts, window_start_at, blocked_until FROM auth_rate_limits WHERE key_hash = $1`,
         [keyHash]
       );
+
+      let attempts = 1;
+      let windowStartAt = currentIso;
+      let blockedUntil: Date | undefined = undefined;
 
       if (existingRes.rows.length > 0) {
         const row = existingRes.rows[0];
         if (row.blocked_until && new Date(row.blocked_until) > now) {
           return {
             allowed: false,
-            attempts: row.attempts,
+            attempts: Number(row.attempts),
             remaining: 0,
             blockedUntil: new Date(row.blocked_until),
           };
         }
+
+        const winStart = new Date(row.window_start_at);
+        if (winStart.getTime() < Date.now() - windowSeconds * 1000) {
+          attempts = 1;
+          windowStartAt = currentIso;
+        } else {
+          attempts = Number(row.attempts) + 1;
+          windowStartAt = winStart.toISOString();
+        }
       }
 
-      // Upsert attempt count
-      const result = await this.db.query(
+      if (attempts >= maxAttempts) {
+        blockedUntil = new Date(Date.now() + lockoutSeconds * 1000);
+      }
+
+      const blockedUntilIso = blockedUntil ? blockedUntil.toISOString() : null;
+
+      await this.db.query(
         `INSERT INTO auth_rate_limits (key_hash, attempts, window_start_at, blocked_until, updated_at)
-         VALUES ($1, 1, CURRENT_TIMESTAMP, NULL, CURRENT_TIMESTAMP)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (key_hash) DO UPDATE
-         SET attempts = CASE 
-                 WHEN auth_rate_limits.window_start_at < CURRENT_TIMESTAMP - ($2 || ' seconds')::INTERVAL THEN 1
-                 ELSE auth_rate_limits.attempts + 1
-             END,
-             window_start_at = CASE 
-                 WHEN auth_rate_limits.window_start_at < CURRENT_TIMESTAMP - ($2 || ' seconds')::INTERVAL THEN CURRENT_TIMESTAMP
-                 ELSE auth_rate_limits.window_start_at
-             END,
-             blocked_until = CASE
-                 WHEN (CASE WHEN auth_rate_limits.window_start_at < CURRENT_TIMESTAMP - ($2 || ' seconds')::INTERVAL THEN 1 ELSE auth_rate_limits.attempts + 1 END) >= $3
-                 THEN CURRENT_TIMESTAMP + ($4 || ' seconds')::INTERVAL
-                 ELSE NULL
-             END,
-             updated_at = CURRENT_TIMESTAMP
-         RETURNING attempts, blocked_until;`,
-        [keyHash, windowSeconds.toString(), maxAttempts, lockoutSeconds.toString()]
+         SET attempts = EXCLUDED.attempts,
+             window_start_at = EXCLUDED.window_start_at,
+             blocked_until = EXCLUDED.blocked_until,
+             updated_at = EXCLUDED.updated_at`,
+        [keyHash, attempts, windowStartAt, blockedUntilIso, currentIso]
       );
 
-      const row = result.rows[0];
-      const attempts = row.attempts;
-      const blockedUntil = row.blocked_until ? new Date(row.blocked_until) : undefined;
-      const allowed = attempts <= maxAttempts && !blockedUntil;
+      const allowed = attempts < maxAttempts && !blockedUntil;
 
       return {
         allowed,
@@ -122,12 +127,25 @@ export class DistributedRateLimiter {
    */
   async cleanupExpired(): Promise<number> {
     try {
-      const res = await this.db.query(
-        `DELETE FROM auth_rate_limits 
-         WHERE (blocked_until IS NOT NULL AND blocked_until < CURRENT_TIMESTAMP)
-            OR (blocked_until IS NULL AND updated_at < CURRENT_TIMESTAMP - INTERVAL '1 hour')`
-      );
-      return res.rowCount || 0;
+      const now = new Date();
+      const oneHourAgo = new Date(Date.now() - 3600 * 1000);
+
+      // Select candidate keys first to ensure accurate count across database engines
+      const allRows = await this.db.query(`SELECT key_hash, blocked_until, updated_at FROM auth_rate_limits`);
+      const expiredKeys: string[] = [];
+
+      for (const row of allRows.rows) {
+        if (row.blocked_until && new Date(row.blocked_until).getTime() < now.getTime()) {
+          expiredKeys.push(row.key_hash);
+        } else if (!row.blocked_until && new Date(row.updated_at).getTime() < oneHourAgo.getTime()) {
+          expiredKeys.push(row.key_hash);
+        }
+      }
+
+      for (const k of expiredKeys) {
+        await this.db.query(`DELETE FROM auth_rate_limits WHERE key_hash = $1`, [k]);
+      }
+      return expiredKeys.length;
     } catch {
       return 0;
     }

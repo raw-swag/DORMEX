@@ -18,8 +18,8 @@ export function getEncryptionKey(version = 1): Buffer {
     (version === 1 ? process.env.MFA_ENCRYPTION_SECRET : undefined);
 
   if (!envKey) {
-    // For test environment, provide a stable deterministic fallback key if not explicitly set
-    if (process.env.NODE_ENV === 'test') {
+    // For test environment, version 1 has a fallback if not explicitly set; other versions require explicit configuration
+    if (process.env.NODE_ENV === 'test' && version === 1) {
       return Buffer.from('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'hex');
     }
     throw new Error(
@@ -75,4 +75,115 @@ export function decryptAesGcm(payload: EncryptedPayload): Buffer {
 
   const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   return decrypted;
+}
+
+/**
+ * Get active encryption key version from environment or default to 1.
+ */
+export function getActiveKeyVersion(): number {
+  const ver = process.env.MFA_CURRENT_KEY_VERSION;
+  if (ver) {
+    const parsed = parseInt(ver, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return 1;
+}
+
+export interface KeyRotationSummary {
+  inspected: number;
+  reEncrypted: number;
+  alreadyCurrent: number;
+  failed: number;
+  targetVersion: number;
+}
+
+/**
+ * Resumable, safe key rotation utility.
+ * Re-encrypts user MFA secrets from their stored key version to targetVersion.
+ * Decrypts and verifies first before any row update.
+ */
+export async function rotateMfaSecrets(
+  db: { query: (text: string, params?: any[]) => Promise<any>; transaction: (fn: (client: any) => Promise<any>) => Promise<any> },
+  targetVersion = getActiveKeyVersion()
+): Promise<KeyRotationSummary> {
+  // Ensure target key is available before starting
+  getEncryptionKey(targetVersion);
+
+  const rowsRes = await db.query(
+    `SELECT id, user_id, encrypted_secret, secret_iv, secret_tag, key_version 
+     FROM user_mfa_settings`
+  );
+
+  const summary: KeyRotationSummary = {
+    inspected: rowsRes.rows.length,
+    reEncrypted: 0,
+    alreadyCurrent: 0,
+    failed: 0,
+    targetVersion,
+  };
+
+  for (const row of rowsRes.rows) {
+    const currentVersion = Number(row.key_version);
+    if (currentVersion === targetVersion) {
+      summary.alreadyCurrent++;
+      continue;
+    }
+
+    try {
+      // 1. Decrypt using stored key_version
+      const decryptedSecret = decryptAesGcm({
+        ciphertext: row.encrypted_secret,
+        iv: row.secret_iv,
+        tag: row.secret_tag,
+        keyVersion: currentVersion,
+      });
+
+      // 2. Encrypt using targetVersion
+      const reEncrypted = encryptAesGcm(decryptedSecret, targetVersion);
+
+      // 3. Atomically update row only if key_version matches currentVersion (optimistic concurrency)
+      await db.transaction(async (client) => {
+        const updateRes = await client.query(
+          `UPDATE user_mfa_settings
+           SET encrypted_secret = $1,
+               secret_iv = $2,
+               secret_tag = $3,
+               key_version = $4,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5 AND key_version = $6
+           RETURNING id`,
+          [
+            reEncrypted.ciphertext,
+            reEncrypted.iv,
+            reEncrypted.tag,
+            targetVersion,
+            row.id,
+            currentVersion,
+          ]
+        );
+
+        if (updateRes.rows.length > 0) {
+          const auditId = `aud_mfa_rot_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+          await client.query(
+            `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, reason)
+             VALUES ($1, $2, 'MFA_KEY_ROTATED', 'USER', $2, $3)`,
+            [
+              auditId,
+              row.user_id,
+              `Rotated secret encryption key from v${currentVersion} to v${targetVersion}`,
+            ]
+          );
+        }
+      });
+
+      summary.reEncrypted++;
+    } catch (err: any) {
+      summary.failed++;
+      throw new Error(
+        `KEY_ROTATION_ABORTED: Failed re-encrypting secret for user ${row.user_id} (v${currentVersion} -> v${targetVersion}): ${err.message}`
+      );
+    }
+  }
+
+  return summary;
 }

@@ -802,6 +802,121 @@ export class AuthService {
   }
 
   /**
+   * Reset user's MFA settings (administrative or verified emergency self-service).
+   * Atomically disables MFA, clears secret and recovery codes, and bumps session_version to revoke old sessions.
+   */
+  async resetUserMfa(
+    targetUserId: string,
+    actorId: string,
+    reason: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.db.transaction(async (client) => {
+      const userRes = await client.query(
+        `SELECT id, college_id FROM users WHERE id = $1 FOR UPDATE`,
+        [targetUserId]
+      );
+      if (userRes.rows.length === 0) {
+        throw new Error('USER_NOT_FOUND: User not found for MFA reset');
+      }
+
+      await client.query(
+        `DELETE FROM user_mfa_settings WHERE user_id = $1`,
+        [targetUserId]
+      );
+
+      // Increment session_version to revoke any active sessions (including privileged ones)
+      await client.query(
+        `UPDATE users 
+         SET session_version = session_version + 1, 
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $1`,
+        [targetUserId]
+      );
+
+      const auditId = `aud_mfa_reset_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, reason)
+         VALUES ($1, $2, 'MFA_RESET_COMPLETED', 'USER', $3, $4)`,
+        [auditId, actorId, targetUserId, `MFA configuration reset and sessions revoked: ${reason}`]
+      );
+
+      return {
+        success: true,
+        message: 'MFA configuration has been reset and all active sessions revoked.',
+      };
+    });
+  }
+
+  /**
+   * Explicitly invalidate all sessions for a user (session revocation).
+   */
+  async revokeUserSessions(
+    targetUserId: string,
+    actorId: string,
+    reason: string
+  ): Promise<{ success: boolean; newSessionVersion: number }> {
+    const res = await this.db.query(
+      `UPDATE users 
+       SET session_version = session_version + 1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING session_version;`,
+      [targetUserId]
+    );
+
+    if (res.rows.length === 0) {
+      throw new Error('USER_NOT_FOUND: Target user does not exist');
+    }
+
+    const newVer = Number(res.rows[0].session_version);
+    const auditId = `aud_rev_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    await this.db.query(
+      `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, reason)
+       VALUES ($1, $2, 'SESSIONS_REVOKED', 'USER', $3, $4)`,
+      [auditId, actorId, targetUserId, reason]
+    );
+
+    return {
+      success: true,
+      newSessionVersion: newVer,
+    };
+  }
+
+  /**
+   * Deactivate a user account and immediately invalidate all active sessions.
+   */
+  async deactivateUser(
+    targetUserId: string,
+    actorId: string,
+    reason: string
+  ): Promise<{ success: boolean }> {
+    return this.db.transaction(async (client) => {
+      const res = await client.query(
+        `UPDATE users 
+         SET is_active = FALSE,
+             session_version = session_version + 1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1
+         RETURNING college_id;`,
+        [targetUserId]
+      );
+
+      if (res.rows.length === 0) {
+        throw new Error('USER_NOT_FOUND: Target user does not exist');
+      }
+
+      const auditId = `aud_deact_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      await client.query(
+        `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, reason)
+         VALUES ($1, $2, 'ACCOUNT_DEACTIVATED', 'USER', $3, $4)`,
+        [auditId, actorId, targetUserId, reason]
+      );
+
+      return { success: true };
+    });
+  }
+
+  /**
    * Check if a user has enrolled and enabled MFA.
    */
   async isUserMfaEnrolled(userId: string): Promise<boolean> {

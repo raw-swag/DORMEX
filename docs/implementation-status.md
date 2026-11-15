@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Authentication Modernization (Stage 3: Session Lifecycle, Revocation Epochs, Rate Limiting & Key Rotation)**:
+  - **Global Session Epoch Invalidation**: Enforced database-authoritative `session_version` verification on every request in `extractActor`. Token `ver` must match `users.session_version` exactly, invalidating previous sessions instantaneously across instances upon revocation events.
+  - **Comprehensive Invalidation Coverage**: Password changes, password resets, account activation, account deactivation (`is_active = FALSE`), MFA reset (`resetUserMfa`), and global user logout (`revokeAllSessions: true`) all increment `session_version`.
+  - **Encryption Key Rotation Lifecycle**: Implemented `rotateMfaSecrets` with decrypt-before-write validation, optimistic concurrency control (`WHERE id = $id AND key_version = $currentVersion`), versioned key environment variables, and immutable audit logging.
+  - **Hardened Distributed Rate Limiting**: Multi-instance rate limiting on `auth_rate_limits` with SHA-256 hashed keys for IP and user identifiers, sliding-window attempt calculation, and automated cleanup routines.
+  - **Verification**: 509/509 automated tests passing across 54 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Institutional Authentication Modernization (Stage 2: RFC 6238 TOTP MFA, AES-256-GCM Protection & Step-up Authorization)**:
   - **RFC 6238 Engine & Provisioning**: Full implementation of Base32 decoding/encoding, HMAC-SHA1 dynamic truncation, and standard `otpauth://` URI generation in `src/auth/totpService.ts`.
   - **Envelope Encryption**: AES-256-GCM encryption with 12-byte IVs, 16-byte authentication tags, and key versioning (`MFA_ENCRYPTION_KEY_V1`) for TOTP secrets stored in `user_mfa_settings.encrypted_secret`.

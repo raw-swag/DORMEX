@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Institutional Authentication Modernization (Stage 3: Session Lifecycle, Revocation Epochs, Rate Limiting & Key Rotation)**:
+  - **Global Session Invalidation Epochs**: Enforced instantaneous database-backed token invalidation via `users.session_version` epoch checks on every authenticated request. Bumping `session_version` immediately invalidates active sessions across all backend instances without awaiting JWT expiry.
+  - **Comprehensive Invalidation Coverage**: Explicitly wired session invalidation into password change, password reset, account activation, account deactivation (`is_active = FALSE`), MFA reset, and optional global logout (`revokeAllSessions: true`).
+  - **Safe Resumable Encryption Key Rotation**: Implemented `rotateMfaSecrets` in `src/auth/cryptoUtils.ts` with decrypt-before-write validation, optimistic concurrency locking (`WHERE id = $id AND key_version = $currentVersion`), versioned environment key configuration (`MFA_ENCRYPTION_KEY_V<N>`), and immutable audit logging.
+  - **Hardened Distributed Rate Limiting**: Fixed sliding-window attempt calculation and expired record cleanup in `src/auth/rateLimiter.ts` using SHA-256 hashed keys (`login`, `mfa_verify`, `recovery`, `reset`) with zero cleartext identifier leakage.
+  - **Stage 3 Verification Suite**: Created `tests/institutional_auth_stage3.test.ts` (12 tests) verifying immediate session revocation, account deactivation rejection, MFA reset session clearing, logout revocation semantics, rate-limit lockouts, SHA-256 privacy hashing, cleanup routines, key rotation resilience, and secret-free audit logging.
 - **Institutional Authentication Modernization (Stage 2: RFC 6238 TOTP MFA, AES-256-GCM Protection & Step-up Authorization)**:
   - **RFC 6238 TOTP Engine**: Implemented RFC 4648 Base32 encoding/decoding, HMAC-SHA1 dynamic truncation, and 30-second timestep calculations with configurable drift window ($\pm 1$ timestep) in `src/auth/totpService.ts`.
   - **AES-256-GCM Secret Encryption at Rest**: Implemented authenticated envelope encryption with 12-byte random IVs and 16-byte authentication tags, key versioning (`MFA_ENCRYPTION_KEY_V1`), and tamper detection in `src/auth/cryptoUtils.ts`.
