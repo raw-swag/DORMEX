@@ -7,6 +7,7 @@ import { NetworkStatusBanner } from './components/NetworkStatusBanner.js';
 import { AppLayout } from './components/AppLayout.js';
 import { PortalSelectionView } from './components/PortalSelectionView.js';
 import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary.js';
+import { MfaStepUpModal } from './components/MfaStepUpModal.js';
 
 // Route-level dynamic code splitting for internal post-login views (excluding PortalSelectionView)
 const FloorPlanEditor = lazy(() => import('./components/FloorPlanEditor.js').then((m) => ({ default: m.FloorPlanEditor })));
@@ -16,10 +17,9 @@ const StudentRegistryView = lazy(() => import('./components/StudentRegistryView.
 const ComplaintsView = lazy(() => import('./components/ComplaintsView.js').then((m) => ({ default: m.ComplaintsView })));
 const StudentAdmissionManagementView = lazy(() => import('./components/StudentAdmissionManagementView.js').then((m) => ({ default: m.StudentAdmissionManagementView })));
 const MessMenuView = lazy(() => import('./components/MessMenuView.js').then((m) => ({ default: m.MessMenuView })));
-const DeviceManagementView = lazy(() => import('./components/DeviceManagementView.js').then((m) => ({ default: m.DeviceManagementView })));
 
 export const AppContent: React.FC = () => {
-  const { session, isAuthenticated, isLoading } = useAuth();
+  const { session, isAuthenticated, isLoading, showStepUpModal, onStepUpSuccess, dismissStepUp } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>(() => {
     return session?.role === 'STUDENT' ? 'student_allocation' : 'admin_overview';
   });
@@ -43,7 +43,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  // If not authenticated, show the 3 Login Portals Welcome Screen
+  // If not authenticated, show the Institutional Login Welcome Screen
   if (!isAuthenticated || !session) {
     return (
       <>
@@ -77,10 +77,15 @@ export const AppContent: React.FC = () => {
             {currentTab === 'admin_complaints' && <ComplaintsView />}
             {currentTab === 'office_admissions' && <StudentAdmissionManagementView />}
             {currentTab === 'office_mess_menu' && <MessMenuView />}
-            {currentTab === 'admin_devices' && <DeviceManagementView />}
           </Suspense>
         </ChunkLoadErrorBoundary>
       </AppLayout>
+      {showStepUpModal && (
+        <MfaStepUpModal
+          onSuccess={onStepUpSuccess}
+          onCancel={dismissStepUp}
+        />
+      )}
       <PWAInstallPrompt />
     </>
   );

@@ -807,7 +807,13 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       }
 
       const user = userRes.rows[0];
-      const valid = await authService.consumeRecoveryCode(user.id, recoveryCode);
+      let valid: any;
+      try {
+        valid = await authService.consumeRecoveryCode(user.id, recoveryCode);
+      } catch (mfaErr: any) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: User does not have active MFA settings or invalid recovery credentials' });
+      }
+
       if (!valid || !valid.success) {
         return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid or already consumed recovery code' });
       }

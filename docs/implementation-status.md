@@ -22,6 +22,15 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Authentication Modernization (Stage 4: Frontend UI, MFA Modals, Account Activation & End-to-End Integration)**:
+  - **Zero Device Authentication**: Permanently removed all WebAuthn, passkey, Touch ID, Face ID, Windows Hello, and device hardware options from client components, navigation, and state models.
+  - **Institutional Login UI**: Streamlined `PortalSelectionView.tsx` with dedicated Student (USN/college email) and Staff (Staff ID/institutional email) flows authenticated directly via `POST /api/auth/login`.
+  - **Mandatory TOTP MFA Challenge Flow**: Implemented `MfaChallengeModal.tsx` prompting a 6-digit TOTP input modal on privileged logins returning `{ mfaRequired: true, challengeToken }`, verified via `POST /api/auth/mfa/verify`.
+  - **MFA Enrollment & Emergency Recovery Codes View**: Implemented `MfaEnrollmentModal.tsx` displaying Base32 key generation, key URI, verification code confirmation, and the 8 single-use emergency recovery codes.
+  - **Single-Use Emergency Recovery Code Flow**: Implemented `MfaRecoveryModal.tsx` enabling emergency access via single-use recovery codes (`POST /api/auth/mfa/recovery`).
+  - **Mid-Session MFA Step-Up Prompt**: Implemented `MfaStepUpModal.tsx` elevating un-elevated sessions via `POST /api/auth/mfa/step-up` upon encountering `403 FORBIDDEN: MFA_STEPUP_REQUIRED`.
+  - **Institutional Account Activation Flow**: Implemented `AccountActivationModal.tsx` allowing students and staff to redeem registrar voucher tokens and set initial secure passwords via `POST /api/auth/activate-account`.
+  - **Verification**: 512/512 automated tests passing across 55 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Institutional Authentication Modernization (Stage 3: Session Lifecycle, Revocation Epochs, Rate Limiting & Key Rotation)**:
   - **Global Session Epoch Invalidation**: Enforced database-authoritative `session_version` verification on every request in `extractActor`. Token `ver` must match `users.session_version` exactly, invalidating previous sessions instantaneously across instances upon revocation events.
   - **Comprehensive Invalidation Coverage**: Password changes, password resets, account activation, account deactivation (`is_active = FALSE`), MFA reset (`resetUserMfa`), and global user logout (`revokeAllSessions: true`) all increment `session_version`.

@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Institutional Authentication Modernization (Stage 4: Frontend UI, MFA Modals, Account Activation & End-to-End Integration)**:
+  - **Zero Device Authentication**: Completely retired all Device Biometrics, Hardware Keys, WebAuthn, Touch ID, Face ID, and Windows Hello choices from user-facing login portals and navigation.
+  - **Institutional Login UI**: Upgraded `PortalSelectionView.tsx` with dedicated Student (USN/college email) and Staff (Staff ID/institutional email) flows authenticated directly via `POST /api/auth/login`.
+  - **Mandatory TOTP MFA Challenge Flow**: Implemented `MfaChallengeModal.tsx` displaying a 6-digit TOTP input modal on privileged logins returning `{ mfaRequired: true, challengeToken }`, verified via `POST /api/auth/mfa/verify`.
+  - **MFA Enrollment & Emergency Recovery Codes View**: Implemented `MfaEnrollmentModal.tsx` providing Base32 key generation, key URI display, verification code confirmation, and presentation of the 8 single-use emergency recovery codes.
+  - **Single-Use Emergency Recovery Code Flow**: Implemented `MfaRecoveryModal.tsx` enabling emergency access via single-use recovery codes (`POST /api/auth/mfa/recovery`).
+  - **Mid-Session MFA Step-Up Prompt**: Implemented `MfaStepUpModal.tsx` elevating un-elevated sessions via `POST /api/auth/mfa/step-up` upon encountering `403 FORBIDDEN: MFA_STEPUP_REQUIRED`.
+  - **Institutional Account Activation Flow**: Implemented `AccountActivationModal.tsx` allowing students and staff to redeem registrar voucher tokens and set initial secure passwords via `POST /api/auth/activate-account`.
+  - **Stage 4 Verification Suite**: Created `tests/institutional_auth_stage4.test.ts` (6 tests) verifying student USN login, staff TOTP challenge handling, account activation validation, emergency recovery code access, mid-session step-up enforcement, and logout cookie clearance.
 - **Institutional Authentication Modernization (Stage 3: Session Lifecycle, Revocation Epochs, Rate Limiting & Key Rotation)**:
   - **Global Session Invalidation Epochs**: Enforced instantaneous database-backed token invalidation via `users.session_version` epoch checks on every authenticated request. Bumping `session_version` immediately invalidates active sessions across all backend instances without awaiting JWT expiry.
   - **Comprehensive Invalidation Coverage**: Explicitly wired session invalidation into password change, password reset, account activation, account deactivation (`is_active = FALSE`), MFA reset, and optional global logout (`revokeAllSessions: true`).

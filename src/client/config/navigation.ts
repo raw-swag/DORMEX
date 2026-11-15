@@ -7,15 +7,6 @@ import {
   AlertCircle, 
   UserPlus, 
   Utensils, 
-  UserCheck, 
-  ShieldCheck, 
-  FileText,
-  Fingerprint, 
-  Sliders, 
-  Calendar,
-  Home,
-  CheckCircle2,
-  MoreHorizontal,
   User
 } from 'lucide-react';
 import { Role } from '../context/AuthContext.js';
@@ -114,6 +105,7 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
       };
 
     case 'WARDEN':
+    case 'DEPUTY_WARDEN':
       return {
         primaryTabs: [
           {
@@ -153,6 +145,9 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
       };
 
     case 'CHIEF_WARDEN':
+    case 'SUPER_ADMIN':
+    case 'PROCTOR':
+    default:
       return {
         primaryTabs: [
           {
@@ -195,99 +190,6 @@ export function getNavigationForRole(role: Role): RoleNavConfig {
             icon: Utensils,
           },
         ],
-      };
-
-    case 'SUPER_ADMIN':
-      return {
-        primaryTabs: [
-          {
-            id: 'admin_devices',
-            label: 'Two-Device Demo Auth',
-            shortLabel: 'Devices',
-            icon: Fingerprint,
-            badge: '3 Slots',
-          },
-          {
-            id: 'admin_overview',
-            label: 'System Allocation Console',
-            shortLabel: 'Console',
-            icon: Building2,
-            isPrimary: true,
-          },
-          {
-            id: 'admin_students',
-            label: 'Hostel Office Registry',
-            shortLabel: 'Registry',
-            icon: Users,
-          },
-          {
-            id: 'office_admissions',
-            label: 'Admissions Management',
-            shortLabel: 'Admissions',
-            icon: UserPlus,
-          },
-          {
-            id: 'admin_complaints',
-            label: 'Central Complaints',
-            shortLabel: 'Complaints',
-            icon: AlertCircle,
-          },
-        ],
-        moreTabs: [
-          {
-            id: 'admin_floor_editor',
-            label: '2D Floor Plan Maker',
-            shortLabel: 'Floor Plan',
-            icon: Map,
-          },
-          {
-            id: 'office_mess_menu',
-            label: 'Mess Menu Scheduling',
-            shortLabel: 'Mess Menu',
-            icon: Utensils,
-          },
-          {
-            id: 'admin_devices',
-            label: 'Two-Device Demo Auth',
-            shortLabel: 'Devices',
-            icon: Fingerprint,
-            badge: '3 Slots',
-          },
-        ],
-      };
-
-    case 'PROCTOR':
-      return {
-        primaryTabs: [
-          {
-            id: 'admin_students',
-            label: 'Assigned Mentees & Registry',
-            shortLabel: 'Students',
-            icon: UserCheck,
-            isPrimary: true,
-          },
-          {
-            id: 'admin_overview',
-            label: 'Allocation Status Reference',
-            shortLabel: 'Allocation',
-            icon: Building2,
-          },
-        ],
-        moreTabs: [],
-      };
-
-    default:
-      return {
-        primaryTabs: [
-          {
-            id: 'student_allocation',
-            label: 'Floor Map & Allocation',
-            shortLabel: 'Allocation',
-            icon: Clock,
-            isPrimary: true,
-          },
-        ],
-        moreTabs: [],
       };
   }
 }

@@ -10,111 +10,17 @@ export interface UserSession {
   scopeType: string;
   scopeId: string | null;
   profileId: string | null;
+  studentUsn?: string | null;
+  mfaLevel?: 'NONE' | 'TOTP';
   activeAppointmentId?: string | null;
   activeAppointmentStatus?: string | null;
 }
 
-export const DEV_USERS: Record<string, UserSession> = {
-  demo1: {
-    userId: 'usr_demo_001',
-    collegeId: 'DEMO-001',
-    fullName: 'Aarav Sharma (Rank #1)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_001',
-  },
-  demo2: {
-    userId: 'usr_demo_002',
-    collegeId: 'DEMO-002',
-    fullName: 'Diya Patel (Rank #2)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_002',
-  },
-  demo3: {
-    userId: 'usr_demo_003',
-    collegeId: 'DEMO-003',
-    fullName: 'Rohan Verma (Rank #3)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_003',
-  },
-  demo10: {
-    userId: 'usr_demo_010',
-    collegeId: 'DEMO-010',
-    fullName: 'Arjun Menon (Rank #10)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_010',
-  },
-  demo29: {
-    userId: 'usr_demo_029',
-    collegeId: 'DEMO-029',
-    fullName: 'Prisha Pandey (Pending Eligibility)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_029',
-  },
-  demo30: {
-    userId: 'usr_demo_030',
-    collegeId: 'DEMO-030',
-    fullName: 'Nikhil Saxena (Fee Pending)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_demo_030',
-  },
-  student1: {
-    userId: 'usr_student_1',
-    collegeId: 'USN202401',
-    fullName: 'Aarav Patel (Test Alias)',
-    role: 'STUDENT',
-    scopeType: 'STUDENT',
-    scopeId: null,
-    profileId: 'prof_stu_1',
-  },
-  wardenBvb: {
-    userId: 'usr_warden_bvb',
-    collegeId: 'WRD001',
-    fullName: 'Prof. Rao (Warden - BVB Block)',
-    role: 'WARDEN',
-    scopeType: 'BUILDING',
-    scopeId: 'bld_bvb',
-    profileId: null,
-  },
-  chiefWarden: {
-    userId: 'usr_chief',
-    collegeId: 'CW001',
-    fullName: 'Dr. Sharma (Chief Warden)',
-    role: 'CHIEF_WARDEN',
-    scopeType: 'SYSTEM',
-    scopeId: null,
-    profileId: null,
-  },
-  hostelOffice: {
-    userId: 'usr_office',
-    collegeId: 'OFF001',
-    fullName: 'Hostel Office Staff',
-    role: 'HOSTEL_OFFICE',
-    scopeType: 'SYSTEM',
-    scopeId: null,
-    profileId: null,
-  },
-  superAdmin: {
-    userId: 'usr_admin',
-    collegeId: 'ADM001',
-    fullName: 'Chief Warden Administrator (ADM001)',
-    role: 'CHIEF_WARDEN',
-    scopeType: 'SYSTEM',
-    scopeId: null,
-    profileId: null,
-  },
-};
+export interface MfaChallengeState {
+  required: boolean;
+  mfaEnrolled: boolean;
+  challengeToken: string;
+}
 
 export interface AuthContextType {
   session: UserSession | null;
@@ -122,15 +28,20 @@ export interface AuthContextType {
   isLoading: boolean;
   currentPortal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null;
   setCurrentPortal: (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null) => void;
-  login: (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE', identityKey: string) => Promise<void>;
+  mfaChallenge: MfaChallengeState | null;
+  clearMfaChallenge: () => void;
+  showStepUpModal: boolean;
+  triggerStepUp: () => void;
+  dismissStepUp: () => void;
+  onStepUpSuccess: () => void;
   loginWithCredentials: (
     portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE',
     collegeIdOrEmail: string,
     passwordOrKey: string
-  ) => Promise<void>;
+  ) => Promise<{ mfaRequired?: boolean; challengeToken?: string; mfaEnrolled?: boolean } | void>;
+  completeMfaVerification: (session: UserSession) => void;
   logout: () => Promise<void>;
-  switchUser: (devKey: string) => void;
-  isDevMode: boolean;
+  revokeAllUserSessions: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -139,31 +50,31 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   currentPortal: null,
   setCurrentPortal: () => {},
-  login: async () => {},
+  mfaChallenge: null,
+  clearMfaChallenge: () => {},
+  showStepUpModal: false,
+  triggerStepUp: () => {},
+  dismissStepUp: () => {},
+  onStepUpSuccess: () => {},
   loginWithCredentials: async () => {},
+  completeMfaVerification: () => {},
   logout: async () => {},
-  switchUser: () => {},
-  isDevMode: false,
+  revokeAllUserSessions: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentPortal, setCurrentPortal] = useState<'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE' | null>(() => {
-    return (localStorage.getItem('dormex_current_portal') as any) || null;
+    return (typeof window !== 'undefined' ? (localStorage.getItem('dormex_current_portal') as any) : null) || null;
   });
-
-  const isDevMode = typeof window !== 'undefined' && (
-    window.location.search.includes('dev=true') || 
-    localStorage.getItem('dormex_dev_mode') === 'true'
-  );
+  const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeState | null>(null);
+  const [showStepUpModal, setShowStepUpModal] = useState<boolean>(false);
 
   // Restore authenticated session authoritatively from server via HttpOnly cookie
   useEffect(() => {
     let mounted = true;
     const restoreSession = async () => {
-      // Only probe /api/auth/me if there is an active institutional session indicator,
-      // avoiding unnecessary 401 Unauthorized errors on clean browser visits.
       const hasActiveSession = typeof window !== 'undefined' && localStorage.getItem('dormex_has_session') === 'true';
       if (!hasActiveSession) {
         if (mounted) {
@@ -188,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               scopeType: data.scopeType,
               scopeId: data.scopeId,
               profileId: data.profileId,
+              studentUsn: data.studentUsn,
               activeAppointmentId: data.activeAppointmentId,
               activeAppointmentStatus: data.activeAppointmentStatus,
             };
@@ -221,53 +133,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const login = async (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE', identityKey: string) => {
-    const target = DEV_USERS[identityKey];
-    if (target) {
-      // Backend authority verification: Ensure selected portal matches authorized role
-      if (portal === 'STUDENT' && target.role !== 'STUDENT') {
-        throw new Error('Access Denied: This account is not a student');
-      }
-      if (portal === 'HOSTEL_OFFICE' && target.role !== 'HOSTEL_OFFICE') {
-        throw new Error('Access Denied: This account is not authorized for Hostel Office');
-      }
-      if (portal === 'ADMIN' && !['SUPER_ADMIN', 'CHIEF_WARDEN', 'WARDEN'].includes(target.role)) {
-        throw new Error('Access Denied: This account is not an administrative staff member');
-      }
-
-      // Quick Pilot Preset login converges on the authoritative backend login endpoint
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          identifier: target.collegeId,
-          password: 'password',
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Authentication Failed');
-      }
-
-      const data = await res.json();
-      if (data.session) {
-        setSession(data.session);
-        setCurrentPortal(portal);
-        localStorage.setItem('dormex_current_portal', portal);
-        localStorage.setItem('dormex_has_session', 'true');
-      }
-    }
-  };
-
   const loginWithCredentials = async (
     portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE',
     collegeIdOrEmail: string,
     passwordOrKey: string
   ) => {
     const trimmedId = collegeIdOrEmail.trim().toLowerCase();
-    const rawPw = passwordOrKey; // Do not trim or alter password characters
+    const rawPw = passwordOrKey;
 
     if (!trimmedId) {
       throw new Error('Please enter your Institutional ID or email address');
@@ -289,6 +161,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (res.ok) {
       const data = await res.json();
+
+      // Check if MFA challenge is issued for privileged accounts
+      if (data.mfaRequired && data.challengeToken) {
+        const challenge: MfaChallengeState = {
+          required: true,
+          mfaEnrolled: data.mfaEnrolled !== false,
+          challengeToken: data.challengeToken,
+        };
+        setMfaChallenge(challenge);
+        return challenge;
+      }
+
       if (data.session) {
         const authenticatedSession: UserSession = data.session;
 
@@ -299,13 +183,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (portal === 'HOSTEL_OFFICE' && authenticatedSession.role !== 'HOSTEL_OFFICE') {
           throw new Error('Access Denied: This account is not authorized for Hostel Office');
         }
-        if (portal === 'ADMIN' && !['SUPER_ADMIN', 'CHIEF_WARDEN', 'WARDEN'].includes(authenticatedSession.role)) {
+        if (portal === 'ADMIN' && !['SUPER_ADMIN', 'CHIEF_WARDEN', 'WARDEN', 'DEPUTY_WARDEN'].includes(authenticatedSession.role)) {
           throw new Error('Access Denied: This account is not an administrative staff member');
         }
 
         setSession(authenticatedSession);
         setCurrentPortal(portal);
+        setMfaChallenge(null);
         localStorage.setItem('dormex_current_portal', portal);
+        localStorage.setItem('dormex_has_session', 'true');
         return;
       }
     } else {
@@ -317,27 +203,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeMfaVerification = (userSession: UserSession) => {
+    setSession(userSession);
+    const mappedPortal = userSession.role === 'STUDENT' ? 'STUDENT' : (userSession.role === 'HOSTEL_OFFICE' ? 'HOSTEL_OFFICE' : 'ADMIN');
+    setCurrentPortal(mappedPortal);
+    setMfaChallenge(null);
+    localStorage.setItem('dormex_current_portal', mappedPortal);
+    localStorage.setItem('dormex_has_session', 'true');
+  };
+
+  const clearMfaChallenge = () => {
+    setMfaChallenge(null);
+  };
+
+  const triggerStepUp = () => {
+    setShowStepUpModal(true);
+  };
+
+  const dismissStepUp = () => {
+    setShowStepUpModal(false);
+  };
+
+  const onStepUpSuccess = () => {
+    setShowStepUpModal(false);
+    if (session) {
+      setSession({
+        ...session,
+        mfaLevel: 'TOTP',
+      });
+    }
+  };
+
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
+        body: JSON.stringify({ revokeAllSessions: false }),
       });
     } catch (e) {}
     setSession(null);
     setCurrentPortal(null);
+    setMfaChallenge(null);
     localStorage.removeItem('dormex_has_session');
     localStorage.removeItem('dormex_auth_session');
     localStorage.removeItem('dormex_current_portal');
     localStorage.removeItem('dormex_dev_session');
+    localStorage.removeItem('dormex_hardware_unlocked');
   };
 
-  const switchUser = async (devKey: string) => {
-    const target = DEV_USERS[devKey];
-    if (target) {
-      const portal = target.role === 'STUDENT' ? 'STUDENT' : (target.role === 'HOSTEL_OFFICE' ? 'HOSTEL_OFFICE' : 'ADMIN');
-      await login(portal, devKey);
-    }
+  const revokeAllUserSessions = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ revokeAllSessions: true }),
+      });
+    } catch (e) {}
+    setSession(null);
+    setCurrentPortal(null);
+    setMfaChallenge(null);
+    localStorage.removeItem('dormex_has_session');
+    localStorage.removeItem('dormex_auth_session');
+    localStorage.removeItem('dormex_current_portal');
+    localStorage.removeItem('dormex_dev_session');
+    localStorage.removeItem('dormex_hardware_unlocked');
   };
 
   return (
@@ -348,11 +280,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         currentPortal,
         setCurrentPortal,
-        login,
+        mfaChallenge,
+        clearMfaChallenge,
+        showStepUpModal,
+        triggerStepUp,
+        dismissStepUp,
+        onStepUpSuccess,
         loginWithCredentials,
+        completeMfaVerification,
         logout,
-        switchUser,
-        isDevMode,
+        revokeAllUserSessions,
       }}
     >
       {children}
@@ -368,8 +305,6 @@ export async function apiFetch(path: string, options: RequestInit = {}, session?
     headers.set('Content-Type', 'application/json');
   }
 
-  // Same-origin browser requests rely exclusively on secure HttpOnly cookies.
-  // Bearer tokens and client-side x-user-id headers are NOT injected into production/same-origin browser traffic.
   const res = await fetch(path, {
     credentials: 'same-origin',
     ...options,

@@ -1,52 +1,43 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, apiFetch } from '../context/AuthContext.js';
-import { apiJson } from '../api/apiJson.js';
 import {
   GraduationCap,
   ShieldCheck,
   Building,
   ArrowRight,
   AlertCircle,
-  Lock,
-  Sparkles,
   KeyRound,
   UserCheck,
   Eye,
   EyeOff,
   HelpCircle,
   X,
-  Fingerprint,
   Loader2,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  RefreshCw,
-  WifiOff,
-  Laptop
+  Sparkles,
+  UserPlus
 } from 'lucide-react';
-import { DemoAuthModal } from './DemoAuthModal.js';
 import { DormexLogo } from './DormexLogo.js';
 import { ThemeToggle } from './ThemeToggle.js';
+import { MfaChallengeModal } from './MfaChallengeModal.js';
+import { MfaEnrollmentModal } from './MfaEnrollmentModal.js';
+import { MfaRecoveryModal } from './MfaRecoveryModal.js';
+import { AccountActivationModal } from './AccountActivationModal.js';
 
 export const PortalSelectionView: React.FC = () => {
-  const { loginWithCredentials } = useAuth();
+  const { 
+    loginWithCredentials, 
+    mfaChallenge, 
+    completeMfaVerification, 
+    clearMfaChallenge 
+  } = useAuth();
+
   const [selectedPortal, setSelectedPortal] = useState<'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE'>('STUDENT');
   const [authIdInput, setAuthIdInput] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  // Demo access gate: Only enabled when build-time environment variable VITE_ENABLE_DEMO_ACCESS === 'true'
-  // Disabled by default; never accessible in production builds. URL ?dev=true and localStorage overrides are strictly removed.
-  const isDemoAccessEnabled = typeof __VITE_ENABLE_DEMO_ACCESS__ !== 'undefined' ? __VITE_ENABLE_DEMO_ACCESS__ : false;
-
-  // Progressive Disclosure for Hardware Biometrics
-  const [showMoreAuthOptions, setShowMoreAuthOptions] = useState<boolean>(false);
-
-  // WebAuthn Browser Platform Support State
-  const [webAuthnSupported, setWebAuthnSupported] = useState<boolean>(true);
-
-  // Validation and status tracking
+  // Form validation & submission state
   const [generalError, setGeneralError] = useState<{ message: string; isNetwork?: boolean } | null>(null);
   const [authIdTouched, setAuthIdTouched] = useState<boolean>(false);
   const [passwordTouched, setPasswordTouched] = useState<boolean>(false);
@@ -55,26 +46,12 @@ export const PortalSelectionView: React.FC = () => {
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [roleAnnouncement, setRoleAnnouncement] = useState<string>('Student portal selected');
 
-  // Network offline state listener
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  // Modals
+  const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
+  const [showActivationModal, setShowActivationModal] = useState<boolean>(false);
+  const [showEmergencyRecoveryModal, setShowEmergencyRecoveryModal] = useState<boolean>(false);
 
-  // WebAuthn Two-Device Demo Authentication State
-  const [showDemoAuthModal, setShowDemoAuthModal] = useState<boolean>(false);
-  const [demoSessionInfo, setDemoSessionInfo] = useState<{ slot_id: string; device_label: string; expires_at: string } | null>(null);
-  const [demoAccounts, setDemoAccounts] = useState<Array<{
-    userId: string;
-    collegeId: string;
-    fullName: string;
-    email: string;
-    role: string;
-    portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE';
-    assignedPriority: number | null;
-    label: string;
-  }>>([]);
-  const [demoAccountsError, setDemoAccountsError] = useState<string | null>(null);
-
-  // Password Recovery Modal State
-  const [showForgotModal, setShowForgotModal] = useState<boolean>(false);
+  // Password Recovery state inside recovery modal
   const [forgotIdentifier, setForgotIdentifier] = useState<string>('');
   const [forgotIdentifierTouched, setForgotIdentifierTouched] = useState<boolean>(false);
   const [forgotIdentifierError, setForgotIdentifierError] = useState<string | null>(null);
@@ -90,83 +67,9 @@ export const PortalSelectionView: React.FC = () => {
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState<boolean>(false);
 
-  // Focus tracking refs for accessible modal opening/closing
   const forgotPasswordTriggerRef = useRef<HTMLButtonElement | null>(null);
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
   const modalCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  // Check WebAuthn platform support
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isAvailable = !!(window.PublicKeyCredential && navigator.credentials);
-      setWebAuthnSupported(isAvailable);
-    }
-  }, []);
-
-  // Online / Offline monitor
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleOnline = () => {
-      setIsOnline(true);
-      if (generalError?.isNetwork) setGeneralError(null);
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      setGeneralError({
-        message: 'You are currently offline. Please check your internet connection.',
-        isNetwork: true,
-      });
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [generalError]);
-
-  const fetchAuthorizedAccounts = useCallback(() => {
-    apiJson<{ success: boolean; accounts: any[]; error?: string }>('/api/demo/accounts')
-      .then((accRes) => {
-        if (accRes.success && accRes.accounts) {
-          setDemoAccounts(accRes.accounts);
-          setDemoAccountsError(null);
-        }
-      })
-      .catch((err) => {
-        setDemoAccountsError(err.message || 'Failed to load demo accounts');
-      });
-  }, []);
-
-  useEffect(() => {
-    const isHardwareUnlocked = typeof window !== 'undefined' && localStorage.getItem('dormex_hardware_unlocked') === 'true';
-    if (!isHardwareUnlocked) {
-      return;
-    }
-
-    fetch('/api/demo/access', { credentials: 'same-origin' })
-      .then((res) => {
-        if (!res.ok) {
-          localStorage.removeItem('dormex_hardware_unlocked');
-          return null;
-        }
-        return res.json();
-      })
-      .then((res: { authorized?: boolean; slot_id?: string; device_label?: string; expires_at?: string } | null) => {
-        if (res && res.authorized && res.slot_id) {
-          setDemoSessionInfo({
-            slot_id: res.slot_id,
-            device_label: res.device_label || 'Authorized Device',
-            expires_at: res.expires_at || '',
-          });
-          fetchAuthorizedAccounts();
-        }
-      })
-      .catch(() => {
-        // Normal unauthenticated device
-      });
-  }, [fetchAuthorizedAccounts]);
 
   const handlePortalSelect = (portal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
     setSelectedPortal(portal);
@@ -181,17 +84,8 @@ export const PortalSelectionView: React.FC = () => {
       HOSTEL_OFFICE: 'Hostel Office portal selected',
     };
     setRoleAnnouncement(portalNames[portal]);
-
-    if (portal === 'STUDENT') {
-      setAuthIdInput('');
-    } else if (portal === 'ADMIN') {
-      setAuthIdInput('');
-    } else if (portal === 'HOSTEL_OFFICE') {
-      setAuthIdInput('');
-    }
   };
 
-  // Keyboard navigation for role selector tabs
   const handleRoleKeyDown = (e: React.KeyboardEvent, currentPortal: 'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE') => {
     const order: Array<'STUDENT' | 'ADMIN' | 'HOSTEL_OFFICE'> = ['STUDENT', 'ADMIN', 'HOSTEL_OFFICE'];
     const currentIndex = order.indexOf(currentPortal);
@@ -239,16 +133,7 @@ export const PortalSelectionView: React.FC = () => {
 
   const handleLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    // Guard: Prevent duplicate submissions or concurrent triggers
     if (isAuthenticating) return;
-
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setGeneralError({
-        message: 'Network offline: Please restore internet connection before signing in.',
-        isNetwork: true,
-      });
-      return;
-    }
 
     setAuthIdTouched(true);
     setPasswordTouched(true);
@@ -279,12 +164,7 @@ export const PortalSelectionView: React.FC = () => {
 
       if (isNet) {
         setGeneralError({
-          message: 'Network error: Unable to reach institutional authentication service. Please check your connection and retry.',
-          isNetwork: true,
-        });
-      } else if (errMsg.includes('500') || errMsg.toLowerCase().includes('server error')) {
-        setGeneralError({
-          message: 'Authentication service temporarily unavailable. Please try again shortly.',
+          message: 'Network error: Unable to reach institutional authentication service. Please check your connection.',
           isNetwork: true,
         });
       } else {
@@ -298,85 +178,28 @@ export const PortalSelectionView: React.FC = () => {
     }
   };
 
-  // Focus trapping and keyboard management for Password Recovery Modal
   const openRecoveryModal = () => {
-    setShowForgotModal(true);
+    setShowRecoveryModal(true);
     setForgotIdentifier(authIdInput.trim());
     setForgotResult(null);
-    setForgotIdentifierTouched(false);
-    setForgotIdentifierError(null);
-    setResetTokenTouched(false);
-    setResetTokenError(null);
-    setNewPasswordTouched(false);
-    setNewPasswordError(null);
+    setResetSuccess(false);
+    setResetTokenInput('');
+    setNewPasswordInput('');
   };
 
   const closeRecoveryModal = () => {
-    setShowForgotModal(false);
+    setShowRecoveryModal(false);
     setForgotResult(null);
-    setTimeout(() => {
-      forgotPasswordTriggerRef.current?.focus();
-    }, 50);
   };
-
-  useEffect(() => {
-    if (!showForgotModal) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeRecoveryModal();
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        const container = modalContainerRef.current;
-        if (!container) return;
-
-        const focusableElements = container.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey && document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement.focus();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    const timer = setTimeout(() => {
-      modalCloseButtonRef.current?.focus();
-    }, 50);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timer);
-    };
-  }, [showForgotModal]);
 
   return (
     <div className="min-h-screen bg-[#F7F6F1] dark:bg-[#080F1C] flex flex-col justify-between font-sans text-[#263345] dark:text-[#F1F5F9] transition-colors duration-150 relative overflow-hidden">
-      {/* Subtle institutional ambient background accent in dark mode */}
-      <div className="hidden dark:block pointer-events-none absolute -top-40 -left-40 w-96 h-96 bg-[#2C8279]/10 rounded-full blur-3xl" aria-hidden="true" />
-      <div className="hidden dark:block pointer-events-none absolute top-1/2 -right-40 w-96 h-96 bg-[#1D63B8]/10 rounded-full blur-3xl" aria-hidden="true" />
-
-      {/* Live Region for Screen Reader Announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {roleAnnouncement}
       </div>
 
       {/* Top Institutional Header */}
-      <header className="bg-white/90 dark:bg-[#0D1929]/90 backdrop-blur-md border-b border-[#E2E6E8] dark:border-[#293B52] px-3 sm:px-8 py-3 flex items-center justify-between shadow-xs transition-colors sticky top-0 z-20">
+      <header className="bg-white/90 dark:bg-[#0D1929]/90 backdrop-blur-md border-b border-[#E2E6E8] dark:border-[#293B52] px-3 sm:px-8 py-3 flex items-center justify-between shadow-xs sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <DormexLogo theme="primary" size="md" className="h-7 sm:h-9 w-auto dark:hidden" />
           <DormexLogo theme="white" size="md" className="h-7 sm:h-9 w-auto hidden dark:block" />
@@ -389,29 +212,25 @@ export const PortalSelectionView: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-3">
           <ThemeToggle />
 
-          {/* Institutional Pilot Scope Badge */}
           <div className="px-2.5 py-1 bg-[#F0F4F6] dark:bg-[#111F32] text-[#203653] dark:text-[#B7C6D8] text-[10px] sm:text-xs font-semibold rounded-lg border border-[#D5DCDF] dark:border-[#293B52] flex items-center gap-1.5">
             <span className="font-bold text-[#016A62] dark:text-[#63D6C6]">Pilot:</span>
             <span>BVB Block Flr 2</span>
           </div>
 
-          {/* Institutional Status Indicator */}
           <div
             className="px-2.5 py-1 bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#1E7B54] dark:text-[#63D6C6] text-[10px] sm:text-xs font-semibold rounded-lg border border-[#A8D5C2] dark:border-[#1E5C50] flex items-center gap-1.5 shrink-0"
             role="status"
-            aria-label="Institutional portal active"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#1E7B54] dark:bg-[#63D6C6] animate-pulse" aria-hidden="true" />
-            <span className="hidden xs:inline">Institutional Portal</span>
-            <span className="xs:hidden">Live</span>
+            <span>Institutional Portal</span>
           </div>
         </div>
       </header>
 
-      {/* Main Content: Responsive 2-Column Institutional Presentation on Desktop */}
+      {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex-1 flex flex-col justify-center w-full z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Left Column: Institutional Brand & Context Introduction */}
+          {/* Left Column: Context Introduction */}
           <div className="lg:col-span-5 space-y-6 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#E7F2ED] dark:bg-[#0E2F2B] border border-[#2C8279]/30 dark:border-[#1E5C50] text-[#016A62] dark:text-[#63D6C6] rounded-full text-xs font-semibold shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#016A62] dark:text-[#63D6C6]" aria-hidden="true" />
@@ -427,7 +246,6 @@ export const PortalSelectionView: React.FC = () => {
               </p>
             </div>
 
-            {/* Institutional Features Highlights (Desktop only) */}
             <div className="hidden lg:grid grid-cols-1 gap-3 pt-2">
               <div className="p-3 bg-white/70 dark:bg-[#111F32]/80 rounded-xl border border-[#E2E6E8] dark:border-[#293B52] flex items-center gap-3 shadow-xs">
                 <div className="w-8 h-8 rounded-lg bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#016A62] dark:text-[#63D6C6] flex items-center justify-center shrink-0">
@@ -444,46 +262,25 @@ export const PortalSelectionView: React.FC = () => {
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#203653] dark:text-[#F1F5F9]">Authoritative Administration</div>
-                  <div className="text-[11px] text-[#627084] dark:text-[#91A4BA]">Downward-only warden hierarchy and immutable audit ledger</div>
+                  <div className="text-xs font-bold text-[#203653] dark:text-[#F1F5F9]">Authoritative Administration &amp; MFA</div>
+                  <div className="text-[11px] text-[#627084] dark:text-[#91A4BA]">RFC 6238 TOTP two-factor security for privileged hostel wardens</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Focused Login Card */}
+          {/* Right Column: Focused Institutional Sign In Card */}
           <div className="lg:col-span-7 max-w-xl mx-auto w-full">
-            {/* Global Server or General Error Banner */}
             {generalError && (
               <div
-                id="login-general-error"
                 role="alert"
-                aria-live="assertive"
-                className="mb-5 p-3.5 bg-[#FDE8E8] dark:bg-[#2D1214] border border-[#F8B4B4] dark:border-[#5C2326] rounded-xl text-[#C93B3B] dark:text-[#F87171] text-xs font-medium flex items-center justify-between gap-2.5 shadow-xs transition-all animate-fadeIn"
+                className="mb-5 p-3.5 bg-[#FDE8E8] dark:bg-[#2D1214] border border-[#F8B4B4] dark:border-[#5C2326] rounded-xl text-[#C93B3B] dark:text-[#F87171] text-xs font-medium flex items-center gap-2.5 shadow-xs animate-fadeIn"
               >
-                <div className="flex items-center gap-2">
-                  {generalError.isNetwork ? (
-                    <WifiOff className="w-4 h-4 text-[#C93B3B] dark:text-[#F87171] shrink-0" aria-hidden="true" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-[#C93B3B] dark:text-[#F87171] shrink-0" aria-hidden="true" />
-                  )}
-                  <span>{generalError.message}</span>
-                </div>
-                {generalError.isNetwork && (
-                  <button
-                    type="button"
-                    onClick={() => handleLoginSubmit()}
-                    disabled={isAuthenticating}
-                    className="shrink-0 px-2 py-1 bg-white dark:bg-[#111F32] border border-[#F8B4B4] dark:border-[#5C2326] text-[#C93B3B] dark:text-[#F87171] rounded-md font-bold text-[11px] hover:bg-[#FDE8E8] dark:hover:bg-[#2D1214] flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C93B3B]"
-                  >
-                    <RefreshCw className="w-3 h-3" aria-hidden="true" />
-                    <span>Retry</span>
-                  </button>
-                )}
+                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>{generalError.message}</span>
               </div>
             )}
 
-            {/* Card Container */}
             <div className="bg-white dark:bg-[#111F32] p-5 sm:p-8 rounded-2xl border border-[#E2E6E8] dark:border-[#293B52] shadow-xl transition-all duration-200 w-full animate-fadeIn">
               {/* Role / Portal Selector */}
               <div className="mb-6 space-y-2.5">
@@ -492,11 +289,10 @@ export const PortalSelectionView: React.FC = () => {
                     id="portal-selector-label"
                     className="text-[11px] font-bold uppercase tracking-wider text-[#627084] dark:text-[#91A4BA] block"
                   >
-                    Select Portal Access Option
+                    Select Institutional Portal
                   </label>
                   <span className="text-[11px] text-[#627084] dark:text-[#91A4BA]">
-                    <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                    <span className="sr-only">Fields marked with asterisk are </span> required
+                    <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span> required
                   </span>
                 </div>
 
@@ -510,14 +306,13 @@ export const PortalSelectionView: React.FC = () => {
                     role="tab"
                     id="tab-student"
                     aria-selected={selectedPortal === 'STUDENT'}
-                    aria-controls="panel-login-credentials"
                     tabIndex={selectedPortal === 'STUDENT' ? 0 : -1}
                     onClick={() => handlePortalSelect('STUDENT')}
                     onKeyDown={(e) => handleRoleKeyDown(e, 'STUDENT')}
-                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111F32] ${
+                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 outline-none ${
                       selectedPortal === 'STUDENT'
-                        ? 'bg-white dark:bg-[#17283D] text-[#016A62] dark:text-[#63D6C6] shadow-sm border border-transparent dark:border-[#293B52] font-extrabold'
-                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653] dark:hover:text-[#F1F5F9] hover:bg-white/50 dark:hover:bg-[#111F32]/50'
+                        ? 'bg-white dark:bg-[#17283D] text-[#016A62] dark:text-[#63D6C6] shadow-sm font-extrabold'
+                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653]'
                     }`}
                   >
                     <GraduationCap className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -529,14 +324,13 @@ export const PortalSelectionView: React.FC = () => {
                     role="tab"
                     id="tab-admin"
                     aria-selected={selectedPortal === 'ADMIN'}
-                    aria-controls="panel-login-credentials"
                     tabIndex={selectedPortal === 'ADMIN' ? 0 : -1}
                     onClick={() => handlePortalSelect('ADMIN')}
                     onKeyDown={(e) => handleRoleKeyDown(e, 'ADMIN')}
-                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111F32] ${
+                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 outline-none ${
                       selectedPortal === 'ADMIN'
-                        ? 'bg-white dark:bg-[#17283D] text-[#1D63B8] dark:text-[#60A5FA] shadow-sm border border-transparent dark:border-[#293B52] font-extrabold'
-                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653] dark:hover:text-[#F1F5F9] hover:bg-white/50 dark:hover:bg-[#111F32]/50'
+                        ? 'bg-white dark:bg-[#17283D] text-[#1D63B8] dark:text-[#60A5FA] shadow-sm font-extrabold'
+                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653]'
                     }`}
                   >
                     <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -548,14 +342,13 @@ export const PortalSelectionView: React.FC = () => {
                     role="tab"
                     id="tab-office"
                     aria-selected={selectedPortal === 'HOSTEL_OFFICE'}
-                    aria-controls="panel-login-credentials"
                     tabIndex={selectedPortal === 'HOSTEL_OFFICE' ? 0 : -1}
                     onClick={() => handlePortalSelect('HOSTEL_OFFICE')}
                     onKeyDown={(e) => handleRoleKeyDown(e, 'HOSTEL_OFFICE')}
-                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111F32] ${
+                    className={`min-h-[44px] py-2.5 px-1 sm:px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 outline-none ${
                       selectedPortal === 'HOSTEL_OFFICE'
-                        ? 'bg-white dark:bg-[#17283D] text-[#9C7A2E] dark:text-[#FBBF24] shadow-sm border border-transparent dark:border-[#293B52] font-extrabold'
-                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653] dark:hover:text-[#F1F5F9] hover:bg-white/50 dark:hover:bg-[#111F32]/50'
+                        ? 'bg-white dark:bg-[#17283D] text-[#9C7A2E] dark:text-[#FBBF24] shadow-sm font-extrabold'
+                        : 'text-[#627084] dark:text-[#91A4BA] hover:text-[#203653]'
                     }`}
                   >
                     <Building className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -564,17 +357,8 @@ export const PortalSelectionView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Panel Context Header with Role Identity Banner */}
+              {/* Panel Description */}
               <div
-                id="panel-login-credentials"
-                role="tabpanel"
-                aria-labelledby={
-                  selectedPortal === 'STUDENT'
-                    ? 'tab-student'
-                    : selectedPortal === 'ADMIN'
-                    ? 'tab-admin'
-                    : 'tab-office'
-                }
                 className={`p-3.5 mb-5 rounded-xl border transition-all ${
                   selectedPortal === 'STUDENT'
                     ? 'bg-[#E7F2ED]/50 dark:bg-[#0E2F2B]/40 border-[#A8D5C2]/60 dark:border-[#1E5C50]'
@@ -601,517 +385,242 @@ export const PortalSelectionView: React.FC = () => {
                 </div>
                 <p className="text-xs text-[#627084] dark:text-[#B7C6D8] mt-1.5 leading-relaxed">
                   {selectedPortal === 'STUDENT'
-                    ? 'Enter your Student USN or college email and password to enter your priority room selection queue.'
+                    ? 'Enter your Student USN (e.g., 1SI25CS001) or college email and password.'
                     : selectedPortal === 'ADMIN'
-                    ? 'Enter your Warden or System Administrator Staff ID to manage cycles, governance, and quotas.'
-                    : 'Enter your Admissions Officer ID to review applications, student fee registrations, and menus.'}
+                    ? 'Enter your Staff ID (e.g., ADM001, WRD001) or email and password. Privileged roles require TOTP MFA.'
+                    : 'Enter your Admissions desk ID (e.g., OFF001) or official office email and password.'}
                 </p>
               </div>
 
-          {/* Form */}
-          <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
-            {/* Field 1: Institutional ID */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="institutional-id-input"
-                  className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1"
-                >
-                  <span>
-                    {selectedPortal === 'STUDENT'
-                      ? 'Student USN / Institutional ID'
-                      : selectedPortal === 'ADMIN'
-                      ? 'Staff ID / Administrator ID'
-                      : 'Office Desk ID'}
-                  </span>
-                  <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                  <span className="sr-only">(required)</span>
-                </label>
-              </div>
+              {/* Login Form */}
+              <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="institutional-id-input"
+                    className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1 mb-1.5"
+                  >
+                    <span>
+                      {selectedPortal === 'STUDENT'
+                        ? 'Student USN / College Email'
+                        : selectedPortal === 'ADMIN'
+                        ? 'Staff ID / Administrator Email'
+                        : 'Office Desk ID / Official Email'}
+                    </span>
+                    <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span>
+                  </label>
 
-              <div className="relative">
-                <input
-                  id="institutional-id-input"
-                  name="institutionalId"
-                  type="text"
-                  required
-                  disabled={isAuthenticating}
-                  value={authIdInput}
-                  onChange={(e) => {
-                    setAuthIdInput(e.target.value);
-                    if (authIdTouched) {
-                      setAuthIdError(validateAuthId(e.target.value));
-                    }
-                  }}
-                  onBlur={handleAuthIdBlur}
-                  aria-required="true"
-                  aria-invalid={authIdTouched && !!authIdError}
-                  aria-describedby={
-                    authIdTouched && authIdError
-                      ? 'institutional-id-error institutional-id-format'
-                      : 'institutional-id-format'
-                  }
-                  placeholder={
-                    selectedPortal === 'STUDENT'
-                      ? 'e.g. 1SI21CS094 or student@college.edu'
-                      : selectedPortal === 'ADMIN'
-                      ? 'e.g. ADM001 or WRD001'
-                      : 'e.g. OFF001'
-                  }
-                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 dark:placeholder-[#91A4BA]/60 transition-all outline-none disabled:opacity-60 ${
-                    authIdTouched && authIdError
-                      ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2D1214]'
-                      : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] dark:focus:border-[#63D6C6] focus:ring-2 focus:ring-[#016A62]/20 dark:focus:ring-[#63D6C6]/20'
-                  }`}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084] dark:text-[#91A4BA]">
-                  <UserCheck className="w-4 h-4" aria-hidden="true" />
-                </div>
-              </div>
-
-              {/* Format guidance */}
-              <p id="institutional-id-format" className="text-[11px] text-[#627084] dark:text-[#91A4BA] mt-1">
-                {selectedPortal === 'STUDENT'
-                  ? 'Format: College USN (e.g., 1SI21CS094) or student email.'
-                  : selectedPortal === 'ADMIN'
-                  ? 'Format: Staff ID (e.g., ADM001, WRD001, CW001) or college email.'
-                  : 'Format: Admissions desk ID (e.g., OFF001) or hostel office email.'}
-              </p>
-
-              {authIdTouched && authIdError && (
-                <p
-                  id="institutional-id-error"
-                  role="alert"
-                  className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium animate-fadeIn"
-                >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>{authIdError}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Field 2: Password */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="password-credential-input"
-                  className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1"
-                >
-                  <span>Account Password / Security Credential</span>
-                  <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                  <span className="sr-only">(required)</span>
-                </label>
-
-                <button
-                  type="button"
-                  disabled={isAuthenticating}
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="text-[11px] text-[#016A62] dark:text-[#63D6C6] hover:text-[#0d6f66] dark:hover:text-[#82E6D8] font-semibold flex items-center gap-1 p-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6]"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-3.5 h-3.5" aria-hidden="true" />
-                  ) : (
-                    <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-                  )}
-                  <span>{showPassword ? 'Hide' : 'Show'}</span>
-                </button>
-              </div>
-
-              <div className="relative">
-                <input
-                  id="password-credential-input"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  disabled={isAuthenticating}
-                  value={passwordInput}
-                  onChange={(e) => {
-                    setPasswordInput(e.target.value);
-                    if (passwordTouched) {
-                      setPasswordError(validatePassword(e.target.value));
-                    }
-                  }}
-                  onBlur={handlePasswordBlur}
-                  aria-required="true"
-                  aria-invalid={passwordTouched && !!passwordError}
-                  aria-describedby={passwordTouched && passwordError ? 'password-credential-error' : undefined}
-                  placeholder="Enter account password..."
-                  className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 dark:placeholder-[#91A4BA]/60 transition-all outline-none disabled:opacity-60 ${
-                    passwordTouched && passwordError
-                      ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2D1214]'
-                      : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] dark:focus:border-[#63D6C6] focus:ring-2 focus:ring-[#016A62]/20 dark:focus:ring-[#63D6C6]/20'
-                  }`}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084] dark:text-[#91A4BA]">
-                  <KeyRound className="w-4 h-4" aria-hidden="true" />
-                </div>
-              </div>
-
-              {passwordTouched && passwordError && (
-                <p
-                  id="password-credential-error"
-                  role="alert"
-                  className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1.5 flex items-center gap-1 font-medium animate-fadeIn"
-                >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>{passwordError}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Session Security Information (Confirmed by Fastify server cookie configuration) */}
-            <div className="flex items-center gap-1.5 text-[11px] text-[#627084] dark:text-[#91A4BA] pt-0.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#016A62] dark:text-[#63D6C6] shrink-0" aria-hidden="true" />
-              <span>
-                Protected 24-hour institutional session. Securely bound to your browser via HttpOnly cookie.
-              </span>
-            </div>
-
-            {/* Submit Action and Loading State */}
-            <div className="pt-2 space-y-3">
-              <button
-                type="submit"
-                disabled={isAuthenticating}
-                className="w-full min-h-[48px] py-3 px-4 bg-[#016A62] hover:bg-[#0d6f66] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111F32]"
-              >
-                {isAuthenticating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
-                    <span>Authenticating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Authenticate with ID &amp; Password</span>
-                    <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  </>
-                )}
-              </button>
-
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-1 pt-1 text-center sm:text-left">
-                <button
-                  ref={forgotPasswordTriggerRef}
-                  type="button"
-                  onClick={openRecoveryModal}
-                  className="text-xs text-[#016A62] dark:text-[#63D6C6] hover:underline font-semibold flex items-center gap-1 rounded py-1 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6]"
-                >
-                  <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>Forgot password or lost credential?</span>
-                </button>
-
-                <span className="text-[11px] text-[#627084] dark:text-[#91A4BA]">15-min single-use link</span>
-              </div>
-            </div>
-
-            {/* Section 2: Hardware authentication progressive disclosure */}
-            <div className="pt-3 border-t border-[#E2E6E8] dark:border-[#293B52]">
-              <button
-                type="button"
-                onClick={() => setShowMoreAuthOptions(!showMoreAuthOptions)}
-                aria-expanded={showMoreAuthOptions}
-                aria-controls="more-auth-options-panel"
-                className="w-full py-2.5 px-3 text-xs font-semibold text-[#203653] dark:text-[#B7C6D8] hover:text-[#016A62] dark:hover:text-[#63D6C6] flex items-center justify-between rounded-xl hover:bg-[#F0F4F6] dark:hover:bg-[#17283D] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6]"
-              >
-                <div className="flex items-center gap-2">
-                  <Fingerprint className="w-4 h-4 text-[#1E7B54] dark:text-[#63D6C6]" aria-hidden="true" />
-                  <span>More sign-in options</span>
-                </div>
-                {showMoreAuthOptions ? (
-                  <ChevronUp className="w-4 h-4 text-[#627084] dark:text-[#91A4BA]" aria-hidden="true" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-[#627084] dark:text-[#91A4BA]" aria-hidden="true" />
-                )}
-              </button>
-
-              {showMoreAuthOptions && (
-                <div id="more-auth-options-panel" className="mt-2.5 space-y-3 p-3.5 bg-[#F7F9FA] dark:bg-[#0A1626] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] animate-fadeIn">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-[#203653] dark:text-[#F1F5F9] flex items-center gap-1.5">
-                      <Laptop className="w-3.5 h-3.5 text-[#1E7B54] dark:text-[#63D6C6]" aria-hidden="true" />
-                      <span>Device Biometrics &amp; Hardware Keys</span>
-                    </p>
-                    <p className="text-[11px] text-[#627084] dark:text-[#91A4BA] leading-relaxed">
-                      Sign in using your device&apos;s built-in authenticator (Windows Hello, Touch ID, Face ID, or Android screen lock). Password sign-in remains the standard institutional method.
-                    </p>
+                  <div className="relative">
+                    <input
+                      id="institutional-id-input"
+                      name="institutionalId"
+                      type="text"
+                      required
+                      disabled={isAuthenticating}
+                      value={authIdInput}
+                      onChange={(e) => {
+                        setAuthIdInput(e.target.value);
+                        if (authIdTouched) setAuthIdError(validateAuthId(e.target.value));
+                      }}
+                      onBlur={handleAuthIdBlur}
+                      placeholder={
+                        selectedPortal === 'STUDENT'
+                          ? 'e.g. 1SI25CS042 or student@sit.ac.in'
+                          : selectedPortal === 'ADMIN'
+                          ? 'e.g. ADM001 or WRD001'
+                          : 'e.g. OFF001'
+                      }
+                      className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 outline-none transition-all ${
+                        authIdTouched && authIdError
+                          ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20'
+                          : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] focus:ring-2 focus:ring-[#016A62]/20'
+                      }`}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084]">
+                      <UserCheck className="w-4 h-4" />
+                    </div>
                   </div>
 
-                  {!webAuthnSupported ? (
-                    <div className="p-2.5 bg-[#FFF0E6] dark:bg-[#2C1A0E] border border-[#FFD1B3] dark:border-[#5E3114] rounded-lg text-[#E06A26] dark:text-[#FBA468] text-xs flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-                      <div>
-                        <span className="font-bold">Browser Not Supported:</span> Your current browser does not support WebAuthn hardware biometric authentication. Please continue with your institutional password above.
-                      </div>
-                    </div>
-                  ) : demoSessionInfo ? (
-                    <div className="p-3 bg-[#E7F2ED] dark:bg-[#0E2F2B] border border-[#A8D5C2] dark:border-[#1E5C50] rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-[#1E7B54] dark:text-[#63D6C6]" aria-hidden="true" />
-                        <div>
-                          <p className="text-xs font-bold text-[#1E7B54] dark:text-[#63D6C6]">
-                            Hardware-Bound Demo Active ({demoSessionInfo.slot_id})
-                          </p>
-                          <p className="text-[11px] text-[#2C8279] dark:text-[#82E6D8]">
-                            Device: {demoSessionInfo.device_label}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handlePortalSelect('STUDENT');
-                          setAuthIdInput('DEMO-001');
-                          setAuthIdError(null);
-                        }}
-                        className="py-1 px-2.5 bg-[#1E7B54] dark:bg-[#016A62] text-white text-xs font-bold rounded-lg hover:bg-[#165c3f] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6]"
-                      >
-                        Enter Workspace
-                      </button>
-                    </div>
-                  ) : (
+                  {authIdTouched && authIdError && (
+                    <p className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{authIdError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label
+                      htmlFor="password-credential-input"
+                      className="text-xs font-semibold text-[#203653] dark:text-[#E2E8F0] flex items-center gap-1"
+                    >
+                      <span>Account Password</span>
+                      <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span>
+                    </label>
+
                     <button
                       type="button"
-                      onClick={() => setShowDemoAuthModal(true)}
-                      className="w-full py-2.5 px-3 bg-white dark:bg-[#17283D] hover:bg-[#E5EFF5] dark:hover:bg-[#1C324D] border border-[#D0DFE8] dark:border-[#293B52] text-[#203653] dark:text-[#F1F5F9] text-xs font-bold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] shadow-xs"
+                      disabled={isAuthenticating}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] text-[#016A62] dark:text-[#63D6C6] font-semibold flex items-center gap-1 p-1 rounded"
                     >
-                      <div className="flex items-center gap-1.5">
-                        <Fingerprint className="w-4 h-4 text-[#1E7B54] dark:text-[#63D6C6] shrink-0" aria-hidden="true" />
-                        <span className="font-bold">Use device biometrics</span>
-                      </div>
-                      <span className="text-[11px] text-[#627084] dark:text-[#91A4BA] font-normal sm:border-l sm:border-[#D0DFE8] dark:sm:border-[#293B52] sm:pl-2">
-                        Fingerprint, Face ID or Windows Hello
-                      </span>
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{showPassword ? 'Hide' : 'Show'}</span>
                     </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      id="password-credential-input"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      disabled={isAuthenticating}
+                      value={passwordInput}
+                      onChange={(e) => {
+                        setPasswordInput(e.target.value);
+                        if (passwordTouched) setPasswordError(validatePassword(e.target.value));
+                      }}
+                      onBlur={handlePasswordBlur}
+                      placeholder="Enter account password..."
+                      className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-3 pr-10 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 outline-none transition-all ${
+                        passwordTouched && passwordError
+                          ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20'
+                          : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] focus:ring-2 focus:ring-[#016A62]/20'
+                      }`}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#627084]">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  {passwordTouched && passwordError && (
+                    <p className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1.5 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{passwordError}</span>
+                    </p>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Dynamic Database Demo Account Selector: GATED to verified hardware demo */}
-            {demoSessionInfo && (
-              <div className="pt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="authorized-demo-account-select" className="text-[11px] font-semibold text-[#627084]">
-                    Authorized Demo Accounts ({demoSessionInfo.slot_id}):
-                  </label>
-                  <span className="text-[10px] text-[#016A62] font-mono">Hardware Unlocked</span>
+                <div className="flex items-center gap-1.5 text-[11px] text-[#627084] dark:text-[#91A4BA] pt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#016A62] dark:text-[#63D6C6] shrink-0" />
+                  <span>Protected 24-hour institutional session secured via HttpOnly cookies.</span>
                 </div>
-                {demoAccountsError ? (
-                  <div className="p-2 text-xs text-[#C93B3B] bg-[#FDE8E8] border border-[#F8B4B4] rounded-lg">
-                    {demoAccountsError}
-                  </div>
-                ) : demoAccounts.length === 0 ? (
-                  <div className="p-2 text-xs text-[#627084] bg-white border border-[#E2E6E8] rounded-lg">
-                    Loading authorized demo accounts...
-                  </div>
-                ) : (
-                  <select
-                    id="authorized-demo-account-select"
-                    value={authIdInput}
-                    onChange={(e) => {
-                      const collegeId = e.target.value;
-                      setAuthIdInput(collegeId);
-                      setAuthIdError(null);
-                      const matched = demoAccounts.find((a) => a.collegeId === collegeId);
-                      if (matched && matched.portal !== selectedPortal) {
-                        setSelectedPortal(matched.portal);
-                      }
-                    }}
-                    className="w-full text-xs bg-[#F7F6F1] border border-[#E2E6E8] rounded-xl px-3 py-2.5 text-[#203653] focus:outline-none focus:ring-1 focus:ring-[#016A62]"
+
+                <div className="pt-2 space-y-3">
+                  <button
+                    type="submit"
+                    disabled={isAuthenticating}
+                    className="w-full min-h-[48px] py-3 px-4 bg-[#016A62] hover:bg-[#0d6f66] active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-75"
                   >
-                    <option value="" disabled>-- Select Authorized Demo Account --</option>
-                    {selectedPortal === 'STUDENT' ? (
-                      <optgroup label="Student Demo Accounts (10 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'STUDENT').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : selectedPortal === 'HOSTEL_OFFICE' ? (
-                      <optgroup label="Hostel Office Accounts (5 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'HOSTEL_OFFICE').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
+                    {isAuthenticating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        <span>Authenticating...</span>
+                      </>
                     ) : (
-                      <optgroup label="Administrative Staff Accounts (3 Accounts)">
-                        {demoAccounts.filter((a) => a.portal === 'ADMIN').map((acc) => (
-                          <option key={acc.userId} value={acc.collegeId}>
-                            {acc.label}
-                          </option>
-                        ))}
-                      </optgroup>
+                      <>
+                        <span>Sign In to Institutional Portal</span>
+                        <ArrowRight className="w-4 h-4 shrink-0" />
+                      </>
                     )}
-                  </select>
-                )}
-              </div>
-            )}
-          </form>
-        </div>
+                  </button>
 
-        {/* Section 1: Reviewer / Evaluator Demo Access Guidance (Build-time Gated to VITE_ENABLE_DEMO_ACCESS === 'true') */}
-        {isDemoAccessEnabled && (
-          <aside
-            aria-labelledby="demo-access-guidance-title"
-            className="mt-6 p-4 sm:p-5 bg-white dark:bg-[#0A1929] rounded-2xl border border-[#D5DCDF] dark:border-[#1E293B] shadow-xs text-xs space-y-3"
-          >
-            <div className="flex items-center gap-2 border-b border-[#E2E6E8] dark:border-[#1E293B] pb-2.5">
-              <Info className="w-4 h-4 text-[#016A62] dark:text-[#84D5CA] shrink-0" aria-hidden="true" />
-              <h3 id="demo-access-guidance-title" className="font-bold text-[#203653] dark:text-[#F8FAFC]">
-                Authorized Reviewer & Demo Access Guidance
-              </h3>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 border-t border-[#E2E6E8] dark:border-[#293B52]">
+                    <button
+                      ref={forgotPasswordTriggerRef}
+                      type="button"
+                      onClick={openRecoveryModal}
+                      className="text-xs text-[#016A62] dark:text-[#63D6C6] hover:underline font-semibold flex items-center gap-1 py-1"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Forgot password?</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowActivationModal(true)}
+                      className="text-xs text-[#1D63B8] dark:text-[#60A5FA] hover:underline font-semibold flex items-center gap-1 py-1"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                      <span>Activate new account</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
 
-            <p className="text-[#627084] dark:text-[#94A3B8] leading-relaxed text-[11px]">
-              DORMEX provides isolated demo profiles for institutional audit and review. Selecting a role below prefills only the public institutional identifier. Authentication credentials must be verified via standard server validation.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              {/* Student Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F8FAFC] mb-1">
-                    <GraduationCap className="w-3.5 h-3.5 text-[#016A62] dark:text-[#84D5CA]" aria-hidden="true" />
-                    <span>Student Testing</span>
-                  </div>
-                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
-                    ID: <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">DEMO-001</code> (Rank #1) to <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">DEMO-010</code>.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handlePortalSelect('STUDENT');
-                    setAuthIdInput('DEMO-001');
-                    setAuthIdError(null);
-                  }}
-                  className="mt-2.5 text-[11px] font-bold text-[#016A62] dark:text-[#84D5CA] hover:text-[#0d6f66] dark:hover:text-[#A7F3D0] self-start focus:underline"
-                >
-                  Use Student ID →
-                </button>
-              </div>
-
-              {/* Admin Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] dark:bg-[#071321] rounded-xl border border-[#E2E6E8] dark:border-[#1E293B] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F8FAFC] mb-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#203653] dark:text-[#84D5CA]" aria-hidden="true" />
-                    <span>Admin Testing</span>
-                  </div>
-                  <p className="text-[11px] text-[#627084] dark:text-[#94A3B8]">
-                    ID: <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">ADM001</code> (Chief Warden) or <code className="bg-white dark:bg-[#0E243A] px-1 rounded text-[#203653] dark:text-[#84D5CA] border border-[#E2E6E8] dark:border-[#1E3A5F]">WRD001</code>.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handlePortalSelect('ADMIN');
-                    setAuthIdInput('ADM001');
-                    setAuthIdError(null);
-                  }}
-                  className="mt-2.5 text-[11px] font-bold text-[#016A62] dark:text-[#84D5CA] hover:text-[#0d6f66] dark:hover:text-[#A7F3D0] self-start focus:underline"
-                >
-                  Use Admin ID →
-                </button>
-              </div>
-
-              {/* Hostel Office Demo Guidance */}
-              <div className="p-3 bg-[#F7F9FA] dark:bg-[#0A1626] rounded-xl border border-[#E2E6E8] dark:border-[#293B52] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-[#203653] dark:text-[#F1F5F9] mb-1">
-                    <Building className="w-3.5 h-3.5 text-[#9C7A2E] dark:text-[#FBBF24]" aria-hidden="true" />
-                    <span>Office Testing</span>
-                  </div>
-                  <p className="text-[11px] text-[#627084] dark:text-[#91A4BA]">
-                    ID: <code className="bg-white dark:bg-[#17283D] px-1 rounded text-[#203653] dark:text-[#FBBF24] border border-[#E2E6E8] dark:border-[#293B52]">OFF001</code> (Hostel Admissions Officer).
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handlePortalSelect('HOSTEL_OFFICE');
-                    setAuthIdInput('OFF001');
-                    setAuthIdError(null);
-                  }}
-                  className="mt-2.5 text-[11px] font-bold text-[#9C7A2E] dark:text-[#FBBF24] hover:text-[#7A5B14] dark:hover:text-[#FDE68A] self-start focus:underline"
-                >
-                  Use Office ID →
-                </button>
-              </div>
+            <div className="mt-6 text-center">
+              <p className="text-xs text-[#627084] dark:text-[#91A4BA]">
+                Authorized Institutional Access Only • College IT Security Policy Enforced
+              </p>
             </div>
-          </aside>
-        )}
-
-        {/* Institutional Pilot Status Notice */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-[#627084] dark:text-[#91A4BA]">
-            Authorized Institutional Access Only • College IT Security Policy Enforced
-          </p>
-        </div>
           </div>
         </div>
       </main>
 
-      {/* Hardware-Bound WebAuthn Demo Modal */}
-      {showDemoAuthModal && (
-        <DemoAuthModal
-          onSuccess={(info) => {
-            setShowDemoAuthModal(false);
-            try {
-              localStorage.setItem('dormex_hardware_unlocked', 'true');
-            } catch {}
-            setDemoSessionInfo({
-              slot_id: info.slot_id,
-              device_label: info.device_label,
-              expires_at: info.expires_at,
-            });
-            fetchAuthorizedAccounts();
-            handlePortalSelect('STUDENT');
-            setAuthIdInput('DEMO-001');
-            setPasswordInput('password1');
-            setAuthIdError(null);
-            setPasswordError(null);
+      {/* MFA Challenge Modal (Prompted when backend requires TOTP) */}
+      {mfaChallenge && (
+        <MfaChallengeModal
+          challengeToken={mfaChallenge.challengeToken}
+          onSuccess={(verifiedSession) => {
+            completeMfaVerification(verifiedSession);
           }}
-          onCancel={() => setShowDemoAuthModal(false)}
+          onCancel={() => {
+            clearMfaChallenge();
+          }}
+          onFallbackRecovery={() => {
+            clearMfaChallenge();
+            setShowEmergencyRecoveryModal(true);
+          }}
+        />
+      )}
+
+      {/* Emergency Recovery Code Access Modal */}
+      {showEmergencyRecoveryModal && (
+        <MfaRecoveryModal
+          initialIdentifier={authIdInput.trim()}
+          onSuccess={() => {
+            setShowEmergencyRecoveryModal(false);
+            window.location.reload();
+          }}
+          onCancel={() => setShowEmergencyRecoveryModal(false)}
+        />
+      )}
+
+      {/* Account Activation Modal */}
+      {showActivationModal && (
+        <AccountActivationModal
+          onSuccess={() => {
+            setShowActivationModal(false);
+          }}
+          onCancel={() => setShowActivationModal(false)}
         />
       )}
 
       {/* Password Recovery Modal */}
-      {showForgotModal && (
+      {showRecoveryModal && (
         <div
           className="fixed inset-0 z-50 bg-[#080F1C]/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
           role="dialog"
           aria-modal="true"
           aria-labelledby="recovery-modal-title"
-          aria-describedby="recovery-modal-description"
         >
-          {/* Backdrop click dismiss */}
-          <div
-            className="fixed inset-0 -z-10"
-            onClick={closeRecoveryModal}
-            aria-hidden="true"
-          />
-
+          <div className="fixed inset-0 -z-10" onClick={closeRecoveryModal} aria-hidden="true" />
           <div
             ref={modalContainerRef}
-            className="bg-white dark:bg-[#111F32] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+            className="bg-white dark:bg-[#111F32] rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 border-t sm:border border-[#E2E6E8] dark:border-[#293B52] shadow-2xl animate-fadeIn max-h-[90dvh] overflow-y-auto"
           >
-            {/* Mobile Sheet Handle */}
-            <div className="w-10 h-1 bg-[#D5DCDF] dark:bg-[#293B52] rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" aria-hidden="true" />
-
-            {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-[#E2E6E8] dark:border-[#293B52] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#E7F2ED] dark:bg-[#0E2F2B] text-[#1E7B54] dark:text-[#63D6C6] flex items-center justify-center font-bold shrink-0">
-                  <KeyRound className="w-5 h-5 text-[#1E7B54] dark:text-[#63D6C6]" aria-hidden="true" />
+                  <KeyRound className="w-5 h-5 text-[#1E7B54] dark:text-[#63D6C6]" />
                 </div>
                 <div>
                   <h3 id="recovery-modal-title" className="text-base font-bold text-[#203653] dark:text-[#F1F5F9]">
                     Institutional Password Recovery
                   </h3>
-                  <p id="recovery-modal-description" className="text-xs text-[#627084] dark:text-[#91A4BA]">
+                  <p className="text-xs text-[#627084] dark:text-[#91A4BA]">
                     Single-use cryptographic token reset (expires in 15 minutes)
                   </p>
                 </div>
@@ -1120,28 +629,25 @@ export const PortalSelectionView: React.FC = () => {
                 ref={modalCloseButtonRef}
                 type="button"
                 onClick={closeRecoveryModal}
-                aria-label="Close recovery modal"
-                className="p-1 rounded-lg text-[#627084] dark:text-[#91A4BA] hover:bg-slate-100 dark:hover:bg-[#17283D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6]"
+                className="p-1 rounded-lg text-[#627084] dark:text-[#91A4BA] hover:bg-slate-100 dark:hover:bg-[#17283D]"
               >
-                <X className="w-5 h-5" aria-hidden="true" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Feedback notification */}
             {forgotResult && (
               <div
                 role="alert"
-                aria-live="polite"
-                className={`p-3.5 rounded-lg text-xs font-medium space-y-1.5 flex items-start gap-2 ${
+                className={`p-3.5 rounded-lg text-xs font-medium flex items-start gap-2 ${
                   forgotResult.type === 'success'
-                    ? 'bg-[#E7F2ED] dark:bg-[#0E2F2B] border border-[#A8D5C2] dark:border-[#1E5C50] text-[#1E7B54] dark:text-[#63D6C6]'
-                    : 'bg-[#FDE8E8] dark:bg-[#2D1214] border border-[#F8B4B4] dark:border-[#5C2326] text-[#C93B3B] dark:text-[#F87171]'
+                    ? 'bg-[#E7F2ED] dark:bg-[#0E2F2B] border border-[#A8D5C2] text-[#1E7B54] dark:text-[#63D6C6]'
+                    : 'bg-[#FDE8E8] dark:bg-[#2D1214] border border-[#F8B4B4] text-[#C93B3B] dark:text-[#F87171]'
                 }`}
               >
                 {forgotResult.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 )}
                 <div>{forgotResult.message}</div>
               </div>
@@ -1169,10 +675,7 @@ export const PortalSelectionView: React.FC = () => {
                       });
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.error || 'Password reset request failed');
-                      setForgotResult({
-                        type: 'success',
-                        message: data.message,
-                      });
+                      setForgotResult({ type: 'success', message: data.message });
                     } catch (err: any) {
                       setForgotResult({ type: 'error', message: err.message });
                     } finally {
@@ -1188,8 +691,7 @@ export const PortalSelectionView: React.FC = () => {
                       className="text-xs font-semibold text-[#203653] dark:text-[#F1F5F9] flex items-center gap-1 mb-1"
                     >
                       <span>Institutional ID or Registered Email</span>
-                      <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                      <span className="sr-only">(required)</span>
+                      <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span>
                     </label>
                     <input
                       id="recovery-identifier-input"
@@ -1202,36 +704,19 @@ export const PortalSelectionView: React.FC = () => {
                           setForgotIdentifierError(!e.target.value.trim() ? 'Institutional ID or registered email is required' : null);
                         }
                       }}
-                      onBlur={() => {
-                        setForgotIdentifierTouched(true);
-                        setForgotIdentifierError(!forgotIdentifier.trim() ? 'Institutional ID or registered email is required' : null);
-                      }}
-                      aria-required="true"
-                      aria-invalid={forgotIdentifierTouched && !!forgotIdentifierError}
-                      aria-describedby={forgotIdentifierTouched && forgotIdentifierError ? 'recovery-id-error' : undefined}
-                      placeholder="e.g. 1SI21CS094 or admin@college.edu"
-                      className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 dark:placeholder-[#91A4BA]/60 outline-none transition-all ${
-                        forgotIdentifierTouched && forgotIdentifierError
-                          ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2D1214]'
-                          : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] dark:focus:border-[#63D6C6] focus:ring-1 focus:ring-[#63D6C6]'
-                      }`}
+                      placeholder="e.g. 1SI25CS042 or admin@sit.ac.in"
+                      className="w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3.5 py-2.5 text-[#203653] dark:text-[#F1F5F9] outline-none"
                     />
-                    {forgotIdentifierTouched && forgotIdentifierError && (
-                      <p id="recovery-id-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                        <span>{forgotIdentifierError}</span>
-                      </p>
-                    )}
                   </div>
 
                   <button
                     type="submit"
                     disabled={forgotLoading}
-                    className="w-full min-h-[42px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2"
+                    className="w-full min-h-[42px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {forgotLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                         <span>Dispatching Token...</span>
                       </>
                     ) : (
@@ -1292,40 +777,17 @@ export const PortalSelectionView: React.FC = () => {
                         className="text-[11px] font-semibold text-[#627084] dark:text-[#91A4BA] flex items-center gap-1 mb-1"
                       >
                         <span>Reset Token</span>
-                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                        <span className="sr-only">(required)</span>
+                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span>
                       </label>
                       <input
                         id="recovery-reset-token-input"
                         type="text"
                         required
                         value={resetTokenInput}
-                        onChange={(e) => {
-                          setResetTokenInput(e.target.value);
-                          if (resetTokenTouched) {
-                            setResetTokenError(!e.target.value.trim() ? 'Reset token is required' : null);
-                          }
-                        }}
-                        onBlur={() => {
-                          setResetTokenTouched(true);
-                          setResetTokenError(!resetTokenInput.trim() ? 'Reset token is required' : null);
-                        }}
-                        aria-required="true"
-                        aria-invalid={resetTokenTouched && !!resetTokenError}
-                        aria-describedby={resetTokenTouched && resetTokenError ? 'recovery-token-error' : undefined}
+                        onChange={(e) => setResetTokenInput(e.target.value)}
                         placeholder="Paste single-use token..."
-                        className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 dark:placeholder-[#91A4BA]/60 outline-none transition-all ${
-                          resetTokenTouched && resetTokenError
-                            ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2D1214]'
-                            : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] dark:focus:border-[#63D6C6] focus:ring-1 focus:ring-[#63D6C6]'
-                        }`}
+                        className="w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#F1F5F9] outline-none"
                       />
-                      {resetTokenTouched && resetTokenError && (
-                        <p id="recovery-token-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          <span>{resetTokenError}</span>
-                        </p>
-                      )}
                     </div>
 
                     <div>
@@ -1334,8 +796,7 @@ export const PortalSelectionView: React.FC = () => {
                         className="text-[11px] font-semibold text-[#627084] dark:text-[#91A4BA] flex items-center gap-1 mb-1"
                       >
                         <span>New Password (min. 8 characters)</span>
-                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold" aria-hidden="true">*</span>
-                        <span className="sr-only">(required)</span>
+                        <span className="text-[#C93B3B] dark:text-[#F87171] font-bold">*</span>
                       </label>
                       <input
                         id="recovery-new-password-input"
@@ -1343,42 +804,20 @@ export const PortalSelectionView: React.FC = () => {
                         required
                         minLength={8}
                         value={newPasswordInput}
-                        onChange={(e) => {
-                          setNewPasswordInput(e.target.value);
-                          if (newPasswordTouched) {
-                            setNewPasswordError(!e.target.value ? 'New password is required' : e.target.value.length < 8 ? 'Password must be at least 8 characters' : null);
-                          }
-                        }}
-                        onBlur={() => {
-                          setNewPasswordTouched(true);
-                          setNewPasswordError(!newPasswordInput ? 'New password is required' : newPasswordInput.length < 8 ? 'Password must be at least 8 characters' : null);
-                        }}
-                        aria-required="true"
-                        aria-invalid={newPasswordTouched && !!newPasswordError}
-                        aria-describedby={newPasswordTouched && newPasswordError ? 'recovery-new-pw-error' : undefined}
+                        onChange={(e) => setNewPasswordInput(e.target.value)}
                         placeholder="Enter new secure password..."
-                        className={`w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#F1F5F9] placeholder-[#627084]/60 dark:placeholder-[#91A4BA]/60 outline-none transition-all ${
-                          newPasswordTouched && newPasswordError
-                            ? 'border-[#C93B3B] dark:border-[#F87171] ring-2 ring-[#C93B3B]/20 dark:ring-[#F87171]/20 bg-[#FDF2F2] dark:bg-[#2D1214]'
-                            : 'border-[#E2E6E8] dark:border-[#293B52] focus:border-[#016A62] dark:focus:border-[#63D6C6] focus:ring-1 focus:ring-[#63D6C6]'
-                        }`}
+                        className="w-full text-xs font-mono bg-[#F7F6F1] dark:bg-[#0A1626] border rounded-xl px-3 py-2 text-[#203653] dark:text-[#F1F5F9] outline-none"
                       />
-                      {newPasswordTouched && newPasswordError && (
-                        <p id="recovery-new-pw-error" role="alert" className="text-xs text-[#C93B3B] dark:text-[#F87171] mt-1 flex items-center gap-1 font-medium">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          <span>{newPasswordError}</span>
-                        </p>
-                      )}
                     </div>
 
                     <button
                       type="submit"
                       disabled={forgotLoading || !resetTokenInput.trim() || newPasswordInput.length < 8}
-                      className="w-full min-h-[42px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2"
+                      className="w-full min-h-[42px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {forgotLoading ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+                          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                           <span>Updating Password...</span>
                         </>
                       ) : (
@@ -1393,7 +832,7 @@ export const PortalSelectionView: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeRecoveryModal}
-                  className="w-full min-h-[44px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#63D6C6] focus-visible:ring-offset-2"
+                  className="w-full min-h-[44px] py-2.5 px-4 bg-[#016A62] hover:bg-[#0d6f66] text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
                 >
                   Return to Institutional Sign In
                 </button>
