@@ -22,6 +22,10 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Final Release Gate Closure: Advisory Lock Verification & Connection Destruction on Unlock Failure**:
+  - **Canonical 64-bit Lock Constant**: Exact decimal `4922243409568615753` (`0x444f524d45584d49`, ASCII `'DORMEXMI'`).
+  - **Pool Contamination Guard**: `client.release(true)` destroys client connection on unlock failure in `withMigrationLock`.
+  - **Verification**: 475/475 automated tests passing across 51 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Final Release Gate Closure & Migration Serialization**:
   - **Migration Advisory Lock**: Implemented `withMigrationLock` in `src/db/migrate.ts` with lock ID `4922201997274735945`, wrapping `runMigrations(database)` and `seedDatabase(database)` in `src/app.ts` to serialize multi-instance startup.
   - **COOKIE_SECRET Startup Validation**: Enforced production startup requirement in `src/app.ts` for `COOKIE_SECRET` (>= 32 chars).

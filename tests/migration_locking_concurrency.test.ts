@@ -6,9 +6,14 @@ import { withMigrationLock, DORMEX_MIGRATION_LOCK_ID, reconcileAndRunMigrations 
 
 describe('DORMEX Migration Serialization & Advisory Locking Concurrency Suite', () => {
   it('defines a valid 64-bit integer constant for PostgreSQL advisory lock', () => {
-    expect(DORMEX_MIGRATION_LOCK_ID).toBe('4922201997274735945');
+    expect(DORMEX_MIGRATION_LOCK_ID).toBe('4922243409568615753');
     const b = BigInt(DORMEX_MIGRATION_LOCK_ID);
     expect(b > 0n).toBe(true);
+    // Verify exact hexadecimal representation matches ASCII 'DORMEXMI'
+    expect(b.toString(16)).toBe('444f524d45584d49');
+    expect(Buffer.from(b.toString(16), 'hex').toString('ascii')).toBe('DORMEXMI');
+    // Verify fits within signed 64-bit range
+    expect(b <= 9223372036854775807n).toBe(true);
   });
 
   it('serializes multiple concurrent startup executions via withMigrationLock without conflict', async () => {
@@ -71,6 +76,32 @@ describe('DORMEX Migration Serialization & Advisory Locking Concurrency Suite', 
     });
 
     expect(nextResult).toBe(1);
+  });
+
+  it('destroys the connection and does not return it to pool if unlock query fails', async () => {
+    let releasedWithDestroy = false;
+    const mockClient = {
+      query: async (text: string) => {
+        if (text.includes('pg_advisory_lock')) return { rows: [] };
+        if (text.includes('pg_advisory_unlock')) throw new Error('SIMULATED_UNLOCK_QUERY_FAILURE');
+        return { rows: [] };
+      },
+      release: (destroy?: boolean) => {
+        if (destroy) releasedWithDestroy = true;
+      },
+    };
+
+    const mockDb: any = {
+      getClient: async () => mockClient,
+    };
+
+    await expect(
+      withMigrationLock(mockDb, async () => {
+        return 'success_work';
+      })
+    ).rejects.toThrow('SIMULATED_UNLOCK_QUERY_FAILURE');
+
+    expect(releasedWithDestroy).toBe(true);
   });
 
   it('executes reconcileAndRunMigrations idempotently and records ledger accurately', async () => {

@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Final Release Gate Closure: Advisory Lock Verification & Connection Destruction on Unlock Failure**:
+  - **Canonical 64-bit Advisory Lock Identifier**: Aligned the PostgreSQL advisory lock identifier to the exact decimal BigInt `4922243409568615753` corresponding to hexadecimal `0x444f524d45584d49` (ASCII `'DORMEXMI'`), fitting safely in PostgreSQL's signed `BIGINT` range.
+  - **Connection Destruction Guard on Unlock Failure**: Updated `withMigrationLock` in `src/db/migrate.ts` and `getClient` in `src/db/index.ts` so that if an unlock query fails (`pg_advisory_unlock`), the client connection is destroyed (`client.release(true)`) and never returned to the pool while potentially holding a session-level advisory lock.
+  - **Advisory Lock Concurrency Test**: Added test in `tests/migration_locking_concurrency.test.ts` verifying that unlock failures invoke `client.release(true)` to destroy the connection and prevent pool contamination.
 - **Final Release Gate Closure & Migration Serialization**:
   - **PostgreSQL Advisory Locking for Schema Migrations**: Introduced `withMigrationLock` in `src/db/migrate.ts` using constant 64-bit lock identifier `4922201997274735945` (`DORMEX_MIGRATION_LOCK_ID`). Serializes startup migrations in `buildApp` and CLI executions in `reconcileAndRunMigrations` across concurrent container processes, guaranteeing atomic execution and clean lock release even on unexpected failure.
   - **COOKIE_SECRET Startup Validation**: Enforced production startup assertion in `src/app.ts` ensuring `COOKIE_SECRET` is supplied externally and has at least 32 characters, aligning with `JWT_SECRET` security requirements.

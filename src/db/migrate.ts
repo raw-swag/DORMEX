@@ -168,26 +168,46 @@ export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id,
 
 /**
  * PostgreSQL Advisory Lock identifier for DORMEX database schema migrations.
- * A 64-bit integer derived deterministically from CRC/hash of 'DORMEX_MIGRATION_LOCK'.
- * 0x444f524d45584d49 = 4922201997274735945 (bigint).
+ * A 64-bit signed integer derived deterministically from the 8-byte ASCII string 'DORMEXMI':
+ * ASCII 'DORMEXMI' -> hex 0x444f524d45584d49 -> decimal 4922243409568615753 (bigint).
+ * Fits safely within PostgreSQL signed BIGINT range (-9223372036854775808 to 9223372036854775807).
  */
-export const DORMEX_MIGRATION_LOCK_ID = '4922201997274735945';
+export const DORMEX_MIGRATION_LOCK_ID = '4922243409568615753';
 
 /**
  * Executes an operation under a dedicated PostgreSQL advisory lock, serializing
  * migrations across multiple concurrent application instances or independent processes.
+ * Ensures that if unlocking fails, the client connection is destroyed/discarded
+ * rather than returned to the pool while potentially holding the session-level lock.
  */
 export async function withMigrationLock<T>(db: DatabaseService, fn: () => Promise<T>): Promise<T> {
   const client = await db.getClient();
+  let lockAcquired = false;
+  let unlockFailed = false;
+
   try {
     await client.query(`SELECT pg_advisory_lock($1::bigint)`, [DORMEX_MIGRATION_LOCK_ID]);
-    try {
-      return await fn();
-    } finally {
-      await client.query(`SELECT pg_advisory_unlock($1::bigint)`, [DORMEX_MIGRATION_LOCK_ID]);
-    }
+    lockAcquired = true;
+    return await fn();
   } finally {
-    client.release();
+    if (lockAcquired) {
+      try {
+        await client.query(`SELECT pg_advisory_unlock($1::bigint)`, [DORMEX_MIGRATION_LOCK_ID]);
+      } catch (unlockErr) {
+        unlockFailed = true;
+        // Destroy connection if available on underlying client to ensure a potentially locked connection
+        // is never returned to the pool
+        try {
+          client.release(true as any);
+        } catch {
+          // Ignore secondary release error
+        }
+        throw unlockErr;
+      }
+    }
+    if (!unlockFailed) {
+      client.release();
+    }
   }
 }
 

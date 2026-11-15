@@ -7,7 +7,7 @@ export interface DatabaseService {
   query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
   getClient(): Promise<{
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
-    release(): void;
+    release(destroy?: boolean): void;
   }>;
   transaction<T>(fn: (client: {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
@@ -90,7 +90,7 @@ export class PostgresDatabaseService implements DatabaseService {
     const client = await this.pool.connect();
     return {
       query: <T extends QueryResultRow = any>(text: string, params?: any[]) => client.query<T>(text, params),
-      release: () => client.release(),
+      release: (destroy?: boolean) => client.release(destroy),
     };
   }
 
@@ -207,7 +207,11 @@ class MemoryDatabaseService implements DatabaseService {
     (client as any).isInMemory = true;
     return {
       query: <T extends QueryResultRow = any>(text: string, params?: any[]) => client.query(text, params),
-      release: () => client.release(),
+      release: (destroy?: boolean) => {
+        if (typeof client.release === 'function') {
+          client.release(destroy);
+        }
+      },
       isInMemory: true,
     };
   }
