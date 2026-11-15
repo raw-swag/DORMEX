@@ -22,6 +22,13 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Authentication Modernization (Stage 5: Complete WebAuthn, Passkey & Demo-System Decommissioning)**:
+  - **Complete WebAuthn & Passkey Decommissioning**: Fully removed `@simplewebauthn/server` and `@simplewebauthn/browser` packages, routes (`/api/demo/auth/*`, `/api/admin/devices/*`), challenge generation, and device management interfaces (`DeviceAuthService`, `DemoAuthModal.tsx`, `DeviceManagementView.tsx`).
+  - **Single-Source Institutional Authentication**: Restricted all authentication exclusively to official institutional channels: Identifier (USN or Staff ID) + Argon2id Password + Privileged TOTP MFA + Restricted Emergency Recovery Access.
+  - **Demo System Decommissioning**: Removed runtime synthetic demo provisioning, demo session cookies, `activeDemoSessions` memory maps, demo API routes (`/api/demo/*`), and runtime seeders (`scripts/seed-hosted-demo.ts`, `scripts/rollback-demo-provisioning.ts`).
+  - **Clean Configuration & Surface Area**: Cleaned `CORS_ALLOWED_ORIGINS` by removing legacy `WEBAUTHN_RP_IDS`, removed mock demo account directories, and purged obsolete test suites (`tests/device_auth_webauthn.test.ts`, `tests/demo_accounts_dynamic.test.ts`, `tests/hosted-demo-seed.test.ts`, `tests/demo-provisioning-rollback.test.ts`).
+  - **Database Migration 055**: Forward additive migration `055_decommission_webauthn_and_demo.sql` drops transient WebAuthn tables and safely revokes all historical hardware registration slots while preserving relational audit integrity and foreign key constraints.
+  - **Verification**: 466/466 automated tests passing across 51 test suites (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Institutional Authentication Modernization (Stage 4: Frontend UI, MFA Modals, Account Activation & End-to-End Integration)**:
   - **Zero Device Authentication**: Permanently removed all WebAuthn, passkey, Touch ID, Face ID, Windows Hello, and device hardware options from client components, navigation, and state models.
   - **Institutional Login UI**: Streamlined `PortalSelectionView.tsx` with dedicated Student (USN/college email) and Staff (Staff ID/institutional email) flows authenticated directly via `POST /api/auth/login`.

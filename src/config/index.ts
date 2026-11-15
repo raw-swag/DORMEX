@@ -49,7 +49,7 @@ export interface ServerConfig {
 }
 
 /**
- * Standard default RP IDs and origins for WebAuthn & CORS.
+ * Standard default origins for CORS.
  */
 export const PRODUCTION_DEFAULT_ALLOWED_ORIGINS = [
   'https://dormex-sit.vercel.app',
@@ -66,21 +66,6 @@ export const DEVELOPMENT_LOCAL_ORIGINS = [
 export const DEFAULT_ALLOWED_ORIGINS = [
   ...PRODUCTION_DEFAULT_ALLOWED_ORIGINS,
   ...DEVELOPMENT_LOCAL_ORIGINS,
-];
-
-export const PRODUCTION_DEFAULT_RP_IDS = [
-  'dormex-sit.vercel.app',
-  'dormex-api-s4qq.onrender.com',
-];
-
-export const DEVELOPMENT_LOCAL_RP_IDS = [
-  'localhost',
-  '127.0.0.1',
-];
-
-export const DEFAULT_RP_IDS = [
-  ...PRODUCTION_DEFAULT_RP_IDS,
-  ...DEVELOPMENT_LOCAL_RP_IDS,
 ];
 
 /**

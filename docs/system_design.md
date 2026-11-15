@@ -23,7 +23,7 @@ flowchart TD
     end
 
     subgraph Backend_Modules["Modular Monolith Domains (src/)"]
-        Auth_Mod["Auth & Policy (src/auth/)<br/>- RBAC Actor Resolution<br/>- WebAuthn Hardware Binding (3 Slots)"]
+        Auth_Mod["Auth & Policy (src/auth/)<br/>- RBAC Actor Resolution<br/>- Argon2id & Privileged TOTP MFA"]
         Gov_Mod["Institutional Governance (src/auth/governanceService.ts)<br/>- Singleton Chief Warden<br/>- Downward Authority Cascades"]
         Alloc_Mod["Allocation Engine (src/allocation/)<br/>- Turn Scheduling & FIFO Slots<br/>- Atomic Seat Reservations"]
         Inv_Mod["Inventory & Maps (src/inventory/)<br/>- Wings, CAD SVG Telemetry"]
@@ -55,9 +55,10 @@ flowchart TD
 ## 2. Backend Architecture & Domain Modularization
 
 ### A. Core Domain Responsibilities
-1. **`src/auth` (Authentication, Policy & Hardware Authorization)**:
+1. **`src/auth` (Authentication, Policy & Institutional Credential Authorization)**:
    - Server-authoritative actor resolution (`resolveAuthoritativeActor`). Resolves database roles, appointments, and building scopes per request.
-   - WebAuthn hardware device assertion: Strictly restricts hardware authentication to predefined slots `SLOT_01`, `SLOT_02`, and `SLOT_03`.
+   - Dual-algorithm asynchronous password verification (Argon2id default, transparent scrypt upgrade).
+   - Privileged TOTP MFA enrollment and atomic timestep replay protection for governance and administrative actions.
 2. **`src/auth/governanceService` (Institutional Governance)**:
    - Anchored to the `institutional_governance` singleton (`singleton_id = 1`).
    - Enforces downward-only authority cascades: Supervising Wardens manage Deputy Wardens within their assigned building; Deputy Wardens cannot revoke or review Wardens; Chief Warden maintains institution-wide oversight.
@@ -96,8 +97,8 @@ Previously, direct `fetch` and `apiFetch` calls were scattered across components
 
 ## 5. Security Invariants Checklist
 
-- [x] Exactly three authorized hardware device slots (`SLOT_01`, `SLOT_02`, `SLOT_03`).
 - [x] Zero hard-coded credentials or fake demo modes in frontend bundles.
-- [x] All 18 canonical demo accounts provisioned and database-backed.
+- [x] Authoritative student USN and institutional identity resolution.
+- [x] Privileged TOTP MFA step-up and anti-replay protection.
 - [x] Downward-only institutional governance hierarchy strictly enforced server-side.
 - [x] Immutable audit logs protected against `UPDATE` and `DELETE`.

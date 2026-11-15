@@ -245,14 +245,14 @@ describe('DORMEX Phase 2: Stage 3 Security Hardening & Integration Suite', () =>
     });
   });
 
-  describe('4. Regression Safety for Student & Device Management', () => {
-    it('ensures existing student waiting room and device slot operations remain unaffected', async () => {
-      // 1. Device slots probe still functions for SUPER_ADMIN
-      const deviceRes = await request(app)
-        .get('/api/admin/devices/slots')
+  describe('4. Regression Safety for Student & Governance Operations', () => {
+    it('ensures student waiting room and institutional governance operations remain unaffected', async () => {
+      // 1. Governance actions probe still functions for SUPER_ADMIN
+      const govRes = await request(app)
+        .get('/api/governance/actions')
         .set('x-user-id', 'usr_admin');
-      expect(deviceRes.status).toBe(200);
-      expect(Array.isArray(deviceRes.body.slots)).toBe(true);
+      expect(govRes.status).toBe(200);
+      expect(Array.isArray(govRes.body.actions)).toBe(true);
 
       // 2. Student waiting room join works intact
       const joinRes = await request(app)

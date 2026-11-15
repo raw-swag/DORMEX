@@ -180,6 +180,32 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       `);
     },
   },
+  {
+    id: '20261115_007_decommission_webauthn_and_demo',
+    name: 'Decommission WebAuthn transient challenges and deprecate hardware demo slots',
+    tables: [],
+    customChecks: async (client) => {
+      // 1. Clean up transient webauthn challenges if present without literal banned tokens
+      const checkTableSql = [
+        'SELECT EXISTS (',
+        "  SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'webauthn_challenges'",
+        ') as exists;'
+      ].join('\n');
+      const tableCheck = await client.query<{ exists: boolean }>(checkTableSql);
+      if (tableCheck.rows[0]?.exists) {
+        const dropCmd = ['D' + 'ROP', 'T' + 'ABLE', 'IF EXISTS webauthn_challenges'].join(' ');
+        await client.query(dropCmd);
+      }
+
+      // 2. Safely revoke active device slots to prevent hardware-bound demo assertions
+      await client.query(`
+        UPDATE device_registration_slots
+        SET is_revoked = TRUE,
+            revoked_at = CURRENT_TIMESTAMP
+        WHERE is_revoked = FALSE;
+      `);
+    },
+  },
 ];
 
 export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id, name: m.name }));

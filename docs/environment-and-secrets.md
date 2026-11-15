@@ -20,7 +20,7 @@ flowchart TD
         DB["PostgreSQL Pool (Render Managed DB)"]
         Auth["Fastify JWT & Scrypt Auth"]
         CORS["Strict Dynamic CORS Origin Filter"]
-        WebAuthn["Dynamic RP ID & WebAuthn Engine"]
+        MFA["Privileged TOTP MFA Engine"]
     end
 
     subgraph Client_Runtime["Browser Client Runtime (src/client)"]
@@ -32,7 +32,7 @@ flowchart TD
     ServerConfig --> DB
     ServerConfig --> Auth
     ServerConfig --> CORS
-    ServerConfig --> WebAuthn
+    ServerConfig --> MFA
 
     Vercel --> Rewrites
     Rewrites -->|Transparent Proxy| Backend_Runtime
@@ -58,7 +58,6 @@ These variables must be configured in Render's dashboard under **Environment**:
 | `JWT_SECRET` | **Yes** | 32+ characters | Cryptographic key for session token signing. Server halts if `< 32` chars. |
 | `COOKIE_SECRET` | Optional | 32+ characters | Cookie signature protection. |
 | `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated URLs | Additional production frontend domains permitted for CORS. |
-| `WEBAUTHN_RP_IDS` | Optional | Comma-separated hosts| Additional domain names authorized for WebAuthn authentication. |
 | `INITIAL_ADMIN_EMAIL` | Optional | `admin@college.edu` | Used only for initial migration bootstrap. |
 | `INITIAL_ADMIN_PASSWORD`| Optional | `<password>` | Used only for initial migration bootstrap. |
 | `SMTP_HOST` / `SMTP_USER` | Optional | Hostname / User | Email gateway credentials for password reset tokens. |

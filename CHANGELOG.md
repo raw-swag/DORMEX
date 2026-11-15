@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Institutional Authentication Modernization (Stage 5: Complete WebAuthn, Passkey & Demo-System Decommissioning)**:
+  - **Complete WebAuthn & Passkey Decommissioning**: Fully removed `@simplewebauthn/server` and `@simplewebauthn/browser` packages, routes (`/api/demo/auth/*`, `/api/admin/devices/*`), challenge generation, and device management interfaces (`DeviceAuthService`, `DemoAuthModal.tsx`, `DeviceManagementView.tsx`).
+  - **Single-Source Institutional Authentication**: Restricted all authentication exclusively to official institutional channels: Identifier (USN or Staff ID) + Argon2id Password + Privileged TOTP MFA + Restricted Emergency Recovery Access.
+  - **Demo System Decommissioning**: Removed runtime synthetic demo provisioning, demo session cookies, `activeDemoSessions` memory maps, demo API routes (`/api/demo/*`), and runtime seeders (`scripts/seed-hosted-demo.ts`, `scripts/rollback-demo-provisioning.ts`).
+  - **Clean Configuration & Surface Area**: Cleaned `CORS_ALLOWED_ORIGINS` by removing legacy `WEBAUTHN_RP_IDS`, removed mock demo account directories, and purged obsolete test suites (`tests/device_auth_webauthn.test.ts`, `tests/demo_accounts_dynamic.test.ts`, `tests/hosted-demo-seed.test.ts`, `tests/demo-provisioning-rollback.test.ts`).
+  - **Database Migration 055**: Forward additive migration `055_decommission_webauthn_and_demo.sql` drops transient WebAuthn tables and safely revokes all historical hardware registration slots while preserving relational audit integrity and foreign key constraints.
+  - **Verification**: 466/466 automated tests passing across 51 test suites (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - **Institutional Authentication Modernization (Stage 4: Frontend UI, MFA Modals, Account Activation & End-to-End Integration)**:
   - **Zero Device Authentication**: Completely retired all Device Biometrics, Hardware Keys, WebAuthn, Touch ID, Face ID, and Windows Hello choices from user-facing login portals and navigation.
   - **Institutional Login UI**: Upgraded `PortalSelectionView.tsx` with dedicated Student (USN/college email) and Staff (Staff ID/institutional email) flows authenticated directly via `POST /api/auth/login`.

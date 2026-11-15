@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { loadServerConfig, getSafeConfigDiagnostics, resetServerConfig, DEFAULT_ALLOWED_ORIGINS, PRODUCTION_DEFAULT_ALLOWED_ORIGINS } from '../src/config/index.js';
-import { DeviceAuthService } from '../src/auth/deviceAuthService.js';
 import { buildApp } from '../src/app.js';
 import { getDatabaseService, resetDatabaseInstance } from '../src/db/index.js';
 
@@ -293,7 +292,7 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
     });
   });
 
-  describe('3. Dynamic CORS & WebAuthn RP Configuration', () => {
+  describe('3. Dynamic CORS Configuration', () => {
     it('merges custom CORS_ALLOWED_ORIGINS with canonical defaults', () => {
       const customOrigin = 'https://custom-portal.college.edu';
       const cfg = loadServerConfig({
@@ -308,20 +307,6 @@ describe('DORMEX Environment Configuration & Secret Management Security Suite', 
       for (const def of PRODUCTION_DEFAULT_ALLOWED_ORIGINS) {
         expect(cfg.corsAllowedOrigins).toContain(def);
       }
-    });
-
-    it('DeviceAuthService dynamically incorporates configured WebAuthn RP IDs and Origins', () => {
-      process.env.WEBAUTHN_RP_IDS = 'custom.campus.edu,portal.dormex.edu';
-      process.env.CORS_ALLOWED_ORIGINS = 'https://custom.campus.edu';
-
-      const rpIds = DeviceAuthService.getApprovedRpIds();
-      expect(rpIds).toContain('custom.campus.edu');
-      expect(rpIds).toContain('portal.dormex.edu');
-      expect(rpIds).toContain('dormex-sit.vercel.app');
-
-      const origins = DeviceAuthService.getApprovedOrigins();
-      expect(origins).toContain('https://custom.campus.edu');
-      expect(origins).toContain('https://dormex-sit.vercel.app');
     });
   });
 

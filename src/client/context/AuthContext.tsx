@@ -249,8 +249,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('dormex_has_session');
     localStorage.removeItem('dormex_auth_session');
     localStorage.removeItem('dormex_current_portal');
-    localStorage.removeItem('dormex_dev_session');
-    localStorage.removeItem('dormex_hardware_unlocked');
   };
 
   const revokeAllUserSessions = async () => {
@@ -268,8 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('dormex_has_session');
     localStorage.removeItem('dormex_auth_session');
     localStorage.removeItem('dormex_current_portal');
-    localStorage.removeItem('dormex_dev_session');
-    localStorage.removeItem('dormex_hardware_unlocked');
   };
 
   return (
