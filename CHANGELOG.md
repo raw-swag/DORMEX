@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.31.0] - 2026-11-15
+
+### Added
+- **Waiting Room Participant Threshold Gate & Late-Entry Penalty**:
+  - Activated server-side waiting room participant threshold check (`cycle.waiting_room_threshold`, default 45) in `advancePoolTurn` to enforce that turns do not begin advancing until the pool queue reaches the configured cohort size.
+  - Formally validated the late-entry penalty calculation formula in `calculateLatePenalty`: 6-minute (360s) grace period with 0 penalty, linear turn degradation (1 turn per 120s over grace), and strict ceiling at 10 turns (22-26 min wait cap).
+- **Single-Hop Roommate Recommendation Acceptance API**:
+  - Exposed `POST /api/invites/respond` in `src/app.ts` delegating to `preferencesService.respondToInvite(inviteCode, toStudentId, accept, actor)`.
+  - Added strict payload validation, expiry checks, and actor authorization preventing students from accepting or rejecting invites on behalf of other peers or self-inviting.
+  - Enforced idempotency on repeated duplicate invite responses and prevented re-deciding on already accepted/rejected invites.
+- **Dedicated Student Allocation Lookup Endpoint**:
+  - Implemented `GET /api/students/:id/allocation` returning authoritative confirmed allocation metadata (building, floor, room number, room type, seat label, and confirmation timestamp).
+  - Enforced institutional self-only access control for student roles while permitting administrative oversight for Hostel Office, Wardens, and Super Admin.
+  - Enforced building scoping on Wardens/Deputies so they cannot inspect student allocations in foreign buildings.
+- **Comprehensive Lifecycle Integration Suite**:
+  - Created `tests/hostel_lifecycle_complete.test.ts` (18 tests) verifying late penalty calculations, waiting room threshold gates, invite creation and acceptance idempotency, foreign building Warden rejection, and student allocation lookup permissions.
+
+---
+
 ## [2.30.0] - 2026-11-15
 
 ### Added

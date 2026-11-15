@@ -90,17 +90,40 @@ export class PreferencesService {
       throw new Error('FORBIDDEN: Insufficient permissions to respond to invite');
     }
 
+    // Lock and inspect invite
     const res = await this.db.query(
-      `SELECT * FROM invites WHERE invite_code = $1 AND status = 'PENDING'`,
+      `SELECT * FROM invites WHERE invite_code = $1`,
       [inviteCode]
     );
 
     if (res.rows.length === 0) {
-      throw new Error('NOT_FOUND: Valid pending invite not found');
+      throw new Error('NOT_FOUND: Invite not found');
     }
 
     const invite = res.rows[0];
+
+    // Cannot respond to own created invite
+    if (invite.from_student_id === toStudentId) {
+      throw new Error('FORBIDDEN: Cannot accept or reject your own recommendation invite');
+    }
+
+    // Check expiry
+    if (new Date(invite.expires_at).getTime() <= Date.now()) {
+      if (invite.status === 'PENDING') {
+        await this.db.query(`UPDATE invites SET status = 'EXPIRED' WHERE id = $1`, [invite.id]);
+      }
+      throw new Error('INVITE_EXPIRED: The recommendation invite has expired');
+    }
+
+    // Check state idempotency: if already responded with same decision, return existing status
     const newStatus = accept ? 'ACCEPTED' : 'REJECTED';
+    if (invite.status === newStatus && invite.to_student_id === toStudentId) {
+      return { status: newStatus };
+    }
+
+    if (invite.status !== 'PENDING') {
+      throw new Error(`INVITE_UNAVAILABLE: Invite is no longer pending (${invite.status})`);
+    }
 
     await this.db.query(
       `UPDATE invites SET status = $1, to_student_id = $2 WHERE id = $3`,

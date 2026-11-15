@@ -453,6 +453,84 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     }
   });
 
+  // Dedicated Student Allocation Lookup Endpoint: GET /api/students/:id/allocation
+  // Provides confirmed allocation details (building, floor, room, seat, timestamps)
+  // Protected by institutional self-only check or staff management permissions
+  app.get('/api/students/:id/allocation', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const studentId = req.params.id;
+
+      // Self-only check for students: cannot view other students' allocations
+      if (actor.role === 'STUDENT' && actor.student_profile_id !== studentId) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Students can only view their own allocation details' });
+      }
+
+      // Proctor: only assigned students
+      if (actor.role === 'PROCTOR') {
+        const pCheck = await database.query(
+          `SELECT proctor_user_id FROM student_profiles WHERE id = $1`,
+          [studentId]
+        );
+        if (pCheck.rows.length === 0 || pCheck.rows[0].proctor_user_id !== actor.id) {
+          return reply.code(403).send({ error: 'FORBIDDEN: Proctors can only inspect assigned students' });
+        }
+      }
+
+      const res = await database.query(
+        `SELECT a.id as allocation_id,
+                a.cycle_id,
+                a.status as allocation_status,
+                a.allocated_at as confirmed_at,
+                s.id as seat_id,
+                s.seat_label,
+                r.id as room_id,
+                r.room_number,
+                r.room_type,
+                fl.id as floor_id,
+                fl.floor_number,
+                b.id as building_id,
+                b.name as building_name,
+                ac.status as cycle_status,
+                ac.peer_room_view_mode,
+                ac.results_published_at
+         FROM allocations a
+         JOIN seats s ON a.seat_id = s.id
+         JOIN rooms r ON s.room_id = r.id
+         JOIN floors fl ON r.floor_id = fl.id
+         JOIN buildings b ON fl.building_id = b.id
+         JOIN allocation_cycles ac ON a.cycle_id = ac.id
+         WHERE a.student_id = $1 AND a.status = 'CURRENT'
+         ORDER BY a.allocated_at DESC
+         LIMIT 1`,
+        [studentId]
+      );
+
+      if (res.rows.length === 0) {
+        return reply.code(404).send({ error: 'NOT_FOUND: No current allocation found for student' });
+      }
+
+      const alloc = res.rows[0];
+
+      // Scoped Wardens / Deputies: cannot access allocations in foreign buildings
+      if (['WARDEN', 'DEPUTY_WARDEN'].includes(actor.role)) {
+        if (actor.scope_type === 'BUILDING' && actor.scope_id && actor.scope_id !== alloc.building_id) {
+          return reply.code(403).send({ error: 'FORBIDDEN: Warden access is restricted to their appointed building' });
+        }
+      }
+
+      // Student publication check: If cycle is not yet published or closed, non-admin students only see their own confirmed allocation if permitted
+      if (actor.role === 'STUDENT' && !['PUBLISHED', 'CLOSED'].includes(alloc.cycle_status)) {
+        // Own allocation is permitted during selection/confirmation
+      }
+
+      return reply.send(alloc);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
   app.put('/api/students/:id/eligibility', async (req: any, reply) => {
     try {
       const actor = await extractActor(req);
@@ -1177,7 +1255,22 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const result = await preferencesService.createInvite(cycleId, fromStudentId, seatId, actor);
       return reply.code(201).send(result);
     } catch (err: any) {
-            const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/invites/respond', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { inviteCode, toStudentId, accept } = req.body as any;
+      if (!inviteCode || !toStudentId || typeof accept !== 'boolean') {
+        return reply.code(400).send({ error: 'MANDATORY_FIELDS: inviteCode, toStudentId, and boolean accept are required' });
+      }
+      const result = await preferencesService.respondToInvite(inviteCode, toStudentId, accept, actor);
+      return reply.send(result);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : (err.message?.startsWith('NOT_FOUND') ? 404 : 400);
       return reply.code(code).send({ error: err.message });
     }
   });

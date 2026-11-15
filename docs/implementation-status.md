@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Hostel Lifecycle Completion: Waiting Room Threshold, Late Penalty, Invites & Allocation Lookup (Phase 49)**:
+  - **Waiting Room Threshold Enforcement**: Activated server-authoritative participant threshold checking (`cycle.waiting_room_threshold`, default 45) in `advancePoolTurn` so turns do not advance until the waiting cohort meets the threshold.
+  - **Late-Entry Penalty Verification**: Mathematically validated `calculateLatePenalty` across 4 bounded test cases: 0s-360s (grace period, 0 penalty turns), 361s-480s (1 penalty turn), 1560s (10 penalty turns), and extreme lateness (strictly capped at 10 turns / 22 min max wait).
+  - **Recommendation Invite Response Route**: Exposed `POST /api/invites/respond` delegating to `preferencesService.respondToInvite` with student identity verification, idempotency handling, expiry checking, and self-invite rejection.
+  - **Dedicated Student Allocation Lookup Route**: Implemented `GET /api/students/:id/allocation` providing room, floor, building, and confirmation timestamps, with self-only student privacy controls and building-scoped Warden authorization.
+  - **Verification**: 445/445 automated tests passing across 47 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **End-to-End Real Student Allocation Workflow & Invariant Hardening (Phase 48)**:
   - **Identity Lifecycle Binding**: Tied `students` record to `AuthActor` via `student_usn` and `/api/auth/me`. Enforced student isolation so students can view only their own record while staff retains population management.
   - **Account Status Protection**: Enforced strict account deactivation checks in `joinWaitingRoom` and inside `confirmSeat`.

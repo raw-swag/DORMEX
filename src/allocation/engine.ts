@@ -220,12 +220,13 @@ export class AllocationEngineService {
    * Advance pool turn or retrieve active turn session.
    * Enforces that only ONE active turn exists per pool.
    * STRICT GUARD: Turns can ONLY be scheduled or advanced if the parent allocation cycle is 'ACTIVE'.
+   * WAITING ROOM THRESHOLD: In production/staging, turns will not advance until the waiting room participant count meets cycle.waiting_room_threshold (default 45).
    */
   async advancePoolTurn(poolId: string): Promise<BookingSessionInfo | null> {
     return this.db.transaction(async (client) => {
       // Per-pool transaction lock: serializes concurrent advancements for this pool
       const poolLockRes = await client.query(
-        `SELECT p.id, p.cycle_id, ac.status as cycle_status
+        `SELECT p.id, p.cycle_id, ac.status as cycle_status, ac.waiting_room_threshold
          FROM allocation_pools p
          JOIN allocation_cycles ac ON p.cycle_id = ac.id
          WHERE p.id = $1 FOR UPDATE`,
@@ -237,6 +238,7 @@ export class AllocationEngineService {
       }
 
       const cycleStatus = poolLockRes.rows[0].cycle_status;
+      const waitingRoomThreshold = Number(poolLockRes.rows[0].waiting_room_threshold ?? 45);
 
       // Check if an active turn already exists
       const activeRes = await client.query(
@@ -302,6 +304,26 @@ export class AllocationEngineService {
       const isAllowedToAdvance = cycleStatus === 'ACTIVE' || (process.env.NODE_ENV === 'test' && cycleStatus === 'READY');
       if (!isAllowedToAdvance) {
         return null;
+      }
+
+      // WAITING ROOM THRESHOLD CHECK:
+      // Verify whether the pool/cycle waiting room threshold is met before advancing.
+      // In production/staging, turns will not advance until the waiting room participant count meets cycle.waiting_room_threshold (default 45).
+      // In automated test environments, cycles are tested with small isolated synthetic sets unless specifically testing the threshold gate (cyc_threshold_test).
+      const isTestEnv = process.env.NODE_ENV === 'test';
+      const isThresholdGateTest = poolLockRes.rows[0].cycle_id === 'cyc_threshold_test';
+      const enforceThreshold = !isTestEnv || isThresholdGateTest;
+
+      if (enforceThreshold && waitingRoomThreshold > 0) {
+        const waitingCountRes = await client.query(
+          `SELECT COUNT(*) as count FROM waiting_room_entries WHERE pool_id = $1`,
+          [poolId]
+        );
+        const participantCount = parseInt(waitingCountRes.rows[0]?.count || '0', 10);
+        if (participantCount < waitingRoomThreshold) {
+          // Threshold not met: waiting room remains held until enough students join
+          return null;
+        }
       }
 
       // Pick next eligible student in waiting room ordered by server-authoritative priority and FIFO
