@@ -198,9 +198,9 @@ export async function withMigrationLock<T>(db: DatabaseService, fn: () => Promis
         // Destroy connection if available on underlying client to ensure a potentially locked connection
         // is never returned to the pool
         try {
-          client.release(true as any);
-        } catch {
-          // Ignore secondary release error
+          client.release(true);
+        } catch (releaseErr: any) {
+          console.error('[DATABASE_LOCK_WARNING] Failed to destroy connection after unlock error:', releaseErr?.message || releaseErr);
         }
         throw unlockErr;
       }
