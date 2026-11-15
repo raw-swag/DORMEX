@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Institutional Authentication Modernization (Stage 2: RFC 6238 TOTP MFA, AES-256-GCM Protection & Step-up Authorization)**:
+  - **RFC 6238 TOTP Engine**: Implemented RFC 4648 Base32 encoding/decoding, HMAC-SHA1 dynamic truncation, and 30-second timestep calculations with configurable drift window ($\pm 1$ timestep) in `src/auth/totpService.ts`.
+  - **AES-256-GCM Secret Encryption at Rest**: Implemented authenticated envelope encryption with 12-byte random IVs and 16-byte authentication tags, key versioning (`MFA_ENCRYPTION_KEY_V1`), and tamper detection in `src/auth/cryptoUtils.ts`.
+  - **Anti-Replay PostgreSQL Timestep Guard**: Enforced persistent atomic replay protection in `src/auth/service.ts` via `UPDATE user_mfa_settings SET last_verified_step = $matchedStep WHERE user_id = $userId AND last_verified_step < $matchedStep RETURNING id`, rejecting duplicate TOTP verification attempts within the allowable drift window.
+  - **Single-Use Emergency Recovery Codes**: Implemented 8 cryptographically secure `XXXX-XXXX-XXXX` recovery codes hashed with Argon2id and stored in `user_mfa_settings.recovery_code_hashes`, consumed atomically on emergency access via `POST /api/auth/mfa/recovery`.
+  - **Mid-Session Privilege Escalation Defense & Step-up Enforcement**: Privileged operations (`CHIEF_WARDEN`, `SUPER_ADMIN`, `WARDEN`, `DEPUTY_WARDEN`) strictly require an elevated session with `mfa_level='TOTP'`. Sessions lacking MFA step-up are restricted to authentication endpoints and fail closed with `403 FORBIDDEN: MFA_STEPUP_REQUIRED` on protected operations until elevated via `POST /api/auth/mfa/step-up`.
+  - **Distributed PostgreSQL Rate Limiting**: Added `DistributedRateLimiter` (`src/auth/rateLimiter.ts`) enforcing IP and identifier throttling on `auth_rate_limits` using SHA-256 hashed keys.
+  - **Stage 2 Verification Suite**: Added `tests/institutional_mfa_stage2.test.ts` (9 tests) verifying the RFC 6238 engine, AES-256-GCM envelope encryption, recovery code consumption, anti-replay timestep enforcement, mid-session step-up requirement, and privileged login challenge flows.
+- **Institutional Authentication Modernization (Stage 1: Disjoint Identity Resolution & Argon2id Password Engine)**:
+  - **Real Institutional Identifier Resolution**: Resolved disjoint student USNs (`1SI25<branch>XYZ`) and administrative staff IDs (`ADM001`, `WRD001`, `PRC001`, etc.) via database-authoritative lookup.
+  - **Argon2id Modern Password Hashing**: Implemented RFC 9106 Argon2id password hashing (`timeCost=3`, `memoryCost=65536`, `parallelism=4`) with backward-compatible asynchronous legacy scrypt verification and transparent optimistic hash upgrades.
+  - **Session Invalidation & Activation Vouchers**: Implemented single-use time-limited account activation and password recovery vouchers with session version epoch tracking.
+  - **Stage 1 Verification Suite**: Added `tests/institutional_auth_stage1.test.ts` (13 tests) covering Argon2id hashing, legacy upgrade, account activation, password reset, and disjoint resolution.
 - **Final Release Gate Closure: Advisory Lock Verification & Connection Destruction on Unlock Failure**:
   - **Canonical 64-bit Advisory Lock Identifier**: Aligned the PostgreSQL advisory lock identifier to the exact decimal BigInt `4922243409568615753` corresponding to hexadecimal `0x444f524d45584d49` (ASCII `'DORMEXMI'`), fitting safely in PostgreSQL's signed `BIGINT` range.
   - **Connection Destruction Guard on Unlock Failure**: Updated `withMigrationLock` in `src/db/migrate.ts` and `getClient` in `src/db/index.ts` so that if an unlock query fails (`pg_advisory_unlock`), the client connection is destroyed (`client.release(true)`) and never returned to the pool while potentially holding a session-level advisory lock.

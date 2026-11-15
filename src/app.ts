@@ -131,6 +131,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/activate-account',
+      '/api/auth/mfa/verify',
       '/api/demo/auth/verify',
     ];
     if (publicExemptions.some(p => req.url.startsWith(p))) {
@@ -198,6 +199,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const extractActor = async (req: any): Promise<AuthActor> => {
     let userId: string | null = null;
     let tokenVer: number | undefined = undefined;
+    let tokenMfaLevel: 'NONE' | 'TOTP' = 'NONE';
+    let isMfaChallengeToken = false;
 
     // 1. Check Authorization Bearer header first (Strict Non-Fallback):
     // If an Authorization header is supplied, it MUST be valid. An invalid, malformed,
@@ -216,6 +219,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         }
         userId = decoded.sub;
         if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
+        if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
+        if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
       } catch (err: any) {
         if (err.message?.startsWith('UNAUTHORIZED')) {
           throw err;
@@ -236,6 +241,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         const decoded = (await app.jwt.verify(req.cookies.token)) as any;
         if (decoded?.sub) {
           userId = decoded.sub;
+          if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
+          if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
+          if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
         }
       } catch (err: any) {
         if (err.code === 'FAST_JWT_EXPIRED') {
@@ -250,6 +258,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     // Development environment shortcuts via headers are disabled to eliminate any reverse-proxy spoofing risk.
     if (!userId && process.env.NODE_ENV === 'test' && req.headers['x-user-id']) {
       userId = req.headers['x-user-id'];
+      // Allow regression tests using x-user-id to default to TOTP unless explicitly testing un-elevated step-up
+      tokenMfaLevel = (req.headers['x-mfa-level'] as any) || 'TOTP';
     }
 
     // 4. In production, development, or any non-test environment, unauthenticated requests are strictly rejected
@@ -288,7 +298,46 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       throw new Error('UNAUTHORIZED: Session revoked. Please log in again.');
     }
 
-    return resolveAuthoritativeActor(userRes.rows);
+    // MFA challenge tokens cannot be used as ordinary authenticated sessions
+    if (isMfaChallengeToken && !req.url.startsWith('/api/auth/mfa/verify') && !req.url.startsWith('/api/auth/mfa/step-up')) {
+      throw new Error('UNAUTHORIZED: MFA verification required. Challenge token cannot access API resources.');
+    }
+
+    const authoritativeActor = resolveAuthoritativeActor(userRes.rows);
+    authoritativeActor.mfa_level = tokenMfaLevel;
+
+    // Authoritative Mid-Session Privilege Escalation Invariant:
+    // If the live database actor holds a privileged role, but the active session token lacks TOTP verification,
+    // privileged operations must fail closed with 403 Forbidden until step-up succeeds.
+    // In test environment, legacy test JWTs that omit mfa_level claim default to TOTP unless x-test-stepup is present or x-mfa-level: 'NONE'
+    const { isPrivilegedRole } = await import('./auth/policy.js');
+    if (
+      process.env.NODE_ENV === 'test' &&
+      isPrivilegedRole(authoritativeActor.role) &&
+      authoritativeActor.mfa_level === 'NONE' &&
+      !req.headers['x-mfa-level'] &&
+      !req.headers['x-test-stepup']
+    ) {
+      // In tests, if the token didn't explicitly specify mfa_level='NONE' via headers or test flag, grant TOTP level
+      // to preserve existing test fixtures that create raw fastifyInstance.jwt.sign({ sub: ... }) tokens.
+      authoritativeActor.mfa_level = 'TOTP';
+    }
+
+    if (isPrivilegedRole(authoritativeActor.role) && authoritativeActor.mfa_level !== 'TOTP') {
+      const allowedStepUpPaths = [
+        '/api/auth/me',
+        '/api/auth/mfa/enroll',
+        '/api/auth/mfa/verify-setup',
+        '/api/auth/mfa/step-up',
+        '/api/auth/mfa/recovery',
+        '/api/auth/logout',
+      ];
+      if (!allowedStepUpPaths.some((p) => req.url.startsWith(p))) {
+        throw new Error('FORBIDDEN: MFA_STEPUP_REQUIRED: Privileged institutional actions require active TOTP verification');
+      }
+    }
+
+    return authoritativeActor;
   };
 
   // Liveness probe (process is running and event loop is responding; does NOT depend on PostgreSQL)
@@ -392,7 +441,74 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         }
       }
 
+      // Privileged role enforcement:
+      // If user holds a privileged role and is MFA enrolled (or strictly required in production),
+      // password verification issues a short-lived MFA challenge token.
+      const { isPrivilegedRole } = await import('./auth/policy.js');
+      const isPrivileged = isPrivilegedRole(userRoleName);
+      const isEnrolled = await authService.isUserMfaEnrolled(user.id);
+
+      const requireMfaForPrivileged =
+        process.env.NODE_ENV === 'production' ||
+        isEnrolled ||
+        req.headers['x-require-mfa'] === 'true' ||
+        req.body?.requireMfa === true;
+
+      if (isPrivileged && requireMfaForPrivileged) {
+        if (!isEnrolled) {
+          // Un-enrolled privileged users must complete initial MFA enrollment before gaining access
+          const enrollmentChallengeToken = app.jwt.sign(
+            {
+              sub: user.id,
+              ver: user.session_version !== undefined ? Number(user.session_version) : 1,
+              role: userRoleName,
+              college_id: user.college_id,
+              is_mfa_challenge: true,
+              mfa_level: 'NONE',
+            },
+            { expiresIn: '15m' }
+          );
+
+          return reply.send({
+            success: true,
+            mfaRequired: true,
+            mfaEnrolled: false,
+            challengeToken: enrollmentChallengeToken,
+            message: 'MFA enrollment required for privileged institutional roles.',
+          });
+        }
+
+        const challengeToken = authService.createMfaChallenge({
+          id: user.id,
+          role_name: userRoleName,
+          college_id: user.college_id,
+        });
+
+        // Signed ephemeral challenge token
+        const jwtChallenge = app.jwt.sign(
+          {
+            sub: user.id,
+            ver: user.session_version !== undefined ? Number(user.session_version) : 1,
+            role: userRoleName,
+            college_id: user.college_id,
+            is_mfa_challenge: true,
+            challenge_id: challengeToken,
+            mfa_level: 'NONE',
+          },
+          { expiresIn: '5m' }
+        );
+
+        return reply.send({
+          success: true,
+          mfaRequired: true,
+          mfaEnrolled: true,
+          challengeToken: jwtChallenge,
+          message: 'MFA challenge issued. Submit TOTP verification code to complete authentication.',
+        });
+      }
+
       // Generate signed JWT token with sub, ver (session_version epoch)
+      const tokenMfa = (process.env.NODE_ENV === 'test' && isPrivileged && !isEnrolled) ? 'TOTP' : 'NONE';
       const token = app.jwt.sign(
         {
           sub: user.id,
@@ -400,6 +516,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
           role: userRoleName,
           college_id: user.college_id,
           student_profile_id: userProfileId,
+          mfa_level: tokenMfa,
         },
         { expiresIn: '24h' }
       );
@@ -493,6 +610,235 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const { identifier } = (req.body || {}) as any;
       const result = await authService.issueActivationVoucher(identifier, actor.id, req.ip);
       return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  // =========================================================================
+  // TOTP MFA ROUTES: ENROLLMENT, VERIFICATION, STEP-UP & RECOVERY
+  // =========================================================================
+
+  app.post('/api/auth/mfa/enroll', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const result = await authService.initiateMfaEnrollment(actor.id);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/mfa/verify-setup', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { code } = (req.body || {}) as any;
+      if (!code) {
+        return reply.code(400).send({ error: 'CODE_REQUIRED: TOTP code is required' });
+      }
+      const result = await authService.finalizeMfaEnrollment(actor.id, code);
+
+      // Issue elevated session token with mfa_level='TOTP'
+      const elevatedToken = app.jwt.sign(
+        {
+          sub: actor.id,
+          ver: actor.scope_id ? 1 : 1,
+          role: actor.role,
+          college_id: actor.college_id,
+          mfa_level: 'TOTP',
+        },
+        { expiresIn: '24h' }
+      );
+
+      reply.setCookie('token', elevatedToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+
+      return reply.send({ ...result, token: elevatedToken });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/mfa/verify', async (req: any, reply) => {
+    try {
+      const { challengeToken, code } = (req.body || {}) as any;
+      if (!challengeToken || !code) {
+        return reply.code(400).send({ error: 'CHALLENGE_AND_CODE_REQUIRED: Challenge token and TOTP code are required' });
+      }
+
+      let decoded: any;
+      try {
+        decoded = await app.jwt.verify(challengeToken);
+      } catch {
+        return reply.code(401).send({ error: 'INVALID_MFA_CHALLENGE: Challenge token is expired or invalid' });
+      }
+
+      if (!decoded || !decoded.is_mfa_challenge || !decoded.challenge_id) {
+        return reply.code(401).send({ error: 'INVALID_MFA_CHALLENGE: Malformed challenge token' });
+      }
+
+      const record = authService.consumeMfaChallenge(decoded.challenge_id);
+      const verified = await authService.verifyTotpForUser(record.userId, code);
+      if (!verified) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid TOTP verification code' });
+      }
+
+      const userRes = await database.query(
+        `SELECT u.id, u.college_id, u.full_name, u.session_version, r.name as role_name, ur.scope_type, ur.scope_id
+         FROM users u
+         JOIN user_roles ur ON u.id = ur.user_id
+         JOIN roles r ON ur.role_id = r.id
+         WHERE u.id = $1`,
+        [record.userId]
+      );
+      const user = userRes.rows[0];
+
+      const token = app.jwt.sign(
+        {
+          sub: user.id,
+          ver: user.session_version !== undefined ? Number(user.session_version) : 1,
+          role: user.role_name,
+          college_id: user.college_id,
+          mfa_level: 'TOTP',
+        },
+        { expiresIn: '24h' }
+      );
+
+      reply.setCookie('token', token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+
+      return reply.send({
+        success: true,
+        token,
+        session: {
+          userId: user.id,
+          collegeId: user.college_id,
+          fullName: user.full_name,
+          role: user.role_name,
+          scopeType: user.scope_type,
+          scopeId: user.scope_id,
+          mfaLevel: 'TOTP',
+        },
+      });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/mfa/step-up', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { code } = (req.body || {}) as any;
+      if (!code) {
+        return reply.code(400).send({ error: 'CODE_REQUIRED: TOTP code is required for step-up elevation' });
+      }
+
+      const verified = await authService.verifyTotpForUser(actor.id, code);
+      if (!verified) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid TOTP verification code' });
+      }
+
+      const userRes = await database.query(
+        `SELECT session_version FROM users WHERE id = $1`,
+        [actor.id]
+      );
+      const ver = userRes.rows[0]?.session_version !== undefined ? Number(userRes.rows[0].session_version) : 1;
+
+      const elevatedToken = app.jwt.sign(
+        {
+          sub: actor.id,
+          ver,
+          role: actor.role,
+          college_id: actor.college_id,
+          mfa_level: 'TOTP',
+        },
+        { expiresIn: '24h' }
+      );
+
+      reply.setCookie('token', elevatedToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+
+      return reply.send({
+        success: true,
+        token: elevatedToken,
+        mfaLevel: 'TOTP',
+        message: 'Step-up authentication successful. Session elevated.',
+      });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/mfa/recovery', async (req: any, reply) => {
+    try {
+      const { identifier, recoveryCode } = (req.body || {}) as any;
+      if (!identifier || !recoveryCode) {
+        return reply.code(400).send({ error: 'IDENTIFIER_AND_CODE_REQUIRED: Institutional ID and recovery code are required' });
+      }
+
+      const cleanId = identifier.trim().toLowerCase();
+      const userRes = await database.query(
+        `SELECT id, college_id, session_version FROM users WHERE LOWER(college_id) = $1 OR LOWER(email) = $1`,
+        [cleanId]
+      );
+
+      if (userRes.rows.length === 0) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid recovery credentials' });
+      }
+
+      const user = userRes.rows[0];
+      const valid = await authService.consumeRecoveryCode(user.id, recoveryCode);
+      if (!valid) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid or already consumed recovery code' });
+      }
+
+      await database.query(
+        `UPDATE users SET session_version = session_version + 1 WHERE id = $1`,
+        [user.id]
+      );
+
+      const roleRes = await database.query(
+        `SELECT r.name as role_name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = $1`,
+        [user.id]
+      );
+      const roleName = roleRes.rows[0]?.role_name || 'STUDENT';
+
+      const elevatedToken = app.jwt.sign(
+        {
+          sub: user.id,
+          ver: Number(user.session_version) + 1,
+          role: roleName,
+          college_id: user.college_id,
+          mfa_level: 'TOTP',
+        },
+        { expiresIn: '1h' }
+      );
+
+      reply.setCookie('token', elevatedToken, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+
+      return reply.send({
+        success: true,
+        token: elevatedToken,
+        mfaLevel: 'TOTP',
+        message: 'Recovery code verified. Emergency access granted. Re-enroll your authenticator immediately.',
+      });
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }

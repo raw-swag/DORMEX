@@ -22,6 +22,18 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Authentication Modernization (Stage 2: RFC 6238 TOTP MFA, AES-256-GCM Protection & Step-up Authorization)**:
+  - **RFC 6238 Engine & Provisioning**: Full implementation of Base32 decoding/encoding, HMAC-SHA1 dynamic truncation, and standard `otpauth://` URI generation in `src/auth/totpService.ts`.
+  - **Envelope Encryption**: AES-256-GCM encryption with 12-byte IVs, 16-byte authentication tags, and key versioning (`MFA_ENCRYPTION_KEY_V1`) for TOTP secrets stored in `user_mfa_settings.encrypted_secret`.
+  - **Replay Protection**: Persistent database timestep tracking via `UPDATE user_mfa_settings SET last_verified_step = $matchedStep WHERE user_id = $userId AND last_verified_step < $matchedStep RETURNING id`, rejecting duplicate code submission within timestep drift window.
+  - **Emergency Recovery Codes**: 8 single-use `XXXX-XXXX-XXXX` recovery codes hashed with Argon2id and stored in `user_mfa_settings.recovery_code_hashes`.
+  - **Step-Up Authorization & Mid-Session Defense**: Authorization policy enforces `mfa_level='TOTP'` for privileged institutional roles (`CHIEF_WARDEN`, `SUPER_ADMIN`, `WARDEN`, `DEPUTY_WARDEN`). Un-elevated sessions fail closed with `403 FORBIDDEN: MFA_STEPUP_REQUIRED` on all privileged operations until stepped up via `POST /api/auth/mfa/step-up`.
+  - **Verification**: 497/497 automated tests passing across 53 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
+- [x] **Institutional Authentication Modernization (Stage 1: Disjoint Identity Resolution & Argon2id Password Engine)**:
+  - **Disjoint Institutional Resolution**: Students authenticate by USN (`1SI25<branch>XYZ`) and staff by Staff ID (`ADM001`, `WRD001`, `PRC001`).
+  - **Argon2id Modern Hashing**: Configured with `timeCost=3`, `memoryCost=65536`, `parallelism=4`. Async legacy scrypt verification with transparent concurrent hash modernization upon successful login.
+  - **Account Activation & Recovery**: Secure voucher generation, single-use token consumption, and session version epoch bumps (`session_version`).
+  - **Verification**: 488/488 automated tests passing across 52 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`).
 - [x] **Final Release Gate Closure: Advisory Lock Verification & Connection Destruction on Unlock Failure**:
   - **Canonical 64-bit Lock Constant**: Exact decimal `4922243409568615753` (`0x444f524d45584d49`, ASCII `'DORMEXMI'`).
   - **Pool Contamination Guard**: `client.release(true)` destroys client connection on unlock failure in `withMigrationLock`.

@@ -53,6 +53,7 @@ export interface AuthActor {
   active_appointment_id?: string | null;
   active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
   supervisor_warden_appt_id?: string | null;
+  mfa_level?: 'NONE' | 'TOTP';
 }
 
 export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
@@ -415,4 +416,8 @@ export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
     active_appointment_status: primary.active_appointment_status || null,
     supervisor_warden_appt_id: primary.supervisor_warden_appt_id || null,
   };
+}
+
+export function isPrivilegedRole(role: string): boolean {
+  return ['CHIEF_WARDEN', 'SUPER_ADMIN', 'WARDEN', 'DEPUTY_WARDEN'].includes(role);
 }
