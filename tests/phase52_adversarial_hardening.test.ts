@@ -220,7 +220,7 @@ describe('Phase 52: Adversarial Integration, Authorization & Data Integrity Hard
 
       const statuses = [rev1.status, rev2.status];
       expect(statuses).toContain(200);
-      expect(statuses).toContain(400); // One must succeed, one must fail with ALREADY_RESOLVED
+      expect(statuses).toContain(409); // One must succeed, one must fail with 409 ALREADY_RESOLVED
     });
 
     it('a failed room transfer rolls back all mutations and does not leave student without allocation (Scenario 9)', async () => {
@@ -256,7 +256,7 @@ describe('Phase 52: Adversarial Integration, Authorization & Data Integrity Hard
         .set('authorization', `Bearer ${chiefWardenToken}`)
         .send({ decision: 'APPROVED', notes: 'Should fail due to occupied seat', targetSeatId: 'st_rm_bvb_215_A' });
 
-      expect(failRes.status).toBe(400);
+      expect(failRes.status).toBe(409);
       expect(failRes.body.error).toContain('SEAT_UNAVAILABLE');
 
       // Verify original allocation remains intact and status is CURRENT
@@ -317,7 +317,7 @@ describe('Phase 52: Adversarial Integration, Authorization & Data Integrity Hard
           description: 'Attempting to inspect or file private complaint for foreign room',
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(403);
       expect(res.body.error).toContain('FORBIDDEN');
     });
 

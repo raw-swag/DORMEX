@@ -588,6 +588,26 @@ export class AllocationEngineService {
       );
 
       // 5. Invalidate conflicting preferences & recommendations for this seat
+      // Preserve audit history for seat preferences before deletion
+      const stalePrefs = await client.query(
+        `SELECT id, student_id, cycle_id, room_id, seat_id FROM seat_preferences WHERE cycle_id = $1 AND seat_id = $2`,
+        [session.cycle_id, seatId]
+      );
+      for (const pref of stalePrefs.rows) {
+        const auditPrefId = `aud_pref_alloc_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        await client.query(
+          `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+           VALUES ($1, $2, 'PREFERENCE_INVALIDATED_BY_ALLOCATION', 'SEAT_PREFERENCE', $3, $4, $5, $6)`,
+          [
+            auditPrefId,
+            actor.id,
+            pref.id,
+            JSON.stringify(pref),
+            JSON.stringify({ status: 'INVALIDATED', invalidated_at: new Date().toISOString() }),
+            `Seat allocated to student '${session.student_id}' (Allocation: ${allocationId})`,
+          ]
+        );
+      }
       await client.query(
         `DELETE FROM seat_preferences WHERE cycle_id = $1 AND seat_id = $2`,
         [session.cycle_id, seatId]

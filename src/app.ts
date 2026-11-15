@@ -1425,7 +1425,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const result = await operationsService.submitComplaint(req.body as any, actor);
       return reply.code(201).send(result);
     } catch (err: any) {
-      return reply.code(400).send({ error: err.message });
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
+      return reply.code(code).send({ error: err.message });
     }
   });
 
@@ -1435,7 +1436,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const res = await operationsService.listComplaints(actor, req.query?.buildingId);
       return reply.send(res.rows);
     } catch (err: any) {
-      return reply.code(400).send({ error: err.message });
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
+      return reply.code(code).send({ error: err.message });
     }
   });
 
@@ -1445,7 +1447,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       await operationsService.updateComplaint(req.params.id, req.body as any, actor);
       return reply.send({ success: true, message: 'Complaint updated' });
     } catch (err: any) {
-            const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
       return reply.code(code).send({ error: err.message });
     }
   });
@@ -1456,7 +1458,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       await operationsService.voteComplaint(req.params.id, actor);
       return reply.send({ success: true });
     } catch (err: any) {
-      return reply.code(400).send({ error: err.message });
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
+      return reply.code(code).send({ error: err.message });
     }
   });
 
@@ -1490,7 +1493,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       await operationsService.reviewRoomChange(req.params.id, decision, notes, actor, targetSeatId);
       return reply.send({ success: true, message: `Room change request ${decision.toLowerCase()} successfully` });
     } catch (err: any) {
-            const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      let code = 400;
+      if (err.message?.startsWith('UNAUTHORIZED')) code = 401;
+      else if (err.message?.startsWith('FORBIDDEN')) code = 403;
+      else if (err.message?.startsWith('NOT_FOUND')) code = 404;
+      else if (err.message?.startsWith('ALREADY_RESOLVED') || err.message?.startsWith('SEAT_UNAVAILABLE')) code = 409;
       return reply.code(code).send({ error: err.message });
     }
   });

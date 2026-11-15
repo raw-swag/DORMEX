@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Final Authorization Boundary & Regression Corrections (Phase 53)**:
+  - **Cross-Building Transfer Authorization Invariant**: Enforced that scoped Wardens and Deputy Wardens can only review and approve room transfers where both current and target rooms belong strictly to their appointed building (`current_building_id === target_building_id && actor.scope_id === current_building_id`). Cross-building transfers (`current_building_id !== target_building_id`) strictly require institution-wide authorization (`CHIEF_WARDEN`, `SUPER_ADMIN`, or centralized `HOSTEL_OFFICE`), failing closed with `403 FORBIDDEN` for scoped Wardens.
+  - **Seat Preference History & Audit Trail Preservation**: Updated room change transfer approval (`src/operations/service.ts`) and seat confirmation (`src/allocation/engine.ts`) to query and record active seat preferences targeting the claimed seat into `audit_logs` (`PREFERENCE_INVALIDATED_BY_TRANSFER` / `PREFERENCE_INVALIDATED_BY_ALLOCATION`) before row deletion, capturing both before-state and after-state for dispute traceability.
+  - **Standardized HTTP Error Status Codes**: Standardized error responses across complaint operations and room change reviews:
+    - `401 UNAUTHORIZED` on unauthenticated requests or expired sessions.
+    - `403 FORBIDDEN` on role, building scope, or residency permission violations.
+    - `404 NOT_FOUND` on non-existent room change requests or resources.
+    - `409 CONFLICT` on already resolved room changes or occupied/unavailable target seats.
+    - `400 BAD REQUEST` on malformed inputs or validation failures.
+  - **Phase 52 Adversarial Test Suite Alignment**: Updated test assertions in `tests/phase52_adversarial_hardening.test.ts` to expect standardized `409` (conflict) and `403` (forbidden) status codes, reconciling the 10 automated test cases across 5 test suites.
+  - **Critical Integration Scenarios Suite (`tests/phase53_integration_scenarios.test.ts`)**: Added 6 automated end-to-end integration tests verifying maintenance-blocked seat booking rejection, cross-building transfer authorization enforcement, database-authoritative active turn recovery across simulated server restart, unpublished allocation confidentiality for non-admin students, seat preference invalidation audit trail preservation, and complaint manager building-scope boundary enforcement.
 - **Adversarial Integration, Authorization & Data Integrity Hardening (Phase 52)**:
   - Hardened room change review (`reviewRoomChange`) with explicit dual-building boundary checks (`current_building_id` and `target_building_id`), restricting Wardens and Deputy Wardens strictly to their appointed building scope.
   - Added atomic cancellation of outstanding invites, room recommendations, and roommate group member preferences (`seat_preferences`, `invites`, `roommate_group_members`) upon room change transfer approval.

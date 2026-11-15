@@ -260,9 +260,15 @@ export class OperationsService {
       if (reqRes.rows.length === 0) throw new Error('NOT_FOUND: Room change request not found');
       const request = reqRes.rows[0];
 
-      // Enforce Warden & Deputy building scoping on both source and destination
+      // Enforce Warden & Deputy building scoping on both source and destination:
+      // A building-scoped Warden or Deputy has authority ONLY over internal moves within their appointed building.
+      // Transfers involving two different buildings (A -> B or B -> A) cross institutional jurisdictional boundaries
+      // and strictly require institution-wide authorization (CHIEF_WARDEN, SUPER_ADMIN, or centralized HOSTEL_OFFICE).
       if (['WARDEN', 'DEPUTY_WARDEN'].includes(actor.role) && actor.scope_type === 'BUILDING' && actor.scope_id) {
-        if (actor.scope_id !== request.current_building_id && actor.scope_id !== request.target_building_id) {
+        if (request.current_building_id !== request.target_building_id) {
+          throw new Error('FORBIDDEN: Cross-building transfers require institution-wide authorization');
+        }
+        if (actor.scope_id !== request.current_building_id) {
           throw new Error('FORBIDDEN: Warden access is restricted to their appointed building');
         }
       }
@@ -320,6 +326,26 @@ export class OperationsService {
       );
 
       // Invalidate conflicting preferences, recommendations, and invites for the newly claimed seat
+      // 1. Audit log the seat preference invalidations before removal to preserve audit history and dispute trails
+      const stalePrefs = await client.query(
+        `SELECT id, student_id, cycle_id, room_id, seat_id FROM seat_preferences WHERE cycle_id = $1 AND seat_id = $2`,
+        [request.cycle_id, seatId]
+      );
+      for (const pref of stalePrefs.rows) {
+        const auditPrefId = `aud_pref_inv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        await client.query(
+          `INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, before_state, after_state, reason)
+           VALUES ($1, $2, 'PREFERENCE_INVALIDATED_BY_TRANSFER', 'SEAT_PREFERENCE', $3, $4, $5, $6)`,
+          [
+            auditPrefId,
+            actor.id,
+            pref.id,
+            JSON.stringify(pref),
+            JSON.stringify({ status: 'INVALIDATED', invalidated_at: new Date().toISOString() }),
+            `Seat claimed via room change transfer (Request: ${requestId})`,
+          ]
+        );
+      }
       await client.query(
         `DELETE FROM seat_preferences WHERE cycle_id = $1 AND seat_id = $2`,
         [request.cycle_id, seatId]
