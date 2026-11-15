@@ -162,6 +162,24 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       `, [targetLifecycle]);
     },
   },
+  {
+    id: '20261115_006_auth_modernization',
+    name: 'Authentication modernization, session invalidation epochs, purpose-bound tokens, and multi-instance security',
+    tables: ALL_33_SCHEMA_TABLES.filter((t) =>
+      ['user_mfa_settings', 'auth_rate_limits'].includes(t.tableName)
+    ),
+    customChecks: async (client) => {
+      // 1. Ensure existing users have default session_version of 1
+      await client.query(`
+        UPDATE users SET session_version = 1 WHERE session_version IS NULL;
+      `);
+
+      // 2. Ensure existing password_reset_tokens have default purpose of 'PASSWORD_RESET'
+      await client.query(`
+        UPDATE password_reset_tokens SET purpose = 'PASSWORD_RESET' WHERE purpose IS NULL;
+      `);
+    },
+  },
 ];
 
 export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id, name: m.name }));

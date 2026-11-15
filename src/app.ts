@@ -130,6 +130,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       '/api/auth/login',
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
+      '/api/auth/activate-account',
       '/api/demo/auth/verify',
     ];
     if (publicExemptions.some(p => req.url.startsWith(p))) {
@@ -196,6 +197,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   // Helper auth extractor (enforces cryptographically signed JWT tokens, with test/dev compatibility)
   const extractActor = async (req: any): Promise<AuthActor> => {
     let userId: string | null = null;
+    let tokenVer: number | undefined = undefined;
 
     // 1. Check Authorization Bearer header first (Strict Non-Fallback):
     // If an Authorization header is supplied, it MUST be valid. An invalid, malformed,
@@ -213,6 +215,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
           throw new Error('UNAUTHORIZED: Missing mandatory identity claims');
         }
         userId = decoded.sub;
+        if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
       } catch (err: any) {
         if (err.message?.startsWith('UNAUTHORIZED')) {
           throw err;
@@ -257,7 +260,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     // 5. Canonical database actor lookup and mapping
     // Load live role, active appointment, and building binding directly from database
     const userRes = await database.query(
-      `SELECT u.id, u.college_id, u.full_name, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id,
+      `SELECT u.id, u.college_id, u.full_name, u.session_version, u.is_active, r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id,
               st.usn as student_usn,
               COALESCE(wa.id, da.id) as active_appointment_id,
               COALESCE(wa.appointment_status, da.appointment_status) as active_appointment_status,
@@ -275,6 +278,14 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
     if (userRes.rows.length === 0) {
       throw new Error('UNAUTHORIZED: Invalid credentials');
+    }
+
+    const firstRow = userRes.rows[0];
+    if (firstRow.is_active === false) {
+      throw new Error('UNAUTHORIZED: Account is deactivated');
+    }
+    if (tokenVer !== undefined && firstRow.session_version !== undefined && tokenVer !== Number(firstRow.session_version)) {
+      throw new Error('UNAUTHORIZED: Session revoked. Please log in again.');
     }
 
     return resolveAuthoritativeActor(userRes.rows);
@@ -318,38 +329,77 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(400).send({ error: 'IDENTIFIER_REQUIRED: Institutional ID or email is required' });
       }
 
-      const userRes = await database.query(
-        `SELECT u.id, u.college_id, u.email, u.full_name, u.password_hash, u.is_active,
-                r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
-         FROM users u
-         JOIN user_roles ur ON u.id = ur.user_id
-         JOIN roles r ON ur.role_id = r.id
-         LEFT JOIN student_profiles sp ON u.id = sp.user_id
-         WHERE LOWER(u.college_id) = $1 OR LOWER(u.email) = $1`,
+      // Query authoritative users table first to evaluate existence, activation, and collisions
+      const userLookupRes = await database.query(
+        `SELECT id, college_id, email, full_name, password_hash, is_active, session_version
+         FROM users
+         WHERE LOWER(college_id) = $1 OR LOWER(email) = $1`,
         [cleanId]
       );
 
-      if (userRes.rows.length === 0) {
+      // Disjoint lookup check: if more than 1 user matches, fail closed immediately
+      if (userLookupRes.rows.length > 1) {
+        return reply.code(401).send({
+          error: 'UNAUTHORIZED: Ambiguous institutional identity. Please specify your official university email.',
+        });
+      }
+
+      if (userLookupRes.rows.length === 0) {
+        const { executeDummyPasswordVerification } = await import('./auth/passwordUtils.js');
+        await executeDummyPasswordVerification();
         return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid credentials' });
       }
 
-      const user = userRes.rows[0];
+      const user = userLookupRes.rows[0];
       if (!user.is_active) {
+        const { executeDummyPasswordVerification } = await import('./auth/passwordUtils.js');
+        await executeDummyPasswordVerification();
         return reply.code(401).send({ error: 'UNAUTHORIZED: Account is deactivated' });
       }
 
-      const passwordValid = authService.verifyPassword(rawPassword, user.password_hash);
-      if (!passwordValid) {
+      // Query role details
+      const userRes = await database.query(
+        `SELECT r.name as role_name, ur.scope_type, ur.scope_id, sp.id as profile_id
+         FROM user_roles ur
+         JOIN roles r ON ur.role_id = r.id
+         LEFT JOIN student_profiles sp ON sp.user_id = ur.user_id
+         WHERE ur.user_id = $1`,
+        [user.id]
+      );
+
+      const roleRow = userRes.rows[0] || {};
+      const userRoleName = roleRow.role_name || 'STUDENT';
+      const userScopeType = roleRow.scope_type || 'SYSTEM';
+      const userScopeId = roleRow.scope_id || null;
+      const userProfileId = roleRow.profile_id || null;
+
+      const { valid, needsRehash } = await authService.verifyPasswordAsync(rawPassword, user.password_hash);
+      if (!valid) {
         return reply.code(401).send({ error: 'UNAUTHORIZED: Invalid credentials' });
       }
 
-      // Generate signed JWT token
+      // Transparent upgrade of legacy scrypt hash to Argon2id with optimistic concurrency check
+      if (needsRehash) {
+        try {
+          const modernHash = await authService.hashPasswordArgon2(rawPassword);
+          await database.query(
+            `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $2 AND password_hash = $3`,
+            [modernHash, user.id, user.password_hash]
+          );
+        } catch {
+          // Non-blocking: authentication already succeeded
+        }
+      }
+
+      // Generate signed JWT token with sub, ver (session_version epoch)
       const token = app.jwt.sign(
         {
           sub: user.id,
-          role: user.role_name,
+          ver: user.session_version !== undefined ? Number(user.session_version) : 1,
+          role: userRoleName,
           college_id: user.college_id,
-          student_profile_id: user.profile_id,
+          student_profile_id: userProfileId,
         },
         { expiresIn: '24h' }
       );
@@ -368,10 +418,10 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
           userId: user.id,
           collegeId: user.college_id,
           fullName: user.full_name,
-          role: user.role_name,
-          scopeType: user.scope_type,
-          scopeId: user.scope_id,
-          profileId: user.profile_id,
+          role: userRoleName,
+          scopeType: userScopeType,
+          scopeId: userScopeId,
+          profileId: userProfileId,
         },
       });
     } catch (err: any) {
@@ -418,6 +468,30 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     try {
       const { token, newPassword } = (req.body || {}) as any;
       const result = await authService.resetPasswordWithToken(token, newPassword);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/activate-account', async (req: any, reply) => {
+    try {
+      const { token, initialPassword } = (req.body || {}) as any;
+      const result = await authService.activateAccountWithToken(token, initialPassword);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/issue-activation-voucher', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
+        return reply.code(403).send({ error: 'FORBIDDEN: Only hostel administration can issue activation vouchers' });
+      }
+      const { identifier } = (req.body || {}) as any;
+      const result = await authService.issueActivationVoucher(identifier, actor.id, req.ip);
       return reply.send(result);
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });

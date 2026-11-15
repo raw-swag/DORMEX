@@ -11,6 +11,7 @@ export const ALL_33_SCHEMA_TABLES: TableRequirement[] = [
       { name: 'phone', expectedTypes: ['text'], nullable: true },
       { name: 'password_hash', expectedTypes: ['text'], nullable: false },
       { name: 'is_active', expectedTypes: ['boolean'], nullable: false },
+      { name: 'session_version', expectedTypes: ['integer'], nullable: false },
       { name: 'created_at', expectedTypes: ['timestamp'], nullable: true },
       { name: 'updated_at', expectedTypes: ['timestamp'], nullable: true },
     ],
@@ -610,6 +611,7 @@ export const ALL_33_SCHEMA_TABLES: TableRequirement[] = [
       { name: 'id', expectedTypes: ['text'], nullable: false },
       { name: 'user_id', expectedTypes: ['text'], nullable: false },
       { name: 'token_hash', expectedTypes: ['text'], nullable: false },
+      { name: 'purpose', expectedTypes: ['text'], nullable: false },
       { name: 'expires_at', expectedTypes: ['timestamp'], nullable: false },
       { name: 'used_at', expectedTypes: ['timestamp'], nullable: true },
       { name: 'requested_ip', expectedTypes: ['text'], nullable: true },
@@ -715,5 +717,37 @@ export const ALL_33_SCHEMA_TABLES: TableRequirement[] = [
     foreignKeys: [
       { column: 'action_id', foreignTable: 'governance_actions', foreignColumn: 'id' },
     ],
+  },
+  {
+    tableName: 'user_mfa_settings',
+    columns: [
+      { name: 'id', expectedTypes: ['text'], nullable: false },
+      { name: 'user_id', expectedTypes: ['text'], nullable: false },
+      { name: 'encrypted_secret', expectedTypes: ['text'], nullable: false },
+      { name: 'secret_iv', expectedTypes: ['text'], nullable: false },
+      { name: 'secret_tag', expectedTypes: ['text'], nullable: false },
+      { name: 'key_version', expectedTypes: ['integer'], nullable: false },
+      { name: 'is_enabled', expectedTypes: ['boolean'], nullable: false },
+      { name: 'enrolled_at', expectedTypes: ['timestamp'], nullable: true },
+      { name: 'last_verified_step', expectedTypes: ['bigint', 'integer'], nullable: false },
+      { name: 'created_at', expectedTypes: ['timestamp'], nullable: true },
+      { name: 'updated_at', expectedTypes: ['timestamp'], nullable: true },
+    ],
+    primaryKey: ['id'],
+    uniqueConstraints: [['user_id']],
+    foreignKeys: [
+      { column: 'user_id', foreignTable: 'users', foreignColumn: 'id' },
+    ],
+  },
+  {
+    tableName: 'auth_rate_limits',
+    columns: [
+      { name: 'key_hash', expectedTypes: ['text'], nullable: false },
+      { name: 'attempts', expectedTypes: ['integer'], nullable: false },
+      { name: 'window_start_at', expectedTypes: ['timestamp'], nullable: true },
+      { name: 'blocked_until', expectedTypes: ['timestamp'], nullable: true },
+      { name: 'updated_at', expectedTypes: ['timestamp'], nullable: true },
+    ],
+    primaryKey: ['key_hash'],
   },
 ];

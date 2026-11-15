@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone TEXT,
     password_hash TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    session_version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -420,6 +421,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL,
+    purpose TEXT NOT NULL DEFAULT 'PASSWORD_RESET' CHECK (purpose IN ('ACTIVATION', 'PASSWORD_RESET', 'ADMIN_RECOVERY')),
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     used_at TIMESTAMP WITH TIME ZONE,
     requested_ip TEXT,
@@ -427,6 +429,35 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reset_token_hash ON password_reset_tokens (token_hash);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_lookup ON password_reset_tokens (token_hash, purpose, used_at, expires_at);
+
+CREATE TABLE IF NOT EXISTS user_mfa_settings (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    encrypted_secret TEXT NOT NULL,
+    secret_iv TEXT NOT NULL,
+    secret_tag TEXT NOT NULL,
+    key_version INT NOT NULL DEFAULT 1,
+    is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    enrolled_at TIMESTAMP WITH TIME ZONE,
+    last_verified_step BIGINT NOT NULL DEFAULT 0,
+    recovery_code_hashes TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_mfa_settings_user ON user_mfa_settings(user_id);
+
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+    key_hash TEXT PRIMARY KEY,
+    attempts INT NOT NULL DEFAULT 1,
+    window_start_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    blocked_until TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_blocked ON auth_rate_limits(blocked_until);
 
 -- Exactly Two Predefined Registration Slots for Hardware-Bound Demo Devices
 CREATE TABLE IF NOT EXISTS device_registration_slots (
@@ -659,6 +690,21 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
     await db.query(`DROP INDEX IF EXISTS uq_student_profiles_pool_priority`);
   } catch (err) {
     // Ignore if already applied
+  }
+
+  // Ensure users session_version exists
+  try {
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INT NOT NULL DEFAULT 1`);
+  } catch (err) {
+    // Ignore if already present
+  }
+
+  // Ensure password_reset_tokens purpose column and index exist
+  try {
+    await db.query(`ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'PASSWORD_RESET' CHECK (purpose IN ('ACTIVATION', 'PASSWORD_RESET', 'ADMIN_RECOVERY'))`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_lookup ON password_reset_tokens (token_hash, purpose, used_at, expires_at)`);
+  } catch (err) {
+    // Ignore if already present
   }
 
   // Ensure building lifecycle_status column exists
