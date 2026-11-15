@@ -168,6 +168,32 @@ class MemoryDatabaseService implements DatabaseService {
       },
     });
 
+    // Emulate PostgreSQL advisory lock functions in pg-mem
+    this.db.public.registerFunction({
+      name: 'pg_advisory_lock',
+      args: [(this.db.public as any).getType('integer')],
+      returns: (this.db.public as any).getType('bool'),
+      implementation: () => true,
+    });
+    this.db.public.registerFunction({
+      name: 'pg_advisory_lock',
+      args: [(this.db.public as any).getType('bigint')],
+      returns: (this.db.public as any).getType('bool'),
+      implementation: () => true,
+    });
+    this.db.public.registerFunction({
+      name: 'pg_advisory_unlock',
+      args: [(this.db.public as any).getType('integer')],
+      returns: (this.db.public as any).getType('bool'),
+      implementation: () => true,
+    });
+    this.db.public.registerFunction({
+      name: 'pg_advisory_unlock',
+      args: [(this.db.public as any).getType('bigint')],
+      returns: (this.db.public as any).getType('bool'),
+      implementation: () => true,
+    });
+
     const { Pool } = this.db.adapters.createPg();
     this.adapter = new Pool();
   }

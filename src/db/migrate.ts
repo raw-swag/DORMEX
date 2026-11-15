@@ -166,6 +166,31 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
 
 export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id, name: m.name }));
 
+/**
+ * PostgreSQL Advisory Lock identifier for DORMEX database schema migrations.
+ * A 64-bit integer derived deterministically from CRC/hash of 'DORMEX_MIGRATION_LOCK'.
+ * 0x444f524d45584d49 = 4922201997274735945 (bigint).
+ */
+export const DORMEX_MIGRATION_LOCK_ID = '4922201997274735945';
+
+/**
+ * Executes an operation under a dedicated PostgreSQL advisory lock, serializing
+ * migrations across multiple concurrent application instances or independent processes.
+ */
+export async function withMigrationLock<T>(db: DatabaseService, fn: () => Promise<T>): Promise<T> {
+  const client = await db.getClient();
+  try {
+    await client.query(`SELECT pg_advisory_lock($1::bigint)`, [DORMEX_MIGRATION_LOCK_ID]);
+    try {
+      return await fn();
+    } finally {
+      await client.query(`SELECT pg_advisory_unlock($1::bigint)`, [DORMEX_MIGRATION_LOCK_ID]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureMigrationTable(db: DatabaseService): Promise<void> {
   try {
     await db.query(`
@@ -377,64 +402,66 @@ export async function reconcileAndRunMigrations(
   alreadyRecorded: string[];
   demoCount: number;
 }> {
-  await ensureMigrationTable(db);
+  return withMigrationLock(db, async () => {
+    await ensureMigrationTable(db);
 
-  if (!skipSchemaExecution) {
-    // Apply DDL statements idempotently (CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS)
-    await runMigrations(db);
+    if (!skipSchemaExecution) {
+      // Apply DDL statements idempotently (CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS)
+      await runMigrations(db);
 
-    // Safe institutional roles and published terms check
-    await seedDatabase(db);
-  }
-
-  // Wrap migration verification and ledger updates in an atomic database transaction
-  const { applied, alreadyRecorded } = await db.transaction(async (client) => {
-    const appliedRows = await client.query<MigrationRecord>(
-      'SELECT id, name, applied_at FROM schema_migrations ORDER BY applied_at ASC;'
-    );
-    const appliedIds = new Set(appliedRows.rows.map((r) => r.id));
-
-    const appliedList: string[] = [];
-    const alreadyRecordedList: string[] = [];
-
-    for (const manifest of MIGRATION_MANIFESTS) {
-      if (!appliedIds.has(manifest.id)) {
-        // Step A: Deep verification of required tables and column structures
-        for (const tableReq of manifest.tables) {
-          await verifyTableStructure(client, tableReq);
-        }
-
-        // Step B: Custom semantic checks (roles, initial document presence)
-        if (manifest.customChecks) {
-          await manifest.customChecks(client);
-        }
-
-        // Step C: Atomically record migration in ledger
-        await client.query(
-          'INSERT INTO schema_migrations (id, name, applied_at) VALUES ($1, $2, CURRENT_TIMESTAMP)',
-          [manifest.id, manifest.name]
-        );
-        appliedList.push(manifest.id);
-      } else {
-        alreadyRecordedList.push(manifest.id);
-      }
+      // Safe institutional roles and published terms check
+      await seedDatabase(db);
     }
 
-    return { applied: appliedList, alreadyRecorded: alreadyRecordedList };
+    // Wrap migration verification and ledger updates in an atomic database transaction
+    const { applied, alreadyRecorded } = await db.transaction(async (client) => {
+      const appliedRows = await client.query<MigrationRecord>(
+        'SELECT id, name, applied_at FROM schema_migrations ORDER BY applied_at ASC;'
+      );
+      const appliedIds = new Set(appliedRows.rows.map((r) => r.id));
+
+      const appliedList: string[] = [];
+      const alreadyRecordedList: string[] = [];
+
+      for (const manifest of MIGRATION_MANIFESTS) {
+        if (!appliedIds.has(manifest.id)) {
+          // Step A: Deep verification of required tables and column structures
+          for (const tableReq of manifest.tables) {
+            await verifyTableStructure(client, tableReq);
+          }
+
+          // Step B: Custom semantic checks (roles, initial document presence)
+          if (manifest.customChecks) {
+            await manifest.customChecks(client);
+          }
+
+          // Step C: Atomically record migration in ledger
+          await client.query(
+            'INSERT INTO schema_migrations (id, name, applied_at) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+            [manifest.id, manifest.name]
+          );
+          appliedList.push(manifest.id);
+        } else {
+          alreadyRecordedList.push(manifest.id);
+        }
+      }
+
+      return { applied: appliedList, alreadyRecorded: alreadyRecordedList };
+    });
+
+    // Integrity assertion: ensure no synthetic demo students exist if in production mode
+    const countCheck = await db.query("SELECT COUNT(*) as count FROM users WHERE college_id LIKE 'DEMO-%';");
+    const demoCount = parseInt(countCheck.rows[0]?.count || '0', 10);
+    if (isProd && demoCount > 0) {
+      throw new Error(`CRITICAL_INTEGRITY_VIOLATION: Found ${demoCount} synthetic DEMO users in production database.`);
+    }
+
+    return {
+      applied,
+      alreadyRecorded,
+      demoCount,
+    };
   });
-
-  // Integrity assertion: ensure no synthetic demo students exist if in production mode
-  const countCheck = await db.query("SELECT COUNT(*) as count FROM users WHERE college_id LIKE 'DEMO-%';");
-  const demoCount = parseInt(countCheck.rows[0]?.count || '0', 10);
-  if (isProd && demoCount > 0) {
-    throw new Error(`CRITICAL_INTEGRITY_VIOLATION: Found ${demoCount} synthetic DEMO users in production database.`);
-  }
-
-  return {
-    applied,
-    alreadyRecorded,
-    demoCount,
-  };
 }
 
 async function migrate() {

@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { DatabaseService, getDatabaseService } from './db/index.js';
 import { runMigrations } from './db/schema.js';
 import { seedDatabase } from './db/seed.js';
+import { withMigrationLock } from './db/migrate.js';
 import { AllocationEngineService } from './allocation/engine.js';
 import { FloorPlanService } from './inventory/floorPlan.js';
 import { StudentRegistryService } from './student/registry.js';
@@ -28,9 +29,13 @@ import { AuthActor, resolveAuthoritativeActor } from './auth/policy.js';
 export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   const isProd = process.env.NODE_ENV === 'production';
   const jwtSecret = process.env.JWT_SECRET;
+  const cookieSecret = process.env.COOKIE_SECRET;
 
   if (isProd && (!jwtSecret || jwtSecret.trim().length < 32)) {
     throw new Error('FATAL_CONFIG_ERROR: Production requires an externally supplied JWT_SECRET with at least 32 characters');
+  }
+  if (isProd && (!cookieSecret || cookieSecret.trim().length < 32)) {
+    throw new Error('FATAL_CONFIG_ERROR: Production requires an externally supplied COOKIE_SECRET with at least 32 characters');
   }
 
   const app = Fastify({ 
@@ -39,9 +44,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
   });
   const database = db || getDatabaseService();
 
-  // Initialize DB schema & seed
-  await runMigrations(database);
-  await seedDatabase(database);
+  // Initialize DB schema & seed under PostgreSQL advisory lock to serialize concurrent instance startup
+  await withMigrationLock(database, async () => {
+    await runMigrations(database);
+    await seedDatabase(database);
+  });
 
     const serverConfig = getServerConfig(!!db?.isInMemory || !!database?.isInMemory);
   await app.register(cors, {

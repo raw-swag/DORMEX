@@ -22,6 +22,10 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Final Release Gate Closure & Migration Serialization**:
+  - **Migration Advisory Lock**: Implemented `withMigrationLock` in `src/db/migrate.ts` with lock ID `4922201997274735945`, wrapping `runMigrations(database)` and `seedDatabase(database)` in `src/app.ts` to serialize multi-instance startup.
+  - **COOKIE_SECRET Startup Validation**: Enforced production startup requirement in `src/app.ts` for `COOKIE_SECRET` (>= 32 chars).
+  - **Verification**: 474/474 automated tests passing across 51 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Final Authorization Boundary & Regression Corrections (Phase 53)**:
   - **Cross-Building Transfer Authorization Policy**: Hardened `reviewRoomChange` in `src/operations/service.ts` so scoped Wardens and Deputy Wardens can only review intra-building room changes (`current_building_id === target_building_id && actor.scope_id === current_building_id`). Inter-building transfers require institution-wide authorization (`CHIEF_WARDEN`, `SUPER_ADMIN`, or centralized `HOSTEL_OFFICE`), failing closed with `403 FORBIDDEN` for building-scoped actors.
   - **Seat Preference Audit Preservation**: Enhanced seat confirmation (`src/allocation/engine.ts`) and room change execution (`src/operations/service.ts`) to query active preferences targeting the claimed seat and record structured audit entries into `audit_logs` (`PREFERENCE_INVALIDATED_BY_TRANSFER` / `PREFERENCE_INVALIDATED_BY_ALLOCATION`) before row deletion, preserving complete before/after dispute trails.
