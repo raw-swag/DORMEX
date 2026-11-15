@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.31.0] - 2026-11-15
 
 ### Added
+- **Adversarial Integration, Authorization & Data Integrity Hardening (Phase 52)**:
+  - Hardened room change review (`reviewRoomChange`) with explicit dual-building boundary checks (`current_building_id` and `target_building_id`), restricting Wardens and Deputy Wardens strictly to their appointed building scope.
+  - Added atomic cancellation of outstanding invites, room recommendations, and roommate group member preferences (`seat_preferences`, `invites`, `roommate_group_members`) upon room change transfer approval.
+  - Hardened private room complaints (`submitComplaint`) with authoritative active room residence verification, preventing students from filing complaints for rooms they do not occupy.
+  - Enforced building scoping on administrative complaint updates (`updateComplaint`), preventing foreign Wardens/Deputies from updating complaints outside their appointed jurisdiction.
+  - Added existence checks on building floor (`POST /api/buildings/:id/floors`) and room provisioning (`POST /api/floors/:id/rooms`) endpoints.
+  - Created `tests/phase52_adversarial_hardening.test.ts` (10 tests) verifying stale session rejection upon appointment revocation, cross-building Deputy rejection, concurrent room change review race condition handling, atomic transfer failure rollback, transfer recommendation invalidation, private complaint room verification, invite acceptance seat isolation, and idempotent inventory provisioning.
 - **Building Lifecycle & Inventory Preparation Endpoints**:
   - Implemented `POST /api/buildings` allowing `HOSTEL_OFFICE` to draft/propose new buildings (`PROPOSED`, `is_active: false`) and `SUPER_ADMIN`/`CHIEF_WARDEN` to create active buildings.
   - Implemented `PUT /api/buildings/:id/lifecycle` restricted to `SUPER_ADMIN` and `CHIEF_WARDEN` for formal approval and activation (`PROPOSED`, `APPROVED`, `ACTIVE`, `INACTIVE`) with reviewer notes, timestamps, and audit compliance.

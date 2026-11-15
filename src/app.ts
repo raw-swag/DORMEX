@@ -785,6 +785,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to add floors' });
       }
 
+      const bCheck = await database.query(`SELECT id FROM buildings WHERE id = $1`, [req.params.id]);
+      if (bCheck.rows.length === 0) {
+        return reply.code(404).send({ error: 'NOT_FOUND: Building does not exist' });
+      }
+
       const { floor_number, label } = req.body || {};
       if (floor_number === undefined || !label) {
         return reply.code(400).send({ error: 'MANDATORY_FIELDS: floor_number and label are required' });
@@ -809,6 +814,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const actor = await extractActor(req);
       if (!['HOSTEL_OFFICE', 'SUPER_ADMIN', 'CHIEF_WARDEN'].includes(actor.role)) {
         return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions to add rooms' });
+      }
+
+      const fCheck = await database.query(`SELECT id FROM floors WHERE id = $1`, [req.params.id]);
+      if (fCheck.rows.length === 0) {
+        return reply.code(404).send({ error: 'NOT_FOUND: Floor does not exist' });
       }
 
       const { room_number, capacity, room_type } = req.body || {};
@@ -1075,7 +1085,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       );
       return reply.send({ success: true, seatId: req.params.id, status });
     } catch (err: any) {
-      return reply.code(400).send({ error: err.message });
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : (err.message?.startsWith('FORBIDDEN') ? 403 : 400);
+      return reply.code(code).send({ error: err.message });
     }
   });
 

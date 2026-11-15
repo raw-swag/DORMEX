@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { FastifyInstance } from 'fastify';
+import { getDatabaseService } from '../src/db/index.js';
 
 describe('DORMEX Phase 4: Workflows, Onboarding, Roommates & Administration', () => {
   let app: FastifyInstance;
+  let db: any;
 
   beforeAll(async () => {
-    app = await buildApp();
+    db = getDatabaseService();
+    app = await buildApp(db);
   }, 30000);
 
   describe('1. Student Registration & Profile Submission', () => {
@@ -324,6 +327,13 @@ describe('DORMEX Phase 4: Workflows, Onboarding, Roommates & Administration', ()
     });
 
     it('verifies that student public and private complaints appear in the Admin Complaint Desk and maintain privacy', async () => {
+      // Ensure Demo 2 has an active allocation in rm_bvb_202 for private room complaint verification
+      await db.query(
+        `INSERT INTO allocations (id, cycle_id, student_id, seat_id, status)
+         VALUES ('alloc_demo_002_priv', 'cyc_bvb_pilot_2026', 'prof_demo_002', 'st_rm_bvb_202_A', 'CURRENT')
+         ON CONFLICT (id) DO NOTHING`
+      );
+
       // 1. Demo 1 submits a public community complaint
       const pubRes = await app.inject({
         method: 'POST',

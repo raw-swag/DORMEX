@@ -21,6 +21,24 @@ export class OperationsService {
       throw new Error('FORBIDDEN: Insufficient permissions to create complaint');
     }
 
+    // Roommate verification for private room complaints: Author must be an active resident of the specified room
+    if (input.type === 'PRIVATE' && actor.role === 'STUDENT') {
+      if (!input.room_id) {
+        throw new Error('MANDATORY_FIELD: room_id is required for private room complaints');
+      }
+      const occRes = await this.db.query(
+        `SELECT a.id 
+         FROM allocations a
+         JOIN seats s ON a.seat_id = s.id
+         JOIN student_profiles sp ON a.student_id = sp.id
+         WHERE s.room_id = $1 AND a.status = 'CURRENT' AND (sp.user_id = $2 OR sp.id = $3)`,
+        [input.room_id, actor.id, actor.student_profile_id || '']
+      );
+      if (occRes.rows.length === 0) {
+        throw new Error('FORBIDDEN: Private room complaints can only be filed by verified room residents');
+      }
+    }
+
     const complaintId = `cmp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     await this.db.query(
@@ -107,7 +125,7 @@ export class OperationsService {
       LEFT JOIN rooms r ON c.room_id = r.id
     `;
 
-    if (actor.role === 'WARDEN' && actor.scope_type === 'BUILDING' && actor.scope_id) {
+    if (['WARDEN', 'DEPUTY_WARDEN'].includes(actor.role) && actor.scope_type === 'BUILDING' && actor.scope_id) {
       sql += ` WHERE c.building_id = $1 `;
       params.push(actor.scope_id);
     } else if (buildingId) {
@@ -228,11 +246,26 @@ export class OperationsService {
 
     return this.db.transaction(async (client) => {
       const reqRes = await client.query(
-        `SELECT * FROM room_change_requests WHERE id = $1 FOR UPDATE`,
+        `SELECT rcr.*, cur_fl.building_id as current_building_id, tar_fl.building_id as target_building_id
+         FROM room_change_requests rcr
+         JOIN allocations cur_a ON rcr.current_allocation_id = cur_a.id
+         JOIN seats cur_s ON cur_a.seat_id = cur_s.id
+         JOIN rooms cur_r ON cur_s.room_id = cur_r.id
+         JOIN floors cur_fl ON cur_r.floor_id = cur_fl.id
+         JOIN rooms tar_r ON rcr.target_room_id = tar_r.id
+         JOIN floors tar_fl ON tar_r.floor_id = tar_fl.id
+         WHERE rcr.id = $1 FOR UPDATE`,
         [requestId]
       );
       if (reqRes.rows.length === 0) throw new Error('NOT_FOUND: Room change request not found');
       const request = reqRes.rows[0];
+
+      // Enforce Warden & Deputy building scoping on both source and destination
+      if (['WARDEN', 'DEPUTY_WARDEN'].includes(actor.role) && actor.scope_type === 'BUILDING' && actor.scope_id) {
+        if (actor.scope_id !== request.current_building_id && actor.scope_id !== request.target_building_id) {
+          throw new Error('FORBIDDEN: Warden access is restricted to their appointed building');
+        }
+      }
 
       if (request.status !== 'PENDING') {
         throw new Error(`ALREADY_RESOLVED: Request is already ${request.status}`);
@@ -284,6 +317,20 @@ export class OperationsService {
         `INSERT INTO allocations (id, cycle_id, student_id, seat_id, status)
          VALUES ($1, $2, $3, $4, 'CURRENT')`,
         [newAllocId, request.cycle_id, request.student_id, seatId]
+      );
+
+      // Invalidate conflicting preferences, recommendations, and invites for the newly claimed seat
+      await client.query(
+        `DELETE FROM seat_preferences WHERE cycle_id = $1 AND seat_id = $2`,
+        [request.cycle_id, seatId]
+      );
+      await client.query(
+        `UPDATE invites SET status = 'INVALIDATED' WHERE cycle_id = $1 AND seat_id = $2 AND status = 'PENDING'`,
+        [request.cycle_id, seatId]
+      );
+      await client.query(
+        `UPDATE roommate_group_members SET status = 'INVALIDATED' WHERE preferred_seat_id = $1 AND status = 'PENDING'`,
+        [seatId]
       );
 
       await client.query(
@@ -360,6 +407,14 @@ export class OperationsService {
   ): Promise<void> {
     if (!can(actor, 'complaint.manage')) {
       throw new Error('FORBIDDEN: Insufficient permissions to manage complaint');
+    }
+
+    // Scoped Warden & Deputy check: cannot manage complaints outside appointed building
+    if (['WARDEN', 'DEPUTY_WARDEN'].includes(actor.role) && actor.scope_type === 'BUILDING' && actor.scope_id) {
+      const cmpRes = await this.db.query(`SELECT building_id FROM complaints WHERE id = $1`, [complaintId]);
+      if (cmpRes.rows.length === 0 || cmpRes.rows[0].building_id !== actor.scope_id) {
+        throw new Error('FORBIDDEN: Warden access is restricted to their appointed building');
+      }
     }
 
     await this.db.query(

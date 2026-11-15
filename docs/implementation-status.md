@@ -22,6 +22,11 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Adversarial Integration, Authorization & Data Integrity Hardening (Phase 52)**:
+  - **Room Change Dual-Building Scope & Invariant Protection**: Hardened `reviewRoomChange` to inspect both source and destination building IDs against the reviewing actor's scope. Added automatic invalidation of stale wishlist entries, roommate invitations, and group requests when a seat is claimed via transfer.
+  - **Private Room Complaint Resident Verification**: Required active verified residency (`allocations.status = 'CURRENT'`) for students filing private room complaints.
+  - **Warden Scope Enforcement on Complaints**: Restricted complaint assignment and resolution in `updateComplaint` to the appointed building for Wardens and Deputy Wardens.
+  - **Verification**: 464/464 automated tests passing across 49 test files (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Complete Institutional Workflows & Cross-System Integration (Phase 51)**:
   - **Building & Inventory Lifecycle Workflow**: Added `POST /api/buildings` (Hostel Office draft proposal / Admin creation), `PUT /api/buildings/:id/lifecycle` (Chief Warden / Super Admin activation & review), `POST /api/buildings/:id/floors` (floor layout management), and `POST /api/floors/:id/rooms` (automatic room capacity to seat unit synchronization).
   - **Single-Hop Roommate Coordination**: Verified and hardened invite creation, recipient identity validation, expiration enforcement, idempotency, and non-chaining invariants.
