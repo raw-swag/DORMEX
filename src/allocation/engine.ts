@@ -24,6 +24,149 @@ export class AllocationEngineService {
   constructor(private db: DatabaseService) {}
 
   /**
+   * Helper: Trigger rolling auto-refill atomically under an active cycle transaction.
+   * Promotes the next eligible WAITING candidate to ADMITTED while respecting
+   * the standard (15) vs reserved priority (5) admission limits and the max admitted cap (20).
+   */
+  async triggerRollingRefill(
+    client: any,
+    cycleId: string
+  ): Promise<{ admittedCandidateId: string | null; totalAdmitted: number }> {
+    const cycleCapRes = await client.query(
+      `SELECT max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+       FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
+      [cycleId]
+    );
+    if (cycleCapRes.rows.length === 0) {
+      return { admittedCandidateId: null, totalAdmitted: 0 };
+    }
+
+    const maxCap = Number(cycleCapRes.rows[0].max_admitted_capacity ?? 20);
+    const stdCap = Number(cycleCapRes.rows[0].standard_admission_capacity ?? 15);
+    const resCap = Number(cycleCapRes.rows[0].reserved_priority_capacity ?? 5);
+
+    // Current admitted participants
+    const activeRes = await client.query(
+      `SELECT wre.id, sp.quota_category, sp.assigned_priority, syp.assigned_priority as yearwise_priority
+       FROM waiting_room_entries wre
+       JOIN student_profiles sp ON wre.student_id = sp.id
+       LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+       LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
+            AND syp.academic_year = sp.academic_year
+       WHERE wre.cycle_id = $1 AND wre.status IN ('ADMITTED', 'ACTIVE_TURN')`,
+      [cycleId]
+    );
+
+    const currentlyAdmitted = activeRes.rows.length;
+    if (currentlyAdmitted >= maxCap) {
+      return { admittedCandidateId: null, totalAdmitted: currentlyAdmitted };
+    }
+
+    // Determine currently active priority candidates (e.g. non-GENERAL quota, or designated priority)
+    const activePriorityCount = activeRes.rows.filter(
+      (r: any) => r.quota_category !== 'GENERAL' || r.yearwise_priority || r.assigned_priority
+    ).length;
+    const activeStandardCount = currentlyAdmitted - activePriorityCount;
+
+    // A standard candidate can only be admitted if activeStandardCount < stdCap OR if total admitted is below maxCap and priority capacity was not consumed
+    // Default model: 15 standard + 5 reserved. Standard candidates fill standard slots up to stdCap.
+    // When vacancies exist up to maxCap, candidates are admitted if under capacity.
+    const canAdmitStandard = activeStandardCount < stdCap || (currentlyAdmitted < maxCap && activePriorityCount >= resCap);
+    const canAdmitPriority = currentlyAdmitted < maxCap;
+
+    // Pick next candidate that satisfies eligibility
+    const waitingRes = await client.query(
+      `SELECT wre.id, wre.student_id, sp.quota_category, sp.assigned_priority, syp.assigned_priority as yearwise_priority
+       FROM waiting_room_entries wre
+       JOIN student_profiles sp ON wre.student_id = sp.id
+       LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+       LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
+            AND syp.academic_year = sp.academic_year
+       WHERE wre.cycle_id = $1 AND wre.status = 'WAITING'
+       ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
+                wre.joined_at ASC
+       FOR UPDATE`,
+      [cycleId]
+    );
+
+    let chosenCandidate: any = null;
+    for (const cand of waitingRes.rows) {
+      const isPriority = cand.quota_category !== 'GENERAL' || cand.yearwise_priority || cand.assigned_priority;
+      if (isPriority && canAdmitPriority) {
+        chosenCandidate = cand;
+        break;
+      }
+      if (!isPriority && canAdmitStandard) {
+        chosenCandidate = cand;
+        break;
+      }
+    }
+
+    if (!chosenCandidate) {
+      return { admittedCandidateId: null, totalAdmitted: currentlyAdmitted };
+    }
+
+    await client.query(
+      `UPDATE waiting_room_entries SET status = 'ADMITTED' WHERE id = $1`,
+      [chosenCandidate.id]
+    );
+
+    return { admittedCandidateId: chosenCandidate.id, totalAdmitted: currentlyAdmitted + 1 };
+  }
+
+  /**
+   * Explicit Participant Exit / Cancellation from Waiting Room or Active Turn.
+   * Atomically releases admission slot and triggers rolling refill.
+   */
+  async leaveWaitingRoom(
+    cycleId: string,
+    studentProfileId: string,
+    actor: AuthActor
+  ): Promise<{ status: 'CANCELLED' | 'EXITED'; refilledCandidateId: string | null }> {
+    if (actor.role === 'STUDENT' && actor.student_profile_id !== studentProfileId) {
+      throw new Error('FORBIDDEN: Cannot cancel or leave on behalf of another student');
+    }
+
+    return this.db.transaction(async (client) => {
+      const entryRes = await client.query(
+        `SELECT id, status FROM waiting_room_entries
+         WHERE cycle_id = $1 AND student_id = $2 FOR UPDATE`,
+        [cycleId, studentProfileId]
+      );
+
+      if (entryRes.rows.length === 0) {
+        throw new Error('NOT_FOUND: Student is not in the waiting room for this cycle');
+      }
+
+      const currentStatus = entryRes.rows[0].status;
+      if (['CONFIRMED', 'CANCELLED', 'SKIPPED'].includes(currentStatus)) {
+        return { status: 'EXITED', refilledCandidateId: null };
+      }
+
+      // Mark cancelled
+      await client.query(
+        `UPDATE waiting_room_entries SET status = 'CANCELLED' WHERE id = $1`,
+        [entryRes.rows[0].id]
+      );
+
+      // If they had an active booking session, expire/cancel it
+      await client.query(
+        `UPDATE booking_sessions SET status = 'CANCELLED' WHERE cycle_id = $1 AND student_id = $2 AND status = 'ACTIVE'`,
+        [cycleId, studentProfileId]
+      );
+
+      // If they held an admitted or active turn slot, trigger rolling refill
+      let refilledCandidateId: string | null = null;
+      if (['ADMITTED', 'ACTIVE_TURN'].includes(currentStatus)) {
+        const refillRes = await this.triggerRollingRefill(client, cycleId);
+        refilledCandidateId = refillRes.admittedCandidateId;
+      }
+
+      return { status: 'CANCELLED', refilledCandidateId };
+    });
+  }
+
+  /**
    * Validate that concurrent active pools have strictly disjoint seat inventory.
    * If two active pools share any seats, an error is thrown.
    */
@@ -297,6 +440,8 @@ export class AllocationEngineService {
             `UPDATE waiting_room_entries SET status = 'SKIPPED' WHERE cycle_id = $1 AND student_id = $2`,
             [sess.cycle_id, sess.student_id]
           );
+          // Rolling refill on turn expiration:
+          await this.triggerRollingRefill(client, sess.cycle_id);
         }
       }
 
@@ -460,6 +605,7 @@ export class AllocationEngineService {
           `UPDATE waiting_room_entries SET status = 'SKIPPED' WHERE cycle_id = $1 AND student_id = $2`,
           [session.cycle_id, session.student_id]
         );
+        await this.triggerRollingRefill(client, session.cycle_id);
         throw new Error('TURN_EXPIRED: The allotted selection turn has expired');
       }
 
@@ -610,42 +756,7 @@ export class AllocationEngineService {
       // When a participant confirms their seat and exits the active set,
       // immediately and atomically admit the next eligible waiting candidate
       // respecting standard (15) vs reserved priority (5) capacities.
-      const cycleCapRes = await client.query(
-        `SELECT max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
-         FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
-        [session.cycle_id]
-      );
-      if (cycleCapRes.rows.length > 0) {
-        const { max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity } = cycleCapRes.rows[0];
-        const activeCountRes = await client.query(
-          `SELECT COUNT(*) as count FROM waiting_room_entries WHERE cycle_id = $1 AND status IN ('ADMITTED', 'ACTIVE_TURN')`,
-          [session.cycle_id]
-        );
-        const activeCount = parseInt(activeCountRes.rows[0]?.count || '0', 10);
-
-        if (activeCount < Number(max_admitted_capacity)) {
-          // Select next waiting candidate to admit
-          const nextToAdmit = await client.query(
-            `SELECT wre.id
-             FROM waiting_room_entries wre
-             JOIN student_profiles sp ON wre.student_id = sp.id
-             LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
-             LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
-                  AND syp.academic_year = sp.academic_year
-             WHERE wre.cycle_id = $1 AND wre.status = 'WAITING'
-             ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
-                      wre.joined_at ASC
-             LIMIT 1 FOR UPDATE`,
-            [session.cycle_id]
-          );
-          if (nextToAdmit.rows.length > 0) {
-            await client.query(
-              `UPDATE waiting_room_entries SET status = 'ADMITTED' WHERE id = $1`,
-              [nextToAdmit.rows[0].id]
-            );
-          }
-        }
-      }
+      await this.triggerRollingRefill(client, session.cycle_id);
 
       // 5. Invalidate conflicting preferences & recommendations for this seat
       // Preserve audit history for seat preferences before deletion

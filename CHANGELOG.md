@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-11-16
 
 ### Added
+- **Institutional Alignment Phase 2: Waiting Room Adversarial Queue Verification & Vacancy Lifecycles**:
+  - **Comprehensive Vacancy Refill Coverage**: Extended rolling refill triggers beyond seat confirmation to cover all participant departure vectors: voluntary cancellation/exit (`leaveWaitingRoom()`), turn expiration via advance or lazy check, and transaction rollbacks.
+  - **Unified Refill Helper (`triggerRollingRefill`)**: Consolidates capacity accounting, standard/priority bucket checks, and candidate promotion under atomic PostgreSQL row locks (`allocation_cycles ... FOR UPDATE`).
+  - **Adversarial Queue & Concurrency Suite**: Created `tests/waiting_room_adversarial_queue.test.ts` (7 tests passing) testing:
+    - Standard admissions blocking at 15 when 5 reserved places are protected.
+    - Idempotent handling of duplicate admission attempts.
+    - Automatic refill on seat confirmation.
+    - Automatic refill on turn expiration.
+    - Automatic refill on voluntary exit / cancellation.
+    - Atomic rollback safety during refill failure.
+    - Concurrent refill race serialization admitting exactly one candidate at the 20-person boundary.
+  - **Verification & Builds**: 18/18 waiting room tests passing across 3 test suites, 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
+
+### Added
 - **Institutional Alignment Phase 2: Waiting Room Dual-Bucket Admission & Rolling Auto-Refill Engine**:
   - **Dual-Bucket 15+5 Waiting Room Admission Architecture**: Upgraded `src/allocation/engine.ts` with explicit dual-bucket capacity governance:
     - Default maximum concurrent admitted participants locked at 20 (`status IN ('ADMITTED', 'ACTIVE_TURN')`).
