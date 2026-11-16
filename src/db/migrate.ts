@@ -228,7 +228,6 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS max_admitted_capacity INT NOT NULL DEFAULT 20`);
       await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS standard_admission_capacity INT NOT NULL DEFAULT 15`);
       await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS reserved_priority_capacity INT NOT NULL DEFAULT 5`);
-      await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS priority_window_closes_at TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
 
       // 2. Add capacity sum validation constraint if not present
       try {
@@ -252,6 +251,14 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       } catch {
         // Safe fallback for environments where DO block or constraint already exists
       }
+    },
+  },
+  {
+    id: '20261116_010_priority_window_release_policy',
+    name: 'Allocation cycle priority window release timestamp configuration',
+    tables: [],
+    customChecks: async (client) => {
+      await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS priority_window_closes_at TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
     },
   },
 ];

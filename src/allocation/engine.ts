@@ -100,7 +100,9 @@ export class AllocationEngineService {
             AND syp.academic_year = sp.academic_year
        WHERE wre.cycle_id = $1 AND wre.status = 'WAITING'
        ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
-                wre.joined_at ASC
+                wre.joined_at ASC,
+                sp.college_id ASC,
+                wre.id ASC
        FOR UPDATE`,
       [cycleId]
     );

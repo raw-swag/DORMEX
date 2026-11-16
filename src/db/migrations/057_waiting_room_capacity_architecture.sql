@@ -8,8 +8,7 @@
 ALTER TABLE allocation_cycles
   ADD COLUMN IF NOT EXISTS max_admitted_capacity INT NOT NULL DEFAULT 20,
   ADD COLUMN IF NOT EXISTS standard_admission_capacity INT NOT NULL DEFAULT 15,
-  ADD COLUMN IF NOT EXISTS reserved_priority_capacity INT NOT NULL DEFAULT 5,
-  ADD COLUMN IF NOT EXISTS priority_window_closes_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS reserved_priority_capacity INT NOT NULL DEFAULT 5;
 
 -- Ensure constraint exists to prevent contradictory capacity allocations
 DO $$
