@@ -206,6 +206,19 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       `);
     },
   },
+  {
+    id: '20261116_008_relational_query_indexes',
+    name: 'Relational foreign key query acceleration and composite index coverage',
+    tables: [],
+    customChecks: async (client) => {
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_floors_building_id ON floors(building_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_rooms_floor_id ON rooms(floor_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_seats_room_id ON seats(room_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_allocations_seat_status ON allocations(seat_id, status)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_floor_maps_floor_status_version ON floor_maps(floor_id, status, version DESC)`);
+    },
+  },
 ];
 
 export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id, name: m.name }));
