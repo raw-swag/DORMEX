@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Stage 8: Production API Performance Optimization & Diagnostics**:
+  - **Server-Timing Diagnostics Hook**: Added lightweight `onRequest`/`onSend` hooks in `src/app.ts` providing `Server-Timing: app;dur=<ms>` headers.
+  - **Fast-Path Route Serialization Schemas**: Equipped `/health` and `/readyz` with explicit Fastify response schemas for near-zero serialization overhead.
+  - **Migration 056 Registered & Verified**: Formally created `src/db/migrations/056_relational_query_indexes.sql` and registered `20261116_008_relational_query_indexes` in `src/db/migrate.ts`.
+  - **Independent Baseline Verification**: Re-benchmarked deployed API across 8 critical endpoints: warm p50 ranges from 252 ms (`/health`) to 338 ms (`/readyz`) and 320 ms (dynamic SVG).
+  - **Build & Regression Verification**: 482/482 automated tests passing across 54 test suites (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Production API Performance & Latency Audit & Query Optimization**:
   - **Live Deployed API Latency Baselines**: Conducted comprehensive latency benchmarks against the deployed production Render API (`https://dormex-api-s4qq.onrender.com`) and PostgreSQL database (`dormex_db`).
   - **Concurrency & Saturation Profiling**: Benchmarked 1, 5, 10, 20, and 30 concurrent clients. Confirmed 0% error rate and up to 70.8 RPS.

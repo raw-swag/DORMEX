@@ -105,9 +105,20 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     });
   }
 
-  // Global Security & Anti-Caching Hooks:
+  // Server-Timing Performance & Diagnostics Hook:
+  // Tracks backend execution time in milliseconds without revealing sensitive internal details
+  app.addHook('onRequest', async (req) => {
+    (req as any)._startTime = process.hrtime.bigint();
+  });
+
+  // Global Security, Anti-Caching & Server-Timing Header Hooks:
   // Strictly prevent shared proxy, CDN, or browser caching of private and authenticated API endpoints
   app.addHook('onSend', async (req, reply) => {
+    if ((req as any)._startTime) {
+      const durationMs = Number(process.hrtime.bigint() - (req as any)._startTime) / 1e6;
+      reply.header('Server-Timing', `app;dur=${durationMs.toFixed(2)}`);
+    }
+
     if (req.url.startsWith('/api')) {
       reply.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
       reply.header('Pragma', 'no-cache');
@@ -352,15 +363,57 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     return authoritativeActor;
   };
 
+  // Fast-path JSON response schema for zero-overhead serialization of high-frequency health probes
+  const healthResponseSchema = {
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          service: { type: 'string' },
+          timestamp: { type: 'string' },
+        },
+        required: ['status', 'service', 'timestamp'],
+      },
+    },
+  };
+
   // Liveness probe (process is running and event loop is responding; does NOT depend on PostgreSQL)
-  app.get('/health', async () => ({
+  app.get('/health', { schema: healthResponseSchema }, async () => ({
     status: 'UP',
     service: 'DORMEX Hostel Allocation Engine',
     timestamp: new Date().toISOString(),
   }));
 
+  const readyzResponseSchema = {
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          database: { type: 'string' },
+          environment: { type: 'string' },
+          service: { type: 'string' },
+          timestamp: { type: 'string' },
+        },
+        required: ['status', 'database', 'environment', 'service', 'timestamp'],
+      },
+      503: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          database: { type: 'string' },
+          environment: { type: 'string' },
+          service: { type: 'string' },
+          timestamp: { type: 'string' },
+        },
+        required: ['status', 'database', 'environment', 'service', 'timestamp'],
+      },
+    },
+  };
+
   // Readiness probe (verifies PostgreSQL database connection is alive and queryable)
-  app.get('/readyz', async (req, reply) => {
+  app.get('/readyz', { schema: readyzResponseSchema }, async (req, reply) => {
     let dbStatus = 'UNKNOWN';
     try {
       const dbCheck = await database.query('SELECT 1 as alive');
