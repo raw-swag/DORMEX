@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-11-16
 
 ### Added
+- **Institutional Alignment Phase 2: Priority Window Release Policy & Unified Root-to-Leaf Locking Architecture**:
+  - **Persistent Priority Window Release (`priority_window_closes_at`)**: Added persistent timestamp column `priority_window_closes_at TIMESTAMP WITH TIME ZONE DEFAULT NULL` to `allocation_cycles` in `schema.ts`, Migration 057, and `migrate.ts`.
+  - **Dynamic Reserved-Capacity Release Semantics**:
+    - Before window closes: Standard admissions strictly capped at 15; remaining 5 places reserved for qualified priority candidates.
+    - After window closes: Unused reserved capacity is dynamically released to the general pool (`canAdmitStandard = currentlyAdmitted < maxCap`), allowing standard candidates to fill up to the strict 20-candidate ceiling while priority candidates retain established priority ranking.
+  - **Unified Root-to-Leaf Lock Hierarchy**:
+    - Standardized transactional lock acquisition order across all competing queue operations: `allocation_cycles` (root) -> `allocation_pools` -> `waiting_room_entries` / `booking_sessions`.
+    - Eliminates deadlock potential between `joinWaitingRoom()`, `confirmSeat()`, `advancePoolTurn()`, and `leaveWaitingRoom()`.
+  - **Release & Locking Test Suite**: Authored `tests/waiting_room_release_and_locking.test.ts` (7 tests passing) testing open window protection, fully occupied window close, unused release fill, pre/post transition refill, restart persistence, and concurrent join-refill and confirm-leave races.
+  - **Full Verification**: 25/25 waiting room tests passing across 4 suites, 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
+
+### Added
 - **Institutional Alignment Phase 2: Waiting Room Adversarial Queue Verification & Vacancy Lifecycles**:
   - **Comprehensive Vacancy Refill Coverage**: Extended rolling refill triggers beyond seat confirmation to cover all participant departure vectors: voluntary cancellation/exit (`leaveWaitingRoom()`), turn expiration via advance or lazy check, and transaction rollbacks.
   - **Unified Refill Helper (`triggerRollingRefill`)**: Consolidates capacity accounting, standard/priority bucket checks, and candidate promotion under atomic PostgreSQL row locks (`allocation_cycles ... FOR UPDATE`).

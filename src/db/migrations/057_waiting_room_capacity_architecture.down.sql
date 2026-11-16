@@ -3,6 +3,7 @@ ALTER TABLE allocation_cycles
   DROP CONSTRAINT IF EXISTS chk_waiting_room_capacity_sum;
 
 ALTER TABLE allocation_cycles
+  DROP COLUMN IF EXISTS priority_window_closes_at,
   DROP COLUMN IF EXISTS reserved_priority_capacity,
   DROP COLUMN IF EXISTS standard_admission_capacity,
   DROP COLUMN IF EXISTS max_admitted_capacity;

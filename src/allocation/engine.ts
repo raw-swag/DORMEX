@@ -26,14 +26,16 @@ export class AllocationEngineService {
   /**
    * Helper: Trigger rolling auto-refill atomically under an active cycle transaction.
    * Promotes the next eligible WAITING candidate to ADMITTED while respecting
-   * the standard (15) vs reserved priority (5) admission limits and the max admitted cap (20).
+   * the standard (15) vs reserved priority (5) admission limits, the max admitted cap (20),
+   * and the authoritative priority_window_closes_at release policy.
    */
   async triggerRollingRefill(
     client: any,
     cycleId: string
   ): Promise<{ admittedCandidateId: string | null; totalAdmitted: number }> {
     const cycleCapRes = await client.query(
-      `SELECT max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+      `SELECT max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity,
+              priority_window_closes_at, CURRENT_TIMESTAMP as db_now
        FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
       [cycleId]
     );
@@ -44,6 +46,13 @@ export class AllocationEngineService {
     const maxCap = Number(cycleCapRes.rows[0].max_admitted_capacity ?? 20);
     const stdCap = Number(cycleCapRes.rows[0].standard_admission_capacity ?? 15);
     const resCap = Number(cycleCapRes.rows[0].reserved_priority_capacity ?? 5);
+    const priorityWindowClosesAt = cycleCapRes.rows[0].priority_window_closes_at;
+    const dbNow = new Date(cycleCapRes.rows[0].db_now);
+
+    // Determine whether the priority admission window is closed
+    const isPriorityWindowClosed = Boolean(
+      priorityWindowClosesAt && new Date(priorityWindowClosesAt).getTime() <= dbNow.getTime()
+    );
 
     // Current admitted participants
     const activeRes = await client.query(
@@ -68,10 +77,17 @@ export class AllocationEngineService {
     ).length;
     const activeStandardCount = currentlyAdmitted - activePriorityCount;
 
-    // A standard candidate can only be admitted if activeStandardCount < stdCap OR if total admitted is below maxCap and priority capacity was not consumed
-    // Default model: 15 standard + 5 reserved. Standard candidates fill standard slots up to stdCap.
-    // When vacancies exist up to maxCap, candidates are admitted if under capacity.
-    const canAdmitStandard = activeStandardCount < stdCap || (currentlyAdmitted < maxCap && activePriorityCount >= resCap);
+    // Dual-Bucket Admission Logic with Priority Window Expiration:
+    // 1. If priority window is CLOSED:
+    //    Unused reserved capacity is released to the general pool!
+    //    Standard candidates can fill up to maxCap (20).
+    //    Priority candidates can also fill up to maxCap (20) based on ranking.
+    // 2. If priority window is OPEN (default):
+    //    Standard candidates are strictly capped at standard_admission_capacity (15) OR can fill if all 5 reserved places are already claimed by priority.
+    //    The remaining reserved places (up to 5) are strictly protected against standard candidates.
+    const canAdmitStandard = isPriorityWindowClosed
+      ? currentlyAdmitted < maxCap
+      : (activeStandardCount < stdCap || (currentlyAdmitted < maxCap && activePriorityCount >= resCap));
     const canAdmitPriority = currentlyAdmitted < maxCap;
 
     // Pick next candidate that satisfies eligibility
@@ -128,6 +144,9 @@ export class AllocationEngineService {
     }
 
     return this.db.transaction(async (client) => {
+      // Enforce uniform root-to-leaf lock hierarchy: allocation_cycles -> waiting_room_entries
+      await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [cycleId]);
+
       const entryRes = await client.query(
         `SELECT id, status FROM waiting_room_entries
          WHERE cycle_id = $1 AND student_id = $2 FOR UPDATE`,
@@ -225,9 +244,9 @@ export class AllocationEngineService {
     }
 
     return this.db.transaction(async (client) => {
-      // 1. Verify cycle status & student queue-entry authorization
+      // 1. Authoritative cycle lock (Root lock in hierarchy: allocation_cycles -> allocation_pools -> waiting_room_entries)
       const cycleRes = await client.query(
-        `SELECT id, status, waiting_room_threshold, turn_duration_seconds FROM allocation_cycles WHERE id = $1`,
+        `SELECT id, status, waiting_room_threshold, turn_duration_seconds FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
         [cycleId]
       );
       if (cycleRes.rows.length === 0) {
@@ -367,7 +386,16 @@ export class AllocationEngineService {
    */
   async advancePoolTurn(poolId: string): Promise<BookingSessionInfo | null> {
     return this.db.transaction(async (client) => {
-      // Per-pool transaction lock: serializes concurrent advancements for this pool
+      // Find parent cycle id to acquire root cycle lock first, preserving lock acquisition order:
+      // allocation_cycles -> allocation_pools -> waiting_room_entries / booking_sessions
+      const pInfoRes = await client.query(`SELECT cycle_id FROM allocation_pools WHERE id = $1`, [poolId]);
+      if (pInfoRes.rows.length === 0) return null;
+      const cycleId = pInfoRes.rows[0].cycle_id;
+
+      // 1. Root lock on cycle
+      await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [cycleId]);
+
+      // 2. Lock pool
       const poolLockRes = await client.query(
         `SELECT p.id, p.cycle_id, ac.status as cycle_status, ac.waiting_room_threshold,
                 ac.max_admitted_capacity, ac.standard_admission_capacity, ac.reserved_priority_capacity
@@ -559,9 +587,9 @@ export class AllocationEngineService {
     idempotencyKey?: string
   ): Promise<{ allocationId: string; seatId: string; studentId: string; status: 'CURRENT' }> {
     return this.db.transaction(async (client) => {
-      // 1. Fetch & lock booking session
+      // 1. Fetch booking session
       const sessRes = await client.query(
-        `SELECT * FROM booking_sessions WHERE id = $1 FOR UPDATE`,
+        `SELECT * FROM booking_sessions WHERE id = $1`,
         [sessionId]
       );
 
@@ -569,6 +597,10 @@ export class AllocationEngineService {
         throw new Error('NOT_FOUND: Booking session not found');
       }
       const session = sessRes.rows[0];
+
+      // Enforce uniform root-to-leaf lock hierarchy: allocation_cycles -> booking_sessions
+      await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [session.cycle_id]);
+      await client.query(`SELECT id FROM booking_sessions WHERE id = $1 FOR UPDATE`, [sessionId]);
 
       // Check idempotency if key was previously submitted
       if (idempotencyKey && session.idempotency_key === idempotencyKey && session.status === 'CONFIRMED') {

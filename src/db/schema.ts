@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS allocation_cycles (
     max_admitted_capacity INT NOT NULL DEFAULT 20,
     standard_admission_capacity INT NOT NULL DEFAULT 15,
     reserved_priority_capacity INT NOT NULL DEFAULT 5,
+    priority_window_closes_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     late_grace_seconds INT NOT NULL DEFAULT 360, -- 6 minutes
     max_penalty_turns INT NOT NULL DEFAULT 10,
     peer_room_view_mode TEXT NOT NULL DEFAULT 'OFF', -- 'OFF', 'AFTER_OWN_CONFIRM', 'LIVE'

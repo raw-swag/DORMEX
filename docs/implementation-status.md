@@ -22,12 +22,10 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
-- [x] **Institutional Alignment Phase 2: Waiting Room Dual-Bucket Admission, Rolling Auto-Refill & Adversarial Queue Verification**:
-  - **Dual-Bucket 15+5 Waiting Room Admission Architecture**: Enforced default maximum of 20 concurrent admitted students (`ADMITTED` + `ACTIVE_TURN`), split into 15 standard and 5 reserved priority seats in `src/allocation/engine.ts`.
-  - **Comprehensive Vacancy Refill Lifecycles**: Unified rolling refill helper `triggerRollingRefill` under `allocation_cycles ... FOR UPDATE` covering seat confirmations, turn expirations, voluntary exits/cancellations, and rollback integrity.
-  - **Adversarial Queue & Concurrency Tests**: Authored `tests/waiting_room_adversarial_queue.test.ts` (7 tests passing) and `tests/waiting_room_engine_phase2.test.ts` (4 tests passing) validating 10 critical concurrency scenarios.
-  - **Waiting Room Telemetry**: Exposed real-time counts (`totalWaiting`, `totalAdmitted`, `totalConfirmed`) in `getActiveTurn()`.
-  - **Gate 1 Constraint Hardening**: Verified and hardened database CHECK constraint `chk_waiting_room_capacity_sum` (`max_admitted_capacity > 0`, `standard_admission_capacity >= 0`, `reserved_priority_capacity >= 0`).
+- [x] **Institutional Alignment Phase 2: Priority Window Release Policy, Unified Locking & Adversarial Queue Verification**:
+  - **Persistent Priority Window Release (`priority_window_closes_at`)**: Configured per-cycle expiration timestamp. Enforces 15+5 protection before expiration; automatically releases unused reserved capacity to the general pool after expiration, strictly bounded by the 20-candidate max capacity ceiling.
+  - **Unified Root-to-Leaf Locking Hierarchy**: Standardized lock acquisition (`allocation_cycles` -> `allocation_pools` -> `waiting_room_entries` / `booking_sessions`) preventing deadlocks and race conditions.
+  - **Comprehensive Test Suite**: Authored `tests/waiting_room_release_and_locking.test.ts` (7 tests passing) alongside `tests/waiting_room_adversarial_queue.test.ts` (7 tests), `tests/waiting_room_engine_phase2.test.ts` (4 tests), and `tests/waiting_room_capacity_schema.test.ts` (7 tests) — 25/25 waiting room tests passing.
 - [x] **Institutional Alignment Phase 1: Waiting Room Capacity Schema & Architecture (Migration 057)**:
   - **Configurable Capacity Architecture**: Added columns `max_admitted_capacity` (default 20), `standard_admission_capacity` (default 15), and `reserved_priority_capacity` (default 5) to `allocation_cycles` table.
   - **Relational Invariant Constraint**: Added database-level CHECK constraint `chk_waiting_room_capacity_sum` strictly enforcing `standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity`.
