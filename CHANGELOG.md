@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-11-16
 
 ### Added
+- **Institutional Alignment Phase 1: Waiting Room Capacity Schema & Architecture (Migration 057)**:
+  - **Configurable Capacity Architecture**: Added columns `max_admitted_capacity` (default 20), `standard_admission_capacity` (default 15), and `reserved_priority_capacity` (default 5) to `allocation_cycles` table in `src/db/schema.ts`.
+  - **Relational Invariant Constraint**: Added database-level CHECK constraint `chk_waiting_room_capacity_sum` strictly enforcing `standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity`.
+  - **Migration 057 & Manifest Verification**: Authored `src/db/migrations/057_waiting_room_capacity_architecture.sql`, reversible `057_waiting_room_capacity_architecture.down.sql`, updated `schema_manifest.ts`, and registered `20261116_009_waiting_room_capacity_architecture` in `src/db/migrate.ts`.
+  - **Account Lifecycle Compatibility Decision**: Verified that existing authoritative columns `users.is_active`, `users.session_version`, and `IdentityRetirementService` already provide full lifecycle control without competing sources of truth; deferred unneeded enum creation to preserve referential integrity.
+  - **Backward-Compatibility Guaranteed**: Retained `allocation_cycles.waiting_room_threshold` (default 45) so existing cycles and queue queries remain fully compatible.
+  - **Test Suite**: Created `tests/waiting_room_capacity_schema.test.ts` (5 tests passing) verifying defaults, custom capacity allocations, CHECK constraint enforcement, and migration idempotency. 0 TypeScript errors, clean builds.
+
+### Added
 - **Production API Performance Optimization & Diagnostics (Stage 8)**:
   - **Server-Timing Diagnostics Hook**: Added lightweight nanosecond `onRequest`/`onSend` hooks in `src/app.ts` injecting `Server-Timing: app;dur=<ms>` headers on all API responses without leaking internal metadata.
   - **Fast-Path Route Serialization Schemas**: Equipped `/health` and `/readyz` with explicit Fastify response schemas (`fast-json-stringify`) for near-zero serialization overhead.

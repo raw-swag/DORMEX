@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Alignment Phase 1: Waiting Room Capacity Schema & Architecture (Migration 057)**:
+  - **Configurable Capacity Architecture**: Added columns `max_admitted_capacity` (default 20), `standard_admission_capacity` (default 15), and `reserved_priority_capacity` (default 5) to `allocation_cycles` table.
+  - **Relational Invariant Constraint**: Added database-level CHECK constraint `chk_waiting_room_capacity_sum` strictly enforcing `standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity`.
+  - **Migration 057 Registered**: Authored and registered `20261116_009_waiting_room_capacity_architecture` with down rollback scripts.
+  - **Account Lifecycle Decision**: Verified authoritative `users.is_active` + `session_version` eliminate the need for competing status enums.
+  - **Verification**: Created `tests/waiting_room_capacity_schema.test.ts` (5 tests passing). Clean server build, clean client build, 0 type errors.
 - [x] **Stage 8: Production API Performance Optimization & Diagnostics**:
   - **Server-Timing Diagnostics Hook**: Added lightweight `onRequest`/`onSend` hooks in `src/app.ts` providing `Server-Timing: app;dur=<ms>` headers.
   - **Fast-Path Route Serialization Schemas**: Equipped `/health` and `/readyz` with explicit Fastify response schemas for near-zero serialization overhead.

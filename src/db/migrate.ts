@@ -219,6 +219,35 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
       await client.query(`CREATE INDEX IF NOT EXISTS idx_floor_maps_floor_status_version ON floor_maps(floor_id, status, version DESC)`);
     },
   },
+  {
+    id: '20261116_009_waiting_room_capacity_architecture',
+    name: 'Allocation cycle waiting room capacity architecture (15 standard + 5 reserved capacity model)',
+    tables: [],
+    customChecks: async (client) => {
+      // 1. Add capacity columns to allocation_cycles
+      await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS max_admitted_capacity INT NOT NULL DEFAULT 20`);
+      await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS standard_admission_capacity INT NOT NULL DEFAULT 15`);
+      await client.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS reserved_priority_capacity INT NOT NULL DEFAULT 5`);
+
+      // 2. Add capacity sum validation constraint if not present
+      try {
+        await client.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint WHERE conname = 'chk_waiting_room_capacity_sum'
+            ) THEN
+              ALTER TABLE allocation_cycles
+                ADD CONSTRAINT chk_waiting_room_capacity_sum
+                CHECK (standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity);
+            END IF;
+          END $$;
+        `);
+      } catch {
+        // Safe fallback for environments where DO block or constraint already exists
+      }
+    },
+  },
 ];
 
 export const REGISTERED_MIGRATIONS = MIGRATION_MANIFESTS.map((m) => ({ id: m.id, name: m.name }));

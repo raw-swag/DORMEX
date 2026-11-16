@@ -142,7 +142,10 @@ CREATE TABLE IF NOT EXISTS allocation_cycles (
     academic_year INT NOT NULL,
     status TEXT NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'SIMULATING', 'READY', 'PUBLISHED', 'LOCKED', 'PAUSED', 'CLOSED'
     turn_duration_seconds INT NOT NULL DEFAULT 120, -- 2 minutes
-    waiting_room_threshold INT NOT NULL DEFAULT 45,
+    waiting_room_threshold INT NOT NULL DEFAULT 45, -- Legacy threshold retained for backward-compatibility
+    max_admitted_capacity INT NOT NULL DEFAULT 20,
+    standard_admission_capacity INT NOT NULL DEFAULT 15,
+    reserved_priority_capacity INT NOT NULL DEFAULT 5,
     late_grace_seconds INT NOT NULL DEFAULT 360, -- 6 minutes
     max_penalty_turns INT NOT NULL DEFAULT 10,
     peer_room_view_mode TEXT NOT NULL DEFAULT 'OFF', -- 'OFF', 'AFTER_OWN_CONFIRM', 'LIVE'
@@ -150,7 +153,8 @@ CREATE TABLE IF NOT EXISTS allocation_cycles (
     room_change_window_hours INT NOT NULL DEFAULT 48,
     results_published_at TIMESTAMP WITH TIME ZONE,
     config_frozen_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_waiting_room_capacity_sum CHECK (standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity)
 );
 
 CREATE TABLE IF NOT EXISTS allocation_pools (
@@ -724,6 +728,15 @@ export async function runMigrations(db: DatabaseService): Promise<void> {
     await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS reviewed_by TEXT REFERENCES users(id) ON DELETE RESTRICT`);
     await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE`);
     await db.query(`ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS review_notes TEXT`);
+  } catch (err) {
+    // Ignore if already present
+  }
+
+  // Ensure allocation_cycles waiting room capacity columns exist (Migration 057)
+  try {
+    await db.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS max_admitted_capacity INT NOT NULL DEFAULT 20`);
+    await db.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS standard_admission_capacity INT NOT NULL DEFAULT 15`);
+    await db.query(`ALTER TABLE allocation_cycles ADD COLUMN IF NOT EXISTS reserved_priority_capacity INT NOT NULL DEFAULT 5`);
   } catch (err) {
     // Ignore if already present
   }
