@@ -27,11 +27,17 @@ describe('DORMEX Stage 7: Real PostgreSQL 18 Multi-Connection Concurrency Releas
     }
 
     try {
-      // Safety Pre-Flight: Verify URL does NOT point to known production hosts
+      // Safety Pre-Flight: Explicitly forbid production hosts and production database names
       const url = new URL(STAGING_PG_URL);
-      if (url.hostname.includes('render.com') && !url.hostname.includes('staging')) {
+      const isKnownProdHost = url.hostname.includes('dpg-dbnjeqrl550s73fcr1lg-a') ||
+                              url.hostname.includes('oregon-postgres.render.com') && !url.hostname.includes('staging');
+      const isProdDbName = url.pathname === '/dormex_db' || url.pathname === '/dormex';
+      const isExplicitStagingName = url.pathname.includes('staging') || url.hostname.includes('staging');
+
+      if (isKnownProdHost || isProdDbName || !isExplicitStagingName) {
         // Strict guard against accidental production targeting
-        console.error('FATAL SAFETY GUARD: Connection string points to non-staging Render host! Aborting.');
+        console.error('FATAL SAFETY GUARD: Connection string targets production or non-staging database! Aborting.');
+        console.error(`Target Host: ${url.hostname}, Database Name: ${url.pathname}`);
         isStagingAvailable = false;
         return;
       }
