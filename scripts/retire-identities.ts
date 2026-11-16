@@ -37,6 +37,14 @@ Examples:
     targetIds = Array.from(new Set([...targetIds, ...demoIds]));
   }
 
+  // Safety Gate: In live execution mode (--execute), targets must be explicitly provided
+  if (!dryRun && targetIds.length === 0) {
+    console.error('ERROR: Explicit target identifiers or --all-demo must be provided when executing with --execute.');
+    console.error('Refusing to retire default synthetic candidate list live.');
+    await db.close();
+    process.exit(1);
+  }
+
   if (targetIds.length === 0) {
     console.log('No identifiers specified. Assessing standard synthetic / candidate identities...');
     targetIds = ['ADM001', 'ADM002', 'ADM003', 'WRD001', 'PRC001', 'CW001', 'SUPERADMIN'];

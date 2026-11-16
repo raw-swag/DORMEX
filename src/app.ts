@@ -810,7 +810,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
       const cleanId = identifier.trim().toLowerCase();
       const userRes = await database.query(
-        `SELECT id, college_id, session_version FROM users WHERE LOWER(college_id) = $1 OR LOWER(email) = $1`,
+        `SELECT id, college_id, session_version, is_active, password_hash FROM users WHERE LOWER(college_id) = $1 OR LOWER(email) = $1`,
         [cleanId]
       );
 
@@ -819,6 +819,9 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       }
 
       const user = userRes.rows[0];
+      if (!user.is_active || (user.password_hash && user.password_hash.startsWith('RETIRED_'))) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED: Account is deactivated or retired' });
+      }
       let valid: any;
       try {
         valid = await authService.consumeRecoveryCode(user.id, recoveryCode);

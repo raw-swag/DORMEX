@@ -318,6 +318,19 @@ export class AuthService {
         throw new Error('TOKEN_EXPIRED: Password reset token has expired. Please request a new link.');
       }
 
+      // Verify that the user account is active and has not been retired
+      const userRes = await client.query(
+        `SELECT id, is_active, password_hash FROM users WHERE id = $1 FOR UPDATE`,
+        [tokenRecord.user_id]
+      );
+      if (userRes.rows.length === 0) {
+        throw new Error('USER_NOT_FOUND: Linked institutional account does not exist');
+      }
+      const user = userRes.rows[0];
+      if (!user.is_active || (user.password_hash && user.password_hash.startsWith('RETIRED_'))) {
+        throw new Error('ACCOUNT_INACTIVE: Deactivated or retired accounts cannot reset passwords');
+      }
+
       const newPasswordHash = await hashPasswordAsync(newPassword);
 
       await client.query(
@@ -470,7 +483,7 @@ export class AuthService {
       }
 
       const userRes = await client.query(
-        `SELECT id, college_id, is_active FROM users WHERE id = $1 FOR UPDATE`,
+        `SELECT id, college_id, is_active, password_hash FROM users WHERE id = $1 FOR UPDATE`,
         [tokenRecord.user_id]
       );
 
@@ -479,8 +492,8 @@ export class AuthService {
       }
 
       const user = userRes.rows[0];
-      if (!user.is_active) {
-        throw new Error('ACCOUNT_INACTIVE: Deactivated accounts cannot be activated');
+      if (!user.is_active || (user.password_hash && user.password_hash.startsWith('RETIRED_'))) {
+        throw new Error('ACCOUNT_INACTIVE: Deactivated or retired accounts cannot be activated');
       }
 
       const modernHash = await hashPasswordAsync(initialPassword);

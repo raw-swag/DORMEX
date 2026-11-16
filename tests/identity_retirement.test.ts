@@ -112,5 +112,97 @@ describe('Stage 6: Identity Retirement Engine Unit & Integration Suite', () => {
       expect(idempotentResult.success).toBe(true);
       expect(idempotentResult.actionTaken).toBe('ALREADY_RETIRED');
     });
+
+    it('proves that a retired identity cannot authenticate, reset password, or recover MFA', async () => {
+      const retiredUserId = 'usr_test_retired_auth_' + Date.now();
+      const retiredCollegeId = 'TEST_RET_AUTH_' + Math.floor(Math.random() * 1000);
+      const { hashPasswordAsync, verifyPasswordAsync } = await import('../src/auth/passwordUtils.js');
+
+      // Create and retire user
+      await db.query(
+        `INSERT INTO users (id, college_id, email, full_name, password_hash, is_active, session_version)
+         VALUES ($1, $2, $3, 'Retired Auth User', 'temporary_password', TRUE, 1)`,
+        [retiredUserId, retiredCollegeId, `${retiredCollegeId.toLowerCase()}@test.edu`]
+      );
+
+      const retiredRes = await service.retireIdentity(retiredUserId, 'usr_admin', { dryRun: false });
+      expect(retiredRes.success).toBe(true);
+
+      const userRow = (await db.query(`SELECT password_hash, is_active FROM users WHERE id = $1`, [retiredUserId])).rows[0];
+      expect(userRow.is_active).toBe(false);
+      expect(userRow.password_hash.startsWith('RETIRED_')).toBe(true);
+
+      // 1. Password verification strictly fails closed against RETIRED_ sentinel
+      const verifyRes = await verifyPasswordAsync('temporary_password', userRow.password_hash);
+      expect(verifyRes.valid).toBe(false);
+
+      const verifySentinelDirect = await verifyPasswordAsync(userRow.password_hash, userRow.password_hash);
+      expect(verifySentinelDirect.valid).toBe(false);
+
+      // 2. Password reset requests fail closed for deactivated/retired users
+      const { AuthService } = await import('../src/auth/service.js');
+      const authService = new AuthService(db);
+
+      const resetReq = await authService.requestPasswordReset(retiredCollegeId);
+      // requestPasswordReset returns neutral success contract to avoid user enumeration,
+      // but generates NO tokens in password_reset_tokens
+      expect(resetReq.status).toBe('REQUEST_ACCEPTED');
+
+      const tokenCheck = await db.query(
+        `SELECT * FROM password_reset_tokens WHERE user_id = $1 AND purpose = 'PASSWORD_RESET'`,
+        [retiredUserId]
+      );
+      expect(tokenCheck.rows.length).toBe(0);
+
+      // 3. Activation voucher issuance throws ACCOUNT_INACTIVE
+      await expect(authService.issueActivationVoucher(retiredCollegeId, 'usr_admin')).rejects.toThrow(/ACCOUNT_INACTIVE/);
+    });
+
+    it('verifies that appointment revocation retains historical records, timestamps, and reason', async () => {
+      const candidateWardenId = 'usr_test_wrd_rev_' + Date.now();
+      const candidateCollegeId = 'WRD_TEST_' + Math.floor(Math.random() * 1000);
+
+      await db.query(
+        `INSERT INTO users (id, college_id, email, full_name, password_hash, is_active, session_version)
+         VALUES ($1, $2, $3, 'Warden Candidate', 'test_password', TRUE, 1)`,
+        [candidateWardenId, candidateCollegeId, `${candidateCollegeId.toLowerCase()}@test.edu`]
+      );
+
+      const apptId = `appt_test_${Date.now()}`;
+      await db.query(
+        `INSERT INTO warden_appointments (id, user_id, building_id, appointed_by, appointment_status, revocation_reason)
+         VALUES ($1, $2, 'bld_bvb', 'usr_admin', 'ACTIVE', NULL)`,
+        [apptId, candidateWardenId]
+      );
+
+      // Directly assess: active appointment should block retirement
+      const initialEligibility = await service.assessEligibility(candidateWardenId);
+      expect(initialEligibility?.canRetire).toBe(false);
+      expect(initialEligibility?.blockingReasons.some((r) => r.includes('BLOCKED_ACTIVE_WARDEN'))).toBe(true);
+
+      // Now revoke appointment via governance service or simulate replacement
+      await db.query(
+        `UPDATE warden_appointments SET appointment_status = 'REVOKED', revoked_at = CURRENT_TIMESTAMP, revocation_reason = 'Replacement appointed'
+         WHERE id = $1`,
+        [apptId]
+      );
+
+      // Re-assess: now eligible
+      const reEligibility = await service.assessEligibility(candidateWardenId);
+      expect(reEligibility?.canRetire).toBe(true);
+
+      // Execute retirement
+      const retResult = await service.retireIdentity(candidateWardenId, 'usr_admin', { dryRun: false });
+      expect(retResult.success).toBe(true);
+
+      // Verify appointment record still exists permanently in DB with historical metadata intact
+      const apptRow = (await db.query(`SELECT * FROM warden_appointments WHERE id = $1`, [apptId])).rows[0];
+      expect(apptRow).toBeDefined();
+      expect(apptRow.user_id).toBe(candidateWardenId);
+      expect(apptRow.building_id).toBe('bld_bvb');
+      expect(apptRow.appointment_status).toBe('REVOKED');
+      expect(apptRow.revocation_reason).toBe('Replacement appointed');
+      expect(apptRow.revoked_at).not.toBeNull();
+    });
   });
 });

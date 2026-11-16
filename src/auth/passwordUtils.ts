@@ -72,11 +72,12 @@ export async function verifyPasswordAsync(
     return { valid: false, needsRehash: false };
   }
 
-  // 1. Explicitly reject sentinel / locked accounts
+  // 1. Explicitly reject sentinel / locked accounts or retired credentials
   if (
     storedHash.startsWith('LOCKED_INIT_PENDING$') ||
     storedHash.startsWith('LOCKED_DECOMMISSIONED$') ||
-    storedHash.startsWith('LOCKED_')
+    storedHash.startsWith('LOCKED_') ||
+    storedHash.startsWith('RETIRED_')
   ) {
     return { valid: false, needsRehash: false };
   }

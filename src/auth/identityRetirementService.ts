@@ -201,8 +201,20 @@ export class IdentityRetirementService {
 
     // Execute atomic cutover retirement
     return this.db.transaction(async (client) => {
-      // Acquire PostgreSQL session advisory lock for identity retirement (hash of 'dormex_identity_retirement')
+      // Acquire PostgreSQL transaction-scoped advisory lock for identity retirement (hash of 'dormex_identity_retirement')
       await client.query(`SELECT pg_advisory_xact_lock(5928341904812301923)`);
+
+      // Re-verify eligibility inside the transaction to eliminate race conditions
+      const liveCheck = await this.assessEligibility(userIdOrCollegeId);
+      if (!liveCheck || !liveCheck.canRetire || !liveCheck.isActive) {
+        return {
+          userId: eligibility.userId,
+          collegeId: eligibility.collegeId,
+          success: false,
+          actionTaken: 'BLOCKED',
+          reasons: liveCheck?.blockingReasons || ['RACE_CONDITION: User dependencies changed or account already inactive'],
+        };
+      }
 
       // 1. Lock user row
       const uRes = await client.query(
@@ -227,18 +239,24 @@ export class IdentityRetirementService {
         [retiredHash, eligibility.userId]
       );
 
-      // 3. Revoke any pending/inactive appointment records
+      const revocationReason = options.forceReason || `Stage 6 governance-safe retirement of identity ${eligibility.collegeId}`;
+
+      // 3. Revoke any pending/inactive appointment records while preserving historical attributes & reason
       await client.query(
         `UPDATE warden_appointments
-         SET appointment_status = 'REVOKED', revoked_at = CURRENT_TIMESTAMP
-         WHERE user_id = $1 AND appointment_status = 'ACTIVE'`,
-        [eligibility.userId]
+         SET appointment_status = 'REVOKED',
+             revoked_at = CURRENT_TIMESTAMP,
+             revocation_reason = $1
+         WHERE user_id = $2 AND appointment_status = 'ACTIVE'`,
+        [revocationReason, eligibility.userId]
       );
       await client.query(
         `UPDATE deputy_appointments
-         SET appointment_status = 'REVOKED', revoked_at = CURRENT_TIMESTAMP
-         WHERE user_id = $1 AND appointment_status = 'ACTIVE'`,
-        [eligibility.userId]
+         SET appointment_status = 'REVOKED',
+             revoked_at = CURRENT_TIMESTAMP,
+             revocation_reason = $1
+         WHERE user_id = $2 AND appointment_status = 'ACTIVE'`,
+        [revocationReason, eligibility.userId]
       );
 
       // 4. Invalidate any active password reset or activation tokens
