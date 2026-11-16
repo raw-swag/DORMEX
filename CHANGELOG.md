@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.32.0] - 2026-11-16
+
+### Added
+- **Institutional Authentication Modernization (Stage 6: Synthetic Institutional Identity Retirement & Governance-Safe Cutover)**:
+  - **Governance-Safe Identity Retirement Engine**: Implemented `IdentityRetirementService` (`src/auth/identityRetirementService.ts`) and administrative CLI tool (`scripts/retire-identities.ts`) to audit, evaluate relational dependencies, and safely deactivate synthetic and transitional accounts.
+  - **Dependency Blocking Gates & Relational Protection**:
+    - Strictly blocks retirement of Chief Warden singleton (`ADM001` / `usr_adm001`) with `BLOCKED_CHIEF_WARDEN_SINGLETON` to ensure the institution is never left without an authoritative executive.
+    - Strictly blocks retirement of active Building Wardens (`WRD001` / `usr_warden_bvb`) with `BLOCKED_ACTIVE_WARDEN` until appointments are reassigned or revoked.
+    - Strictly blocks retirement of active Proctors (`PRC001` / `usr_proctor_1`) with `BLOCKED_ACTIVE_PROCTOR_ASSIGNMENTS` until assigned student profiles are transferred.
+    - Strictly blocks retirement of active students (`BLOCKED_ACTIVE_STUDENT_ADMISSION`) with unresolved admissions.
+  - **Atomic Cutover & Cryptographic Scrambling**:
+    - Executes retirement within transactional boundary protected by transaction-scoped PostgreSQL advisory lock (`5928341904812301923`).
+    - Sets `is_active = FALSE`, scrambles credential with high-entropy non-reversible sentinel hash (`RETIRED_<hex16>`), revokes active appointments, invalidates all pending tokens, and increments `session_version` to immediately kill all active JWTs.
+    - Records immutable `IDENTITY_RETIRED` entry in `audit_logs` ledger.
+  - **Restricted MFA Recovery Enforcement**:
+    - Tightened route guard in `src/app.ts` so `is_recovery_session: true` tokens can exclusively access `/api/auth/me`, `/api/auth/mfa/enroll`, `/api/auth/mfa/verify-setup`, and `/api/auth/logout`. All standard student, operational, and privileged endpoints immediately fail closed with `403 Forbidden: RECOVERY_SESSION_RESTRICTED`.
+  - **Hardened Password Strength & Long Passphrase Policy**:
+    - Implemented `validatePasswordStrength` in `src/auth/passwordUtils.ts` enforcing 8-character minimum, up to 1024-character passphrases, whitespace, and Unicode support without truncation.
+  - **Verification & Test Coverage**:
+    - Created `tests/password_policy_and_recovery_guard.test.ts` (4 tests) and `tests/identity_retirement.test.ts` (6 tests). Total test suite expanded to 476 tests across 53 files with a 100% pass rate. Clean server build, clean client build, 0 TypeScript errors.
+
 ## [2.31.0] - 2026-11-15
 
 ### Added

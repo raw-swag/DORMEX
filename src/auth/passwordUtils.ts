@@ -11,6 +11,23 @@ export const ARGON2_CONFIG: argon2.HashOptions = {
   parallelism: 4,
 };
 
+// Maximum password length to mitigate Denial-of-Service / memory blowup on extreme inputs
+export const MAX_PASSWORD_LENGTH = 1024;
+export const MIN_PASSWORD_LENGTH = 8;
+
+export function validatePasswordStrength(password: string): { valid: boolean; error?: string } {
+  if (!password || typeof password !== 'string') {
+    return { valid: false, error: 'Password is required' };
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { valid: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters in length` };
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return { valid: false, error: `Password cannot exceed ${MAX_PASSWORD_LENGTH} characters` };
+  }
+  return { valid: true };
+}
+
 // Known dummy Argon2id hash used to equalize execution timing on invalid / nonexistent user lookups
 export const DUMMY_ARGON2_HASH =
   '$argon2id$v=19$m=65536,t=3,p=4$4m9Yy5+Pq5XyUvXk3h4b9Q$DUMMYuD5Y+Pq5XyUvXk3h4b9Q4m9Yy5+Pq5XyUvXk3g';

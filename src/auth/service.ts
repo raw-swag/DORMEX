@@ -5,6 +5,7 @@ import {
   hashPasswordSync,
   verifyPasswordAsync,
   executeDummyPasswordVerification,
+  validatePasswordStrength,
 } from './passwordUtils.js';
 import {
   generateTotpSecret,
@@ -286,8 +287,9 @@ export class AuthService {
     if (!rawToken || rawToken.trim().length === 0) {
       throw new Error('TOKEN_REQUIRED: Password reset token is required');
     }
-    if (!newPassword || newPassword.length < 8) {
-      throw new Error('WEAK_PASSWORD: Password must be at least 8 characters in length');
+    const pwCheck = validatePasswordStrength(newPassword);
+    if (!pwCheck.valid) {
+      throw new Error(`WEAK_PASSWORD: ${pwCheck.error}`);
     }
 
     const tokenHash = this.hashToken(rawToken.trim());
@@ -436,8 +438,9 @@ export class AuthService {
     if (!rawToken || rawToken.trim().length === 0) {
       throw new Error('TOKEN_REQUIRED: Activation token is required');
     }
-    if (!initialPassword || initialPassword.length < 8) {
-      throw new Error('WEAK_PASSWORD: Initial password must be at least 8 characters in length');
+    const pwCheck = validatePasswordStrength(initialPassword);
+    if (!pwCheck.valid) {
+      throw new Error(`WEAK_PASSWORD: ${pwCheck.error?.replace('Password', 'Initial password')}`);
     }
 
     const tokenHash = this.hashToken(rawToken.trim());

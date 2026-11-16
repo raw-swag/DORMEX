@@ -191,7 +191,7 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
         "  SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'webauthn_challenges'",
         ') as exists;'
       ].join('\n');
-      const tableCheck = await client.query<{ exists: boolean }>(checkTableSql);
+      const tableCheck = await client.query(checkTableSql);
       if (tableCheck.rows[0]?.exists) {
         const dropCmd = ['D' + 'ROP', 'T' + 'ABLE', 'IF EXISTS webauthn_challenges'].join(' ');
         await client.query(dropCmd);

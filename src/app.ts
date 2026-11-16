@@ -197,6 +197,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     let tokenVer: number | undefined = undefined;
     let tokenMfaLevel: 'NONE' | 'TOTP' = 'NONE';
     let isMfaChallengeToken = false;
+    let isRecoverySession = false;
 
     // 1. Check Authorization Bearer header first (Strict Non-Fallback):
     // If an Authorization header is supplied, it MUST be valid. An invalid, malformed,
@@ -217,6 +218,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
         if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
         if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
+        if (decoded.is_recovery_session === true) isRecoverySession = true;
       } catch (err: any) {
         if (err.message?.startsWith('UNAUTHORIZED')) {
           throw err;
@@ -240,6 +242,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
           if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
           if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
           if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
+          if (decoded.is_recovery_session === true) isRecoverySession = true;
         }
       } catch (err: any) {
         if (err.code === 'FAST_JWT_EXPIRED') {
@@ -297,6 +300,19 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     // MFA challenge tokens cannot be used as ordinary authenticated sessions
     if (isMfaChallengeToken && !req.url.startsWith('/api/auth/mfa/verify') && !req.url.startsWith('/api/auth/mfa/step-up')) {
       throw new Error('UNAUTHORIZED: MFA verification required. Challenge token cannot access API resources.');
+    }
+
+    // Restricted emergency recovery sessions: strictly limited to re-enrolling MFA or checking /api/auth/me or logout
+    if (isRecoverySession) {
+      const allowedRecoveryPaths = [
+        '/api/auth/me',
+        '/api/auth/mfa/enroll',
+        '/api/auth/mfa/verify-setup',
+        '/api/auth/logout',
+      ];
+      if (!allowedRecoveryPaths.some((p) => req.url.startsWith(p))) {
+        throw new Error('FORBIDDEN: RECOVERY_SESSION_RESTRICTED: Emergency recovery session is restricted to MFA re-enrollment only');
+      }
     }
 
     const authoritativeActor = resolveAuthoritativeActor(userRes.rows);
@@ -2258,7 +2274,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       const actions = await governanceService.listActions(actor, buildingId);
       return reply.send({ actions });
     } catch (err: any) {
-      const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.includes('CONFLICT') ? 403 : 400;
+      const status = err.message?.startsWith('UNAUTHORIZED')
+        ? 401
+        : (err.message?.startsWith('FORBIDDEN') || err.message?.includes('CONFLICT'))
+        ? 403
+        : 400;
       return reply.code(status).send({ error: err.message });
     }
   });
@@ -2284,7 +2304,11 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
       return reply.code(201).send({ success: true, action_id: actionId });
     } catch (err: any) {
-      const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.includes('CONFLICT') ? 403 : 400;
+      const status = err.message?.startsWith('UNAUTHORIZED')
+        ? 401
+        : (err.message?.startsWith('FORBIDDEN') || err.message?.includes('CONFLICT'))
+        ? 403
+        : 400;
       return reply.code(status).send({ error: err.message });
     }
   });
