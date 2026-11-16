@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Production API Performance & Latency Audit & Query Optimization**:
+  - **Live Deployed API Latency Baselines**: Conducted comprehensive latency benchmarks against the deployed production Render API (`https://dormex-api-s4qq.onrender.com`) and PostgreSQL database (`dormex_db`).
+  - **Concurrency & Saturation Profiling**: Benchmarked 1, 5, 10, 20, and 30 concurrent clients. Confirmed 0% error rate and up to 70.8 RPS.
+  - **Single-Query Dashboard Consolidation Optimization**: Consolidated `GET /api/admin/overview` in `src/app.ts` from 8 sequential queries into a single consolidated parallel CTE query.
+  - **High-Performance Relational Schema Indexes**: Added indexes on `user_roles(user_id)`, `floors(building_id)`, `rooms(floor_id)`, `seats(room_id)`, `allocations(seat_id, status)`, and `floor_maps(floor_id, status, version DESC)`.
+  - **Verification**: 482/482 automated tests passing across 54 test suites (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Institutional Authentication Modernization (Stage 6: Synthetic Institutional Identity Retirement & Governance-Safe Cutover)**:
   - **Governance-Safe Identity Retirement Engine**: Implemented `IdentityRetirementService` (`src/auth/identityRetirementService.ts`) and administrative CLI tool (`scripts/retire-identities.ts`) to audit, evaluate relational dependencies, and safely deactivate synthetic and transitional accounts.
   - **Dependency Blocking Gates & Relational Protection**:

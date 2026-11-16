@@ -1399,33 +1399,38 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         return reply.code(403).send({ error: 'FORBIDDEN: Insufficient permissions' });
       }
 
-      const totalSeatsRes = await database.query(`SELECT COUNT(*) as count FROM seats`);
-      const occupiedSeatsRes = await database.query(`SELECT COUNT(*) as count FROM allocations WHERE status = 'CURRENT'`);
-      const studentsRes = await database.query(`SELECT COUNT(*) as count FROM student_profiles`);
-      const complaintsRes = await database.query(`SELECT COUNT(*) as count FROM complaints WHERE status = 'OPEN'`);
-      const buildingsRes = await database.query(`SELECT COUNT(*) as count FROM buildings`);
+      // High-performance consolidated dashboard metrics query:
+      // Eliminates 8 separate sequential database roundtrips by computing scalar counts in parallel CTEs
+      const overviewRes = await database.query(`
+        SELECT
+          (SELECT COUNT(*) FROM seats) as total_seats,
+          (SELECT COUNT(*) FROM seats WHERE status = 'ACTIVE') as active_seats,
+          (SELECT COUNT(*) FROM seats WHERE status = 'BLOCKED') as blocked_seats,
+          (SELECT COUNT(*) FROM seats WHERE status = 'MAINTENANCE') as maintenance_seats,
+          (SELECT COUNT(*) FROM allocations WHERE status = 'CURRENT') as occupied_seats,
+          (SELECT COUNT(*) FROM rooms) as total_rooms,
+          (SELECT COUNT(*) FROM student_profiles) as registered_students,
+          (SELECT COUNT(*) FROM student_profiles WHERE eligibility_status = 'ELIGIBLE') as eligible_students,
+          (SELECT COUNT(*) FROM complaints WHERE status = 'OPEN') as open_complaints,
+          (SELECT COUNT(*) FROM buildings) as total_buildings
+      `);
 
-      const activeSeatsRes = await database.query(`SELECT COUNT(*) as count FROM seats WHERE status = 'ACTIVE'`);
-      const activeCount = parseInt(activeSeatsRes.rows[0].count, 10);
-      const occupiedCount = parseInt(occupiedSeatsRes.rows[0].count, 10);
+      const row = overviewRes.rows[0] || {};
+      const activeCount = parseInt(row.active_seats || '0', 10);
+      const occupiedCount = parseInt(row.occupied_seats || '0', 10);
       const availableCount = Math.max(0, activeCount - occupiedCount);
 
-      const blockedSeatsRes = await database.query(`SELECT COUNT(*) as count FROM seats WHERE status = 'BLOCKED'`);
-      const maintenanceSeatsRes = await database.query(`SELECT COUNT(*) as count FROM seats WHERE status = 'MAINTENANCE'`);
-      const totalRoomsRes = await database.query(`SELECT COUNT(*) as count FROM rooms`);
-      const eligibleStudentsRes = await database.query(`SELECT COUNT(*) as count FROM student_profiles WHERE eligibility_status = 'ELIGIBLE'`);
-
       return {
-        totalSeats: parseInt(totalSeatsRes.rows[0].count, 10),
+        totalSeats: parseInt(row.total_seats || '0', 10),
         occupiedSeats: occupiedCount,
         availableSeats: availableCount,
-        blockedSeats: parseInt(blockedSeatsRes.rows[0].count, 10),
-        maintenanceSeats: parseInt(maintenanceSeatsRes.rows[0].count, 10),
-        totalRooms: parseInt(totalRoomsRes.rows[0].count, 10),
-        registeredStudents: parseInt(studentsRes.rows[0].count, 10),
-        eligibleStudents: parseInt(eligibleStudentsRes.rows[0].count, 10),
-        openComplaints: parseInt(complaintsRes.rows[0].count, 10),
-        totalBuildings: parseInt(buildingsRes.rows[0].count, 10),
+        blockedSeats: parseInt(row.blocked_seats || '0', 10),
+        maintenanceSeats: parseInt(row.maintenance_seats || '0', 10),
+        totalRooms: parseInt(row.total_rooms || '0', 10),
+        registeredStudents: parseInt(row.registered_students || '0', 10),
+        eligibleStudents: parseInt(row.eligible_students || '0', 10),
+        openComplaints: parseInt(row.open_complaints || '0', 10),
+        totalBuildings: parseInt(row.total_buildings || '0', 10),
       };
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });

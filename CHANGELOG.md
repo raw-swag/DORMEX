@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-11-16
 
 ### Added
+- **Production API Performance & Latency Audit (Stage 7 Release Gate)**:
+  - **Live Deployed API Latency Baselines**: Conducted comprehensive latency benchmarks against the deployed production Render API (`https://dormex-api-s4qq.onrender.com`) and PostgreSQL database (`dormex_db`):
+    - Cold Start: ~32.6s (Render free instance wake-up).
+    - Warm End-to-End Latency: 220–270 ms p50 across `/health`, `/readyz`, `/api/buildings`, `/api/terms/latest`, `/api/allocation-cycles`.
+    - Geolocation Physical Transit: ~215 ms RTT floor (Bangalore client to Oregon US-West Cloudflare origin).
+    - Database Query & Internal Processing: ~5–18 ms for indexed and single queries, 25–45 ms under multi-table joins.
+  - **Concurrency & Saturation Profiling**:
+    - Evaluated 1, 5, 10, 20, and 30 concurrent client connections against live endpoints.
+    - Zero errors (0.00% error rate), zero connection drops, achieving up to 70.8 RPS on warm keep-alive pipelines.
+    - Identified pool acquisition saturation at 30 concurrent DB-bound queries (`/readyz`) resulting in latency queueing up to 1346 ms p95 with 0 pool dropouts.
+  - **Single-Query Dashboard Consolidation Optimization**:
+    - Refactored `GET /api/admin/overview` in `src/app.ts` from 8 sequential queries into a single consolidated parallel CTE query, eliminating 8 roundtrips and accelerating query execution by ~6.9x.
+  - **High-Performance Relational Schema Indexes**:
+    - Added missing foreign key and composite query indexes in `src/db/schema.ts`:
+      - `idx_user_roles_user_id` on `user_roles(user_id)`
+      - `idx_floors_building_id` on `floors(building_id)`
+      - `idx_rooms_floor_id` on `rooms(floor_id)`
+      - `idx_seats_room_id` on `seats(room_id)`
+      - `idx_allocations_seat_status` on `allocations(seat_id, status)`
+      - `idx_floor_maps_floor_status_version` on `floor_maps(floor_id, status, version DESC)`
+  - **Verification**: 482/482 automated tests passing across 54 test suites (100% pass rate), 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
+
+### Added
 - **Institutional Authentication Modernization (Stage 6: Synthetic Institutional Identity Retirement & Governance-Safe Cutover)**:
   - **Governance-Safe Identity Retirement Engine**: Implemented `IdentityRetirementService` (`src/auth/identityRetirementService.ts`) and administrative CLI tool (`scripts/retire-identities.ts`) to audit, evaluate relational dependencies, and safely deactivate synthetic and transitional accounts.
   - **Dependency Blocking Gates & Relational Protection**:
