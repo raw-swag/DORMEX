@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-11-16
 
 ### Added
+- **Institutional Alignment Phase 2: Waiting Room Dual-Bucket Admission & Rolling Auto-Refill Engine**:
+  - **Dual-Bucket 15+5 Waiting Room Admission Architecture**: Upgraded `src/allocation/engine.ts` with explicit dual-bucket capacity governance:
+    - Default maximum concurrent admitted participants locked at 20 (`status IN ('ADMITTED', 'ACTIVE_TURN')`).
+    - Standard admission bucket (15) and protected reserved priority bucket (5) configured per allocation cycle.
+    - Strict boundary enforcement preventing standard candidates from encroaching on reserved capacity.
+  - **Rolling Auto-Refill Engine**: Implemented atomic rolling auto-refill hook in `confirmSeat()` (and session exits) under PostgreSQL row lock (`allocation_cycles ... FOR UPDATE`). Whenever an admitted student confirms a seat or vacates their turn, the engine immediately admits the next eligible candidate from `WAITING` to `ADMITTED`, keeping active participant utilization at target capacity.
+  - **Real-Time Capacity & Waiting Room Telemetry**: Enhanced `getActiveTurn()` to calculate and report `totalAdmitted` alongside `totalWaiting` and `totalConfirmed` metrics.
+  - **Phase 1 Capacity Constraint Hardening (Gate 1)**: Hardened `chk_waiting_room_capacity_sum` in Migration 057, `src/db/schema.ts`, and `src/db/migrate.ts` to strictly enforce `max_admitted_capacity > 0`, `standard_admission_capacity >= 0`, and `reserved_priority_capacity >= 0`. Verified with 7 passing schema tests.
+  - **Phase 2 Verification Suite**: Authored `tests/waiting_room_engine_phase2.test.ts` (4 tests passing) covering dual-bucket capacity limits, 20-candidate block, rolling auto-refill on seat confirmation, and telemetry. All 23 core allocation lifecycle and BVB pilot tests passing. 0 TypeScript errors, clean server build, clean client build.
+
+### Added
 - **Institutional Alignment Phase 1: Waiting Room Capacity Schema & Architecture (Migration 057)**:
   - **Configurable Capacity Architecture**: Added columns `max_admitted_capacity` (default 20), `standard_admission_capacity` (default 15), and `reserved_priority_capacity` (default 5) to `allocation_cycles` table in `src/db/schema.ts`.
   - **Relational Invariant Constraint**: Added database-level CHECK constraint `chk_waiting_room_capacity_sum` strictly enforcing `standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity`.

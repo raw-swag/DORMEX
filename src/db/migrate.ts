@@ -239,7 +239,12 @@ export const MIGRATION_MANIFESTS: MigrationManifest[] = [
             ) THEN
               ALTER TABLE allocation_cycles
                 ADD CONSTRAINT chk_waiting_room_capacity_sum
-                CHECK (standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity);
+                CHECK (
+                  max_admitted_capacity > 0 AND
+                  standard_admission_capacity >= 0 AND
+                  reserved_priority_capacity >= 0 AND
+                  standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity
+                );
             END IF;
           END $$;
         `);

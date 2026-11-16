@@ -154,7 +154,12 @@ CREATE TABLE IF NOT EXISTS allocation_cycles (
     results_published_at TIMESTAMP WITH TIME ZONE,
     config_frozen_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_waiting_room_capacity_sum CHECK (standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity)
+    CONSTRAINT chk_waiting_room_capacity_sum CHECK (
+        max_admitted_capacity > 0 AND
+        standard_admission_capacity >= 0 AND
+        reserved_priority_capacity >= 0 AND
+        standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity
+    )
 );
 
 CREATE TABLE IF NOT EXISTS allocation_pools (

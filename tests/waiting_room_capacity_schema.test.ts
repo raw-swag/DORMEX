@@ -86,6 +86,76 @@ describe('DORMEX Phase 1: Allocation Cycle Waiting Room Capacity Schema & Archit
 
       expect(rejected).toBe(true);
     });
+
+    it('rejects zero or negative maximum capacity values', async () => {
+      const db = getDatabaseService(true);
+      await runMigrations(db);
+
+      let rejectedZero = false;
+      try {
+        await db.query(`
+          INSERT INTO allocation_cycles (
+            id, name, academic_year, status,
+            max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+          )
+          VALUES ('cyc_test_zero_max', 'Zero Max Cycle', 2, 'DRAFT', 0, 0, 0)
+        `);
+      } catch (err: any) {
+        rejectedZero = true;
+        expect(err.message.toLowerCase()).toContain('check');
+      }
+      expect(rejectedZero).toBe(true);
+
+      let rejectedNegative = false;
+      try {
+        await db.query(`
+          INSERT INTO allocation_cycles (
+            id, name, academic_year, status,
+            max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+          )
+          VALUES ('cyc_test_neg_max', 'Negative Max Cycle', 2, 'DRAFT', -5, 0, 0)
+        `);
+      } catch (err: any) {
+        rejectedNegative = true;
+        expect(err.message.toLowerCase()).toContain('check');
+      }
+      expect(rejectedNegative).toBe(true);
+    });
+
+    it('rejects negative standard or reserved admission capacity values', async () => {
+      const db = getDatabaseService(true);
+      await runMigrations(db);
+
+      let rejectedNegStd = false;
+      try {
+        await db.query(`
+          INSERT INTO allocation_cycles (
+            id, name, academic_year, status,
+            max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+          )
+          VALUES ('cyc_test_neg_std', 'Negative Standard Cycle', 2, 'DRAFT', 20, -1, 5)
+        `);
+      } catch (err: any) {
+        rejectedNegStd = true;
+        expect(err.message.toLowerCase()).toContain('check');
+      }
+      expect(rejectedNegStd).toBe(true);
+
+      let rejectedNegRes = false;
+      try {
+        await db.query(`
+          INSERT INTO allocation_cycles (
+            id, name, academic_year, status,
+            max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+          )
+          VALUES ('cyc_test_neg_res', 'Negative Reserved Cycle', 2, 'DRAFT', 20, 15, -2)
+        `);
+      } catch (err: any) {
+        rejectedNegRes = true;
+        expect(err.message.toLowerCase()).toContain('check');
+      }
+      expect(rejectedNegRes).toBe(true);
+    });
   });
 
   describe('2. Migration 057 Reconciler & Idempotency', () => {

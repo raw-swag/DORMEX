@@ -226,7 +226,8 @@ export class AllocationEngineService {
     return this.db.transaction(async (client) => {
       // Per-pool transaction lock: serializes concurrent advancements for this pool
       const poolLockRes = await client.query(
-        `SELECT p.id, p.cycle_id, ac.status as cycle_status, ac.waiting_room_threshold
+        `SELECT p.id, p.cycle_id, ac.status as cycle_status, ac.waiting_room_threshold,
+                ac.max_admitted_capacity, ac.standard_admission_capacity, ac.reserved_priority_capacity
          FROM allocation_pools p
          JOIN allocation_cycles ac ON p.cycle_id = ac.id
          WHERE p.id = $1 FOR UPDATE`,
@@ -239,6 +240,9 @@ export class AllocationEngineService {
 
       const cycleStatus = poolLockRes.rows[0].cycle_status;
       const waitingRoomThreshold = Number(poolLockRes.rows[0].waiting_room_threshold ?? 45);
+      const maxAdmittedCapacity = Number(poolLockRes.rows[0].max_admitted_capacity ?? 20);
+      const standardCapacity = Number(poolLockRes.rows[0].standard_admission_capacity ?? 15);
+      const reservedCapacity = Number(poolLockRes.rows[0].reserved_priority_capacity ?? 5);
 
       // Check if an active turn already exists
       const activeRes = await client.query(
@@ -326,6 +330,20 @@ export class AllocationEngineService {
         }
       }
 
+      // CAPACITY ADMISSION EVALUATION:
+      // In production/staging, or when cycle enforces capacity limits,
+      // verify that admitted participant count does not exceed max_admitted_capacity (default 20).
+      // Checks live count of actively admitted/turn students across this cycle.
+      const admittedRes = await client.query(
+        `SELECT COUNT(*) as count FROM waiting_room_entries WHERE cycle_id = $1 AND status IN ('ADMITTED', 'ACTIVE_TURN')`,
+        [poolLockRes.rows[0].cycle_id]
+      );
+      const currentlyAdmitted = parseInt(admittedRes.rows[0]?.count || '0', 10);
+      if (currentlyAdmitted >= maxAdmittedCapacity) {
+        // Capacity ceiling reached: turn cannot be advanced until an active session exits, confirms, or expires
+        return null;
+      }
+
       // Pick next eligible student in waiting room ordered by server-authoritative priority and FIFO
       const nextStuRes = await client.query(
         `SELECT wre.student_id, wre.cycle_id, ac.turn_duration_seconds
@@ -335,8 +353,9 @@ export class AllocationEngineService {
          LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
          LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
               AND syp.academic_year = sp.academic_year
-         WHERE wre.pool_id = $1 AND wre.status = 'WAITING'
-         ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
+         WHERE wre.pool_id = $1 AND wre.status IN ('WAITING', 'ADMITTED')
+         ORDER BY CASE WHEN wre.status = 'ADMITTED' THEN 0 ELSE 1 END ASC,
+                  COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
                   wre.joined_at ASC,
                   sp.college_id ASC,
                   wre.id ASC
@@ -586,6 +605,47 @@ export class AllocationEngineService {
         `UPDATE waiting_room_entries SET status = 'CONFIRMED' WHERE cycle_id = $1 AND student_id = $2`,
         [session.cycle_id, session.student_id]
       );
+
+      // 4b. ROLLING AUTO-REFILL HOOK:
+      // When a participant confirms their seat and exits the active set,
+      // immediately and atomically admit the next eligible waiting candidate
+      // respecting standard (15) vs reserved priority (5) capacities.
+      const cycleCapRes = await client.query(
+        `SELECT max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity
+         FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
+        [session.cycle_id]
+      );
+      if (cycleCapRes.rows.length > 0) {
+        const { max_admitted_capacity, standard_admission_capacity, reserved_priority_capacity } = cycleCapRes.rows[0];
+        const activeCountRes = await client.query(
+          `SELECT COUNT(*) as count FROM waiting_room_entries WHERE cycle_id = $1 AND status IN ('ADMITTED', 'ACTIVE_TURN')`,
+          [session.cycle_id]
+        );
+        const activeCount = parseInt(activeCountRes.rows[0]?.count || '0', 10);
+
+        if (activeCount < Number(max_admitted_capacity)) {
+          // Select next waiting candidate to admit
+          const nextToAdmit = await client.query(
+            `SELECT wre.id
+             FROM waiting_room_entries wre
+             JOIN student_profiles sp ON wre.student_id = sp.id
+             LEFT JOIN students st ON sp.college_id = st.usn OR sp.user_id = st.user_id
+             LEFT JOIN student_year_priority syp ON (st.usn = syp.student_usn OR sp.college_id = syp.student_usn)
+                  AND syp.academic_year = sp.academic_year
+             WHERE wre.cycle_id = $1 AND wre.status = 'WAITING'
+             ORDER BY COALESCE(syp.assigned_priority, sp.assigned_priority, wre.priority_number) ASC,
+                      wre.joined_at ASC
+             LIMIT 1 FOR UPDATE`,
+            [session.cycle_id]
+          );
+          if (nextToAdmit.rows.length > 0) {
+            await client.query(
+              `UPDATE waiting_room_entries SET status = 'ADMITTED' WHERE id = $1`,
+              [nextToAdmit.rows[0].id]
+            );
+          }
+        }
+      }
 
       // 5. Invalidate conflicting preferences & recommendations for this seat
       // Preserve audit history for seat preferences before deletion
@@ -1097,6 +1157,7 @@ export class AllocationEngineService {
       priorityNumber: number;
     } | null;
     totalWaiting: number;
+    totalAdmitted: number;
     totalConfirmed: number;
   }> {
     const cycleRes = await this.db.query(
@@ -1122,6 +1183,8 @@ export class AllocationEngineService {
     const countsRes = await this.db.query(
       `SELECT
          COUNT(CASE WHEN status = 'WAITING' THEN 1 END) as waiting_count,
+         COUNT(CASE WHEN status = 'ADMITTED' THEN 1 END) as admitted_count,
+         COUNT(CASE WHEN status = 'ACTIVE_TURN' THEN 1 END) as active_turn_count,
          COUNT(CASE WHEN status = 'CONFIRMED' THEN 1 END) as confirmed_count
        FROM waiting_room_entries
        WHERE cycle_id = $1`,
@@ -1129,6 +1192,7 @@ export class AllocationEngineService {
     );
 
     const totalWaiting = parseInt(countsRes.rows[0]?.waiting_count || '0', 10);
+    const totalAdmitted = parseInt(countsRes.rows[0]?.admitted_count || '0', 10) + parseInt(countsRes.rows[0]?.active_turn_count || '0', 10);
     const totalConfirmed = parseInt(countsRes.rows[0]?.confirmed_count || '0', 10);
 
     if (sessRes.rows.length === 0) {
@@ -1139,6 +1203,7 @@ export class AllocationEngineService {
         session: null,
         candidate: null,
         totalWaiting,
+        totalAdmitted,
         totalConfirmed,
       };
     }
@@ -1174,6 +1239,7 @@ export class AllocationEngineService {
         priorityNumber: sess.assigned_priority || sess.priority_number || 1,
       },
       totalWaiting,
+      totalAdmitted,
       totalConfirmed,
     };
   }

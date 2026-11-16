@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Institutional Alignment Phase 2: Waiting Room Dual-Bucket Admission & Rolling Auto-Refill Engine**:
+  - **Dual-Bucket 15+5 Waiting Room Admission Architecture**: Enforced default maximum of 20 concurrent admitted students (`ADMITTED` + `ACTIVE_TURN`), split into 15 standard and 5 reserved priority seats in `src/allocation/engine.ts`.
+  - **Rolling Auto-Refill Engine**: Integrated atomic rolling auto-refill hook in `confirmSeat()` (and session exits) under PostgreSQL row lock (`allocation_cycles ... FOR UPDATE`), continuously keeping admission capacity filled as students confirm seats or vacate turns.
+  - **Waiting Room Telemetry**: Exposed real-time counts (`totalWaiting`, `totalAdmitted`, `totalConfirmed`) in `getActiveTurn()`.
+  - **Gate 1 Constraint Hardening**: Verified and hardened database CHECK constraint `chk_waiting_room_capacity_sum` (`max_admitted_capacity > 0`, `standard_admission_capacity >= 0`, `reserved_priority_capacity >= 0`).
+  - **Test Suite**: Authored `tests/waiting_room_engine_phase2.test.ts` (4 tests passing) alongside 23 core allocation lifecycle and BVB pilot tests passing.
 - [x] **Institutional Alignment Phase 1: Waiting Room Capacity Schema & Architecture (Migration 057)**:
   - **Configurable Capacity Architecture**: Added columns `max_admitted_capacity` (default 20), `standard_admission_capacity` (default 15), and `reserved_priority_capacity` (default 5) to `allocation_cycles` table.
   - **Relational Invariant Constraint**: Added database-level CHECK constraint `chk_waiting_room_capacity_sum` strictly enforcing `standard_admission_capacity + reserved_priority_capacity <= max_admitted_capacity`.
