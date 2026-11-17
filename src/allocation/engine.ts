@@ -1,5 +1,6 @@
 import { DatabaseService } from '../db/index.js';
 import { AuthActor, can } from '../auth/policy.js';
+import { WaitingRoomTelemetryService } from './telemetryService.js';
 
 export interface JoinWaitingRoomResult {
   entryId: string;
@@ -21,7 +22,11 @@ export interface BookingSessionInfo {
 }
 
 export class AllocationEngineService {
-  constructor(private db: DatabaseService) {}
+  public telemetryService?: WaitingRoomTelemetryService;
+
+  constructor(private db: DatabaseService, telemetryService?: WaitingRoomTelemetryService) {
+    this.telemetryService = telemetryService;
+  }
 
   /**
    * Helper: Trigger rolling auto-refill atomically under an active cycle transaction.
@@ -145,7 +150,7 @@ export class AllocationEngineService {
       throw new Error('FORBIDDEN: Cannot cancel or leave on behalf of another student');
     }
 
-    return this.db.transaction(async (client) => {
+    const result = await this.db.transaction(async (client) => {
       // Enforce uniform root-to-leaf lock hierarchy: allocation_cycles -> waiting_room_entries
       await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [cycleId]);
 
@@ -161,7 +166,7 @@ export class AllocationEngineService {
 
       const currentStatus = entryRes.rows[0].status;
       if (['CONFIRMED', 'CANCELLED', 'SKIPPED'].includes(currentStatus)) {
-        return { status: 'EXITED', refilledCandidateId: null };
+        return { status: 'EXITED' as const, refilledCandidateId: null };
       }
 
       // Mark cancelled
@@ -183,8 +188,15 @@ export class AllocationEngineService {
         refilledCandidateId = refillRes.admittedCandidateId;
       }
 
-      return { status: 'CANCELLED', refilledCandidateId };
+      return { status: 'CANCELLED' as const, refilledCandidateId };
     });
+
+    // Post-Commit Broadcast: Only emit event after transaction successfully commits
+    if (this.telemetryService && result.status === 'CANCELLED') {
+      this.telemetryService.broadcastCycleUpdate(cycleId);
+    }
+
+    return result;
   }
 
   /**
@@ -245,7 +257,7 @@ export class AllocationEngineService {
       throw new Error('FORBIDDEN: Cannot join on behalf of another student');
     }
 
-    return this.db.transaction(async (client) => {
+    const result = await this.db.transaction(async (client) => {
       // 1. Authoritative cycle lock (Root lock in hierarchy: allocation_cycles -> allocation_pools -> waiting_room_entries)
       const cycleRes = await client.query(
         `SELECT id, status, waiting_room_threshold, turn_duration_seconds FROM allocation_cycles WHERE id = $1 FOR UPDATE`,
@@ -378,6 +390,13 @@ export class AllocationEngineService {
         priorityNumber,
       };
     });
+
+    // Post-Commit Broadcast: Emit event strictly after commit
+    if (this.telemetryService) {
+      this.telemetryService.broadcastCycleUpdate(cycleId);
+    }
+
+    return result;
   }
 
   /**
@@ -387,12 +406,15 @@ export class AllocationEngineService {
    * WAITING ROOM THRESHOLD: In production/staging, turns will not advance until the waiting room participant count meets cycle.waiting_room_threshold (default 45).
    */
   async advancePoolTurn(poolId: string): Promise<BookingSessionInfo | null> {
-    return this.db.transaction(async (client) => {
+    let affectedCycleId: string | null = null;
+
+    const result = await this.db.transaction(async (client) => {
       // Find parent cycle id to acquire root cycle lock first, preserving lock acquisition order:
       // allocation_cycles -> allocation_pools -> waiting_room_entries / booking_sessions
       const pInfoRes = await client.query(`SELECT cycle_id FROM allocation_pools WHERE id = $1`, [poolId]);
       if (pInfoRes.rows.length === 0) return null;
       const cycleId = pInfoRes.rows[0].cycle_id;
+      affectedCycleId = cycleId;
 
       // 1. Root lock on cycle
       await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [cycleId]);
@@ -441,7 +463,7 @@ export class AllocationEngineService {
             cycleId: sess.cycle_id,
             poolId: sess.pool_id,
             studentId: sess.student_id,
-            status: 'ACTIVE',
+            status: 'ACTIVE' as const,
             startedAt: sess.started_at,
             expiresAt: sess.expires_at,
             remainingSeconds: remaining,
@@ -455,7 +477,7 @@ export class AllocationEngineService {
             cycleId: sess.cycle_id,
             poolId: sess.pool_id,
             studentId: sess.student_id,
-            status: 'ACTIVE',
+            status: 'ACTIVE' as const,
             startedAt: sess.started_at,
             expiresAt: sess.expires_at,
             remainingSeconds: Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
@@ -564,12 +586,19 @@ export class AllocationEngineService {
         cycleId: nextStu.cycle_id,
         poolId,
         studentId: nextStu.student_id,
-        status: 'ACTIVE',
+        status: 'ACTIVE' as const,
         startedAt: startedAt.toISOString(),
         expiresAt: expiresAt.toISOString(),
         remainingSeconds: durationSeconds,
       };
     });
+
+    // Post-Commit Broadcast: Emit event strictly after commit
+    if (this.telemetryService && affectedCycleId && result) {
+      this.telemetryService.broadcastCycleUpdate(affectedCycleId);
+    }
+
+    return result;
   }
 
   /**
@@ -588,7 +617,9 @@ export class AllocationEngineService {
     actor: AuthActor,
     idempotencyKey?: string
   ): Promise<{ allocationId: string; seatId: string; studentId: string; status: 'CURRENT' }> {
-    return this.db.transaction(async (client) => {
+    let affectedCycleId: string | null = null;
+
+    const result = await this.db.transaction(async (client) => {
       // 1. Fetch booking session
       const sessRes = await client.query(
         `SELECT * FROM booking_sessions WHERE id = $1`,
@@ -599,6 +630,7 @@ export class AllocationEngineService {
         throw new Error('NOT_FOUND: Booking session not found');
       }
       const session = sessRes.rows[0];
+      affectedCycleId = session.cycle_id;
 
       // Enforce uniform root-to-leaf lock hierarchy: allocation_cycles -> booking_sessions
       await client.query(`SELECT id FROM allocation_cycles WHERE id = $1 FOR UPDATE`, [session.cycle_id]);
@@ -615,7 +647,7 @@ export class AllocationEngineService {
             allocationId: allocRes.rows[0].id,
             seatId: allocRes.rows[0].seat_id,
             studentId: session.student_id,
-            status: 'CURRENT',
+            status: 'CURRENT' as const,
           };
         }
       }
@@ -873,9 +905,16 @@ export class AllocationEngineService {
         allocationId,
         seatId,
         studentId: session.student_id,
-        status: 'CURRENT',
+        status: 'CURRENT' as const,
       };
     });
+
+    // Post-Commit Broadcast: Emit event strictly after commit
+    if (this.telemetryService && affectedCycleId) {
+      this.telemetryService.broadcastCycleUpdate(affectedCycleId);
+    }
+
+    return result;
   }
 
   /**
