@@ -1,5 +1,7 @@
 import { RoomChangeTab } from './allocation/RoomChangeTab.js';
 import { TurnStatusRibbon } from './allocation/TurnStatusRibbon.js';
+import { WaitingRoomLiveCard } from './allocation/WaitingRoomLiveCard.js';
+import { useWaitingRoomTelemetry } from '../hooks/useWaitingRoomTelemetry.js';
 import { FloorMapFiltersBar } from './allocation/FloorMapFiltersBar.js';
 import { AllocationOnboardingModal, isAllocationOnboardingCompleted } from './allocation/AllocationOnboardingModal.js';
 import React, { useState, useEffect, useRef } from 'react';
@@ -106,6 +108,14 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
 
   // 48-Hour Room Change Request state
   const [showRoomChangeModal, setShowRoomChangeModal] = useState(false);
+
+  // Phase 3: Server-Sent Events (SSE) Waiting Room Live Telemetry Hook
+  const {
+    telemetry,
+    connectionStatus: telemetryConnectionStatus,
+    reconnect: reconnectTelemetry,
+  } = useWaitingRoomTelemetry(cycleId, true);
+  const [leavingQueueLoading, setLeavingQueueLoading] = useState(false);
   const [roomChangeTargetRoomId, setRoomChangeTargetRoomId] = useState('');
   const [roomChangeReason, setRoomChangeReason] = useState('');
   const [roomChangeStatus, setRoomChangeStatus] = useState<any>(null);
@@ -186,6 +196,59 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         if (requests.length > 0) setRoomChangeStatus(requests[0]);
       }
     } catch (e) {}
+  };
+
+  // Sync telemetry into local active session & waiting entry states dynamically
+  useEffect(() => {
+    if (!telemetry) return;
+
+    if (telemetry.activeTurn.isMyTurn && telemetry.activeTurn.hasActiveTurn) {
+      setActiveSession((prev: any) => ({
+        ...prev,
+        sessionId: prev?.sessionId || `sess_${cycleId}_${session?.profileId}`,
+        cycleId,
+        studentId: session?.profileId,
+        status: 'ACTIVE',
+        expiresAt: telemetry.activeTurn.expiresAt || new Date(Date.now() + telemetry.activeTurn.remainingSeconds * 1000).toISOString(),
+        remainingSeconds: telemetry.activeTurn.remainingSeconds,
+      }));
+    } else if (!telemetry.activeTurn.isMyTurn && activeSession && !telemetry.isPaused) {
+      setActiveSession(null);
+    }
+
+    if (telemetry.studentQueue) {
+      setWaitingEntry((prev: any) => ({
+        ...prev,
+        status: telemetry.studentQueue?.status,
+        priorityNumber: telemetry.studentQueue?.priorityNumber,
+        queuePosition: telemetry.studentQueue?.queuePosition,
+      }));
+    } else if (waitingEntry && !telemetry.studentQueue) {
+      setWaitingEntry(null);
+    }
+  }, [telemetry]);
+
+  const handleLeaveWaitingRoom = async () => {
+    if (!cycleId || !session?.profileId) return;
+    setLeavingQueueLoading(true);
+    try {
+      const res = await apiFetch(`/api/allocation-cycles/${cycleId}/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentProfileId: session.profileId }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to leave waiting room');
+      }
+      setWaitingEntry(null);
+      setActiveSession(null);
+      setSuccessMsg('You have exited the waiting room queue.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error leaving waiting room');
+    } finally {
+      setLeavingQueueLoading(false);
+    }
   };
 
   // Poll waiting room, session state & roommate intent
@@ -1127,6 +1190,15 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             loading={loading}
             onJoinWaitingRoom={handleJoinWaitingRoom}
             onOpenGuide={() => setShowOnboardingGuide(true)}
+          />
+
+          {/* Phase 3: Server-Sent Events (SSE) Live Waiting Room Telemetry Card */}
+          <WaitingRoomLiveCard
+            telemetry={telemetry}
+            connectionStatus={telemetryConnectionStatus}
+            onReconnect={reconnectTelemetry}
+            onLeaveWaitingRoom={handleLeaveWaitingRoom}
+            leavingLoading={leavingQueueLoading}
           />
 
           {errorMsg && (
