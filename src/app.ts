@@ -12,6 +12,7 @@ import { runMigrations } from './db/schema.js';
 import { seedDatabase } from './db/seed.js';
 import { withMigrationLock } from './db/migrate.js';
 import { AllocationEngineService } from './allocation/engine.js';
+import { WaitingRoomTelemetryService } from './allocation/telemetryService.js';
 import { FloorPlanService } from './inventory/floorPlan.js';
 import { StudentRegistryService } from './student/registry.js';
 import { InstitutionalStudentService } from './student/institutionalStudentService.js';
@@ -188,7 +189,8 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     }
   });
 
-  const allocationEngine = new AllocationEngineService(database);
+  const telemetryService = new WaitingRoomTelemetryService(database);
+  const allocationEngine = new AllocationEngineService(database, telemetryService);
   const floorPlanService = new FloorPlanService(database);
   const studentRegistry = new StudentRegistryService(database);
   const institutionalStudentService = new InstitutionalStudentService(database);
@@ -209,6 +211,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     let tokenMfaLevel: 'NONE' | 'TOTP' = 'NONE';
     let isMfaChallengeToken = false;
     let isRecoverySession = false;
+    let tokenExp: number | undefined = undefined;
 
     // 1. Check Authorization Bearer header first (Strict Non-Fallback):
     // If an Authorization header is supplied, it MUST be valid. An invalid, malformed,
@@ -226,6 +229,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
           throw new Error('UNAUTHORIZED: Missing mandatory identity claims');
         }
         userId = decoded.sub;
+        if (decoded.exp !== undefined) tokenExp = Number(decoded.exp);
         if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
         if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
         if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
@@ -250,6 +254,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
         const decoded = (await app.jwt.verify(req.cookies.token)) as any;
         if (decoded?.sub) {
           userId = decoded.sub;
+          if (decoded.exp !== undefined) tokenExp = Number(decoded.exp);
           if (decoded.ver !== undefined) tokenVer = Number(decoded.ver);
           if (decoded.mfa_level === 'TOTP') tokenMfaLevel = 'TOTP';
           if (decoded.is_mfa_challenge === true) isMfaChallengeToken = true;
@@ -328,6 +333,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
 
     const authoritativeActor = resolveAuthoritativeActor(userRes.rows);
     authoritativeActor.mfa_level = tokenMfaLevel;
+    authoritativeActor.token_exp = tokenExp;
 
     // Authoritative Mid-Session Privilege Escalation Invariant:
     // If the live database actor holds a privileged role, but the active session token lacks TOTP verification,
@@ -1671,6 +1677,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       for (const pool of poolsRes.rows) {
         await allocationEngine.advancePoolTurn(pool.id).catch(() => {});
       }
+      telemetryService.broadcastCycleUpdate(req.params.id);
       return reply.send(result);
     } catch (err: any) {
       const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
@@ -1683,6 +1690,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     try {
       const actor = await extractActor(req);
       const result = await allocationEngine.stopCycle(req.params.id, actor);
+      telemetryService.broadcastCycleUpdate(req.params.id);
       return reply.send(result);
     } catch (err: any) {
       const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
@@ -1695,6 +1703,7 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
     try {
       const actor = await extractActor(req);
       const result = await allocationEngine.resumeCycle(req.params.id, actor);
+      telemetryService.broadcastCycleUpdate(req.params.id);
       return reply.send(result);
     } catch (err: any) {
       const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
@@ -1709,6 +1718,159 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send(turnInfo);
     } catch (err: any) {
       const code = err.message?.startsWith('NOT_FOUND') ? 404 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Phase 3: Authoritative Student Waiting Room & Queue Telemetry (REST Polling & Fallback)
+  app.get('/api/allocation-cycles/:id/waiting-room/status', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const studentProfileId = actor.role === 'STUDENT' ? actor.student_profile_id : req.query.studentProfileId;
+      const state = await telemetryService.getStudentWaitingRoomState(req.params.id, studentProfileId);
+      return reply.send(state);
+    } catch (err: any) {
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.startsWith('NOT_FOUND') ? 404 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  // Phase 3: Server-Sent Events (SSE) Live Telemetry Stream
+  app.get('/api/allocation-cycles/:id/waiting-room/live', async (req: any, reply) => {
+    try {
+      // 1. Authenticate caller (Strict: Reject unauthenticated streams)
+      const actor = await extractActor(req);
+      const studentProfileId = actor.role === 'STUDENT' ? actor.student_profile_id : req.query.studentProfileId;
+      const cycleId = req.params.id;
+
+      // Verify cycle existence
+      const cycleRes = await database.query('SELECT id FROM allocation_cycles WHERE id = $1', [cycleId]);
+      if (cycleRes.rows.length === 0) {
+        return reply.code(404).send({ error: 'Allocation cycle not found' });
+      }
+
+      // Determine approved CORS origin for SSE response (never combine wildcard with credentials)
+      const requestOrigin = req.headers.origin || req.headers.Origin;
+      let allowedOrigin = '';
+      if (requestOrigin) {
+        if (serverConfig.corsAllowedOrigins.includes(requestOrigin)) {
+          allowedOrigin = requestOrigin;
+        } else if (serverConfig.isDevelopment && (requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1'))) {
+          allowedOrigin = requestOrigin;
+        }
+      }
+
+      // Configure SSE Headers
+      const sseHeaders: Record<string, string> = {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      };
+
+      if (allowedOrigin) {
+        sseHeaders['Access-Control-Allow-Origin'] = allowedOrigin;
+        sseHeaders['Access-Control-Allow-Credentials'] = 'true';
+      }
+
+      reply.raw.writeHead(200, sseHeaders);
+
+      // Send initial authoritative state immediately upon connection
+      const initialState = await telemetryService.getStudentWaitingRoomState(cycleId, studentProfileId);
+      reply.raw.write(`event: state\ndata: ${JSON.stringify(initialState)}\n\n`);
+
+      let isClosed = false;
+      let checkTimer: NodeJS.Timeout | null = null;
+      let heartbeatTimer: NodeJS.Timeout | null = null;
+      let tokenExpTimer: NodeJS.Timeout | null = null;
+      let unsubscribe: (() => void) | null = null;
+
+      const cleanup = () => {
+        if (isClosed) return;
+        isClosed = true;
+        if (tokenExpTimer) clearTimeout(tokenExpTimer);
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        if (checkTimer) clearInterval(checkTimer);
+        if (unsubscribe) unsubscribe();
+        try {
+          reply.raw.end();
+        } catch {}
+      };
+
+      // One-shot JWT Expiration Timer:
+      // Immediately schedules disconnection when the token's lifetime (exp claim) elapses.
+      if (actor.token_exp) {
+        const remainingMs = Math.max(0, actor.token_exp * 1000 - Date.now());
+        if (remainingMs <= 0) {
+          reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'TOKEN_EXPIRED', message: 'JWT token expired' })}\n\n`);
+          cleanup();
+          return reply;
+        }
+        tokenExpTimer = setTimeout(() => {
+          if (isClosed) return;
+          try {
+            reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'TOKEN_EXPIRED', message: 'JWT token expired' })}\n\n`);
+          } catch {}
+          cleanup();
+        }, remainingMs);
+      }
+
+      // Periodic Session & Expiry Guard (every 2.5 seconds in test, 10 seconds in prod):
+      // Validates that the active session has not expired or been revoked in the database.
+      // Drops the SSE connection if session_version changed or account deactivated.
+      const initialSessionVersion = actor.session_version;
+      const initialUserId = actor.id;
+      const checkIntervalMs = serverConfig.isTest ? 2500 : 10000;
+
+      checkTimer = setInterval(async () => {
+        if (isClosed) return;
+        try {
+          const uRes = await database.query(
+            `SELECT is_active, session_version FROM users WHERE id = $1`,
+            [initialUserId]
+          );
+          if (uRes.rows.length === 0 || !uRes.rows[0].is_active) {
+            reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'SESSION_REVOKED', message: 'Account deactivated' })}\n\n`);
+            cleanup();
+            return;
+          }
+          if (initialSessionVersion !== undefined && uRes.rows[0].session_version !== initialSessionVersion) {
+            reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'SESSION_REVOKED', message: 'Session epoch invalidated' })}\n\n`);
+            cleanup();
+            return;
+          }
+        } catch {
+          cleanup();
+        }
+      }, checkIntervalMs);
+
+      // Subscribe to real-time cycle mutations
+      unsubscribe = telemetryService.subscribe(cycleId, studentProfileId, (state) => {
+        if (isClosed) return;
+        try {
+          reply.raw.write(`event: state\ndata: ${JSON.stringify(state)}\n\n`);
+        } catch {
+          cleanup();
+        }
+      });
+
+      // Heartbeat ping every 15 seconds to prevent proxy / NAT timeouts and keep connection fresh
+      heartbeatTimer = setInterval(() => {
+        if (isClosed) return;
+        try {
+          reply.raw.write(': heartbeat\n\n');
+        } catch {
+          cleanup();
+        }
+      }, 15000);
+
+      // Clean teardown on socket close / client disconnect
+      req.raw.on('close', cleanup);
+
+      // Return raw reply to keep SSE open
+      return reply;
+    } catch (err: any) {
+      const code = err.message?.startsWith('UNAUTHORIZED') ? 401 : 400;
       return reply.code(code).send({ error: err.message });
     }
   });
@@ -1826,6 +1988,18 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       return reply.send(res);
     } catch (err: any) {
             const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
+      return reply.code(code).send({ error: err.message });
+    }
+  });
+
+  app.post('/api/allocation-cycles/:id/leave', async (req: any, reply) => {
+    try {
+      const actor = await extractActor(req);
+      const { studentProfileId } = req.body as any;
+      const res = await allocationEngine.leaveWaitingRoom(req.params.id, studentProfileId, actor);
+      return reply.send(res);
+    } catch (err: any) {
+      const code = err.message?.startsWith('FORBIDDEN') ? 403 : 400;
       return reply.code(code).send({ error: err.message });
     }
   });

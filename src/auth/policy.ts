@@ -54,6 +54,8 @@ export interface AuthActor {
   active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
   supervisor_warden_appt_id?: string | null;
   mfa_level?: 'NONE' | 'TOTP';
+  session_version?: number;
+  token_exp?: number;
 }
 
 export const ROLE_PERMISSIONS: Record<SystemRole, PermissionAction[]> = {
@@ -238,6 +240,7 @@ export interface UserRoleRecord {
   active_appointment_id?: string | null;
   active_appointment_status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | null;
   supervisor_warden_appt_id?: string | null;
+  session_version?: number;
 }
 
 /**
@@ -415,6 +418,7 @@ export function resolveAuthoritativeActor(rows: UserRoleRecord[]): AuthActor {
     active_appointment_id: primary.active_appointment_id || null,
     active_appointment_status: primary.active_appointment_status || null,
     supervisor_warden_appt_id: primary.supervisor_warden_appt_id || null,
+    session_version: primary.session_version !== undefined ? Number(primary.session_version) : undefined,
   };
 }
 
