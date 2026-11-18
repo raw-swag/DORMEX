@@ -16,6 +16,7 @@
     "dev": "node scripts/dev.js",
     "dev:client": "vite",
     "test": "vitest run",
+    "test:serial": "vitest run --no-file-parallelism",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
@@ -23,10 +24,12 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@types/argon2": "^0.14.1",
     "@types/supertest": "^7.2.1",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.2",
+    "happy-dom": "^21.0.4",
     "postcss": "^8.5.32",
     "supertest": "^7.3.1",
     "tailwindcss": "^3.4.19",
