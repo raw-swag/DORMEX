@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **Student Registry Dynamic Dossier Data Binding**:
+  - Replaced hardcoded sample guardian placeholders (`"Dr. S. Ramesh (Father)"`) in `src/client/components/StudentRegistryView.tsx` with dynamic bindings from the selected candidate's profile (`parent_name`, `parent_relationship`, `parent_phone`, `parent_email`, `local_guardian_address`).
+  - Replaced hardcoded proctor placeholder (`"Prof. Manjunath Swamy"`) with dynamic proctor record (`proctor_name`, `proctor_department`, `proctor_user_id`).
+  - Added clean empty placeholders (`"No parent or guardian details recorded for this candidate"`, `"Not assigned"`) when institutional records lack guardian or proctor assignments.
+  - Dynamically formatted SBI Collect transaction timestamps and residency acceptance timestamps in Indian Standard Time (Asia/Kolkata).
+  - Fixed status-code mapping in `src/app.ts` (`GET /api/students`) to return HTTP 401 for `UNAUTHORIZED` and HTTP 403 for `FORBIDDEN`.
+- **Admin Dashboard Real Audit Ledger Drawer**:
+  - Replaced static July 2024 sample event entries in `src/client/components/AdminDashboard.tsx` with live data fetched from `GET /api/admin/audit-logs`.
+  - Added real timeline rendering displaying action labels, actor identifiers/names, reasons, and timestamps formatted in Indian Standard Time (Asia/Kolkata).
+  - Added in-drawer refresh button with loading spinner, empty ledger state, and network/permission error banner.
+
+### Added
+- **Frontend Genuine DOM Component Interaction Test Suites**:
+  - `src/client/components/StudentRegistryView.test.tsx`: 5 DOM interaction tests running with `@testing-library/react` and `happy-dom` verifying component mounting, dynamic dossier field rendering, candidate switching without stale data retention, RBAC 403 error states, and empty cohort states.
+  - `src/client/components/AdminDashboard.test.tsx`: 5 DOM interaction tests verifying audit drawer opening, rendering authoritative events, in-drawer refresh re-fetching, empty ledger state, error handling, and drawer dismissal.
+- **Backend P1 Integration Test Suite**:
+  - `tests/p1_dossier_and_audit_fixes.test.ts`: 5 integration tests verifying student registry response schemas, guardian/proctor payload attributes, RBAC 401/403 guards, and audit trail query responses.
+- **Testing Configuration & Scripts**:
+  - Added `test:serial` script (`vitest run --no-file-parallelism`) to `package.json` for deterministic serial test execution.
+  - Added `@testing-library/react` and `happy-dom` as devDependencies.
+
+---
+
 ## [2.32.0] - 2026-11-16
 
 ### Added

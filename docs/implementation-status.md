@@ -1,6 +1,6 @@
 # DORMEX Implementation Status & Technical Decisions
 
-Last Updated: 2026-11-15
+Last Updated: 2026-11-19
 Repository Status: Active Development (Modular Monolith)
 
 ## 1. System Architecture & Stack
@@ -22,6 +22,12 @@ Repository Status: Active Development (Modular Monolith)
 10. **Cycle configuration**: Frozen and immutable once state transitions to `READY`. Rule modifications necessitate a new cycle configuration version.
 
 ## 3. Implementation Phases
+- [x] **Launch Readiness Stabilization: P1 Dossier Dynamic Binding, Real Audit Trail & Genuine DOM Component Testing**:
+  - **Dynamic Student Dossier**: Bound guardian and proctor details dynamically to active candidate records in `src/client/components/StudentRegistryView.tsx`; eliminated hardcoded sample values; added missing-data placeholders and date formatting in IST.
+  - **Authoritative Audit Trail Drawer**: Connected `src/client/components/AdminDashboard.tsx` to `GET /api/admin/audit-logs`, replaced static July 2024 records, added in-drawer refresh, loading, empty, and error states.
+  - **API Error Status Refinement**: Mapped `UNAUTHORIZED` to 401 and `FORBIDDEN` to 403 in `src/app.ts` (`GET /api/students`).
+  - **Genuine DOM Interaction Testing**: Added `@testing-library/react` and `happy-dom` suites in `StudentRegistryView.test.tsx` (5/5 passing) and `AdminDashboard.test.tsx` (5/5 passing) along with backend integration tests in `tests/p1_dossier_and_audit_fixes.test.ts` (5/5 passing).
+  - **Full Verification**: 100% test pass rate on all targeted suites, 0 TypeScript errors (`npm run typecheck`), clean server build (`npm run build:server`), clean client build (`npm run build:client`).
 - [x] **Institutional Alignment Phase 2: Priority Window Release Policy, Unified Locking & Adversarial Queue Verification**:
   - **Persistent Priority Window Release (`priority_window_closes_at`)**: Configured per-cycle expiration timestamp. Enforces 15+5 protection before expiration; automatically releases unused reserved capacity to the general pool after expiration, strictly bounded by the 20-candidate max capacity ceiling.
   - **Unified Root-to-Leaf Locking Hierarchy**: Standardized lock acquisition (`allocation_cycles` -> `allocation_pools` -> `waiting_room_entries` / `booking_sessions`) preventing deadlocks and race conditions.
