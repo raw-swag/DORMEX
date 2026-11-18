@@ -68,6 +68,8 @@ export const AdminDashboard: React.FC = () => {
   const [cycleActionSubmitting, setCycleActionSubmitting] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState<boolean>(false);
   const [auditDrawerStudent, setAuditDrawerStudent] = useState<any | null>(null);
+  const [auditDrawerLoading, setAuditDrawerLoading] = useState<boolean>(false);
+  const [auditDrawerError, setAuditDrawerError] = useState<string | null>(null);
   
   // Dual-Warden Force Override Modal
   const [forceModalOpen, setForceModalOpen] = useState<boolean>(false);
@@ -369,10 +371,26 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Open Audit Drawer
-  const openAuditDrawer = (stu?: any) => {
-    setAuditDrawerStudent(stu || (allStudents.length > 0 ? allStudents[0] : null));
+  // Open Audit Drawer with fresh backend audit logs
+  const openAuditDrawer = async (stu?: any) => {
+    setAuditDrawerStudent(stu || null);
     setAuditDrawerOpen(true);
+    setAuditDrawerLoading(true);
+    setAuditDrawerError(null);
+    try {
+      const res = await apiFetch('/api/admin/audit-logs');
+      if (res.ok) {
+        const data = await res.json();
+        setAuditLogs(Array.isArray(data) ? data : []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAuditDrawerError(err.error || 'Failed to fetch authoritative audit logs');
+      }
+    } catch (err: any) {
+      setAuditDrawerError(err.message || 'Network error fetching audit logs');
+    } finally {
+      setAuditDrawerLoading(false);
+    }
   };
 
   // Filter cohort records
@@ -1199,39 +1217,85 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="flex-1 p-5 overflow-y-auto space-y-4">
               <div className="bg-[#F0F4F6] p-3.5 rounded-lg border border-[#DFE3E5]">
-                <span className="text-[10px] font-bold text-[#016A62] uppercase tracking-wider">Subject Record</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#016A62] uppercase tracking-wider">Subject Scope</span>
+                  <button
+                    onClick={() => openAuditDrawer(auditDrawerStudent)}
+                    disabled={auditDrawerLoading}
+                    className="text-[11px] text-[#07203C] hover:text-[#016A62] font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                    title="Refresh logs"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${auditDrawerLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
                 <div className="text-sm font-bold text-[#07203C] mt-1">
-                  {auditDrawerStudent?.full_name || 'System / All Cohort'} {auditDrawerStudent?.college_id ? `(${auditDrawerStudent.college_id})` : ''}
+                  {auditDrawerStudent?.full_name ? `${auditDrawerStudent.full_name} (${auditDrawerStudent.college_id})` : 'Institutional System Operations'}
                 </div>
                 <div className="text-xs text-[#44474D]">
-                  Scope: {auditDrawerStudent?.department ? `${auditDrawerStudent.department} · Year ${auditDrawerStudent.academic_year || 2}` : 'BVB Block Floor 2 Cohort'}
+                  Scope: {auditDrawerStudent?.department ? `${auditDrawerStudent.department} · Year ${auditDrawerStudent.academic_year || 1}` : 'Central Institutional Relational Audit Ledger'}
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E] block mb-2">
-                  Event Timeline
-                </span>
-                <div className="relative pl-5 border-l-2 border-[#DFE3E5] space-y-4">
-                  <div className="relative">
-                    <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#016A62] border-2 border-white"></span>
-                    <div className="text-xs font-bold text-[#181C1E]">Turn Granted (Slot 14)</div>
-                    <div className="text-[11px] text-[#44474D]">System allocated turn window of 05:00 minutes. Student active on portal.</div>
-                    <span className="font-mono text-[10px] text-[#74777E]">15-Jul-2024 11:25:02 IST</span>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#07203C] border-2 border-white"></span>
-                    <div className="text-xs font-bold text-[#181C1E]">Room 202-C Pinned for Selection</div>
-                    <div className="text-[11px] text-[#44474D]">Student initiated reservation lock. Awaiting student final OTP confirmation.</div>
-                    <span className="font-mono text-[10px] text-[#74777E]">15-Jul-2024 11:26:19 IST</span>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#203653] border-2 border-white"></span>
-                    <div className="text-xs font-bold text-[#181C1E]">Bank Transaction Reconciled</div>
-                    <div className="text-[11px] text-[#44474D]">SBI Collect reference #DUK8932401 verified by Accounts Desk.</div>
-                    <span className="font-mono text-[10px] text-[#74777E]">12-Jul-2024 09:14:22 IST</span>
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#74777E]">
+                    Immutable Event Timeline
+                  </span>
+                  <span className="text-[10px] text-[#74777E] font-mono">
+                    {auditLogs.length} {auditLogs.length === 1 ? 'record' : 'records'}
+                  </span>
                 </div>
+
+                {auditDrawerLoading ? (
+                  <div className="p-8 text-center space-y-2">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#016A62]" />
+                    <p className="text-xs text-[#74777E]">Loading authoritative audit ledger...</p>
+                  </div>
+                ) : auditDrawerError ? (
+                  <div className="p-4 bg-[#FFDAD6]/40 border border-[#FFDAD6] rounded-lg text-xs text-[#BA1A1A] space-y-1">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Audit Fetch Failure</span>
+                    </div>
+                    <div>{auditDrawerError}</div>
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="p-8 text-center bg-[#F0F4F6] rounded-lg border border-[#DFE3E5] space-y-1">
+                    <div className="text-xs font-bold text-[#181C1E]">No Audit Events Recorded</div>
+                    <div className="text-[11px] text-[#74777E]">
+                      No administrative transactions have been committed to this ledger yet.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative pl-5 border-l-2 border-[#DFE3E5] space-y-4">
+                    {auditLogs.map((log: any, idx: number) => {
+                      const actionLabel = (log.action || 'OPERATION')
+                        .split('_')
+                        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                        .join(' ');
+                      const timestamp = log.created_at
+                        ? new Date(log.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+                        : 'Recorded';
+                      const actorDisplay = log.actor_name || log.actor_email || log.actor_id || 'System';
+
+                      return (
+                        <div key={log.id || idx} className="relative">
+                          <span className="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-[#016A62] border-2 border-white"></span>
+                          <div className="text-xs font-bold text-[#181C1E]">{actionLabel}</div>
+                          <div className="text-[11px] text-[#44474D]">
+                            {log.reason || `Action on ${log.target_type || 'TARGET'} (${log.target_id || 'ID'})`}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-[#74777E]">
+                            <span className="font-semibold text-[#07203C]">By: {actorDisplay}</span>
+                            <span>•</span>
+                            <span className="font-mono">{timestamp}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
