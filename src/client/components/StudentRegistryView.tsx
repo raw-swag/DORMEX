@@ -695,11 +695,15 @@ export const StudentRegistryView: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                         <div>
                           <span className="text-[10px] text-[#74777E] uppercase block font-semibold">SBCollect Reference</span>
-                          <span className="font-mono font-bold text-[#181C1E]">{activeDossier.fee_receipt_ref || 'DUK8932401'}</span>
+                          <span className="font-mono font-bold text-[#181C1E]">{activeDossier.fee_receipt_ref || 'Not submitted'}</span>
                         </div>
                         <div>
                           <span className="text-[10px] text-[#74777E] uppercase block font-semibold">Transaction Date & Time</span>
-                          <span className="font-mono text-[#181C1E] text-[11px]">12-JUL-2024 08:30:15 IST</span>
+                          <span className="font-mono text-[#181C1E] text-[11px]">
+                            {activeDossier.fee_payment_timestamp
+                              ? new Date(activeDossier.fee_payment_timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+                              : 'Pending Verification'}
+                          </span>
                         </div>
                         <div>
                           <span className="text-[10px] text-[#74777E] uppercase block font-semibold">Fee Head</span>
@@ -715,17 +719,23 @@ export const StudentRegistryView: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <FileText className="w-5 h-5 text-[#07203C]" />
                           <div className="flex flex-col">
-                            <span className="font-bold text-[#181C1E] text-xs">SBI_{activeDossier.fee_receipt_ref || 'DUK8932401'}_Receipt.pdf</span>
-                            <span className="text-[10px] text-[#74777E]">248 KB · Digitally Signed by Bank</span>
+                            <span className="font-bold text-[#181C1E] text-xs">
+                              {activeDossier.fee_receipt_ref ? `SBI_${activeDossier.fee_receipt_ref}_Receipt.pdf` : 'No receipt on file'}
+                            </span>
+                            <span className="text-[10px] text-[#74777E]">
+                              {activeDossier.fee_receipt_ref ? '248 KB · Digitally Signed by Bank' : 'Awaiting candidate submission'}
+                            </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => alert(`Opening official digital PDF challan for ${activeDossier.full_name}`)}
-                          className="px-2.5 py-1 bg-[#F0F4F6] hover:bg-[#DFE3E5] text-[#181C1E] text-[11px] font-bold rounded flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Inspect</span>
-                        </button>
+                        {activeDossier.fee_receipt_ref && (
+                          <button
+                            onClick={() => alert(`Opening official digital PDF challan for ${activeDossier.full_name}`)}
+                            className="px-2.5 py-1 bg-[#F0F4F6] hover:bg-[#DFE3E5] text-[#181C1E] text-[11px] font-bold rounded flex items-center gap-1"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Inspect</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -820,11 +830,35 @@ export const StudentRegistryView: React.FC = () => {
                 {/* Tab 3: Guardian */}
                 {dossierTab === 'guardian' && (
                   <div className="p-4 space-y-3 text-xs text-[#181C1E]">
-                    <div className="p-3 bg-[#F0F4F6] rounded-lg border border-[#DFE3E5] space-y-1">
-                      <div className="text-[10px] font-bold text-[#74777E] uppercase">Primary Guardian Contact</div>
-                      <div className="font-semibold">Dr. S. Ramesh (Father)</div>
-                      <div className="text-[#44474D]">Phone: +91 94481 02948</div>
-                      <div className="text-[#44474D]">Address: #42, Kuvempu Nagar, Tumakuru, Karnataka</div>
+                    <div className="p-3 bg-[#F0F4F6] rounded-lg border border-[#DFE3E5] space-y-2">
+                      <div className="text-[10px] font-bold text-[#74777E] uppercase tracking-wider">Primary Parent / Guardian Contact</div>
+                      {activeDossier.parent_name || activeDossier.local_guardian_name ? (
+                        <>
+                          <div className="font-semibold text-sm text-[#07203C]">
+                            {activeDossier.parent_name || activeDossier.local_guardian_name}
+                            {(activeDossier.parent_relationship || activeDossier.local_guardian_relationship) && (
+                              <span className="text-[#44474D] font-normal text-xs ml-1.5">
+                                ({activeDossier.parent_relationship || activeDossier.local_guardian_relationship})
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[#44474D]">
+                            <span className="font-semibold text-[#181C1E]">Phone:</span> {activeDossier.parent_phone || activeDossier.local_guardian_phone || 'Not provided'}
+                          </div>
+                          {(activeDossier.parent_email || activeDossier.local_guardian_email) && (
+                            <div className="text-[#44474D]">
+                              <span className="font-semibold text-[#181C1E]">Email:</span> {activeDossier.parent_email || activeDossier.local_guardian_email}
+                            </div>
+                          )}
+                          <div className="text-[#44474D]">
+                            <span className="font-semibold text-[#181C1E]">Address:</span> {activeDossier.local_guardian_address || 'Permanent residential address on institutional file'}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-[#74777E] italic py-2">
+                          No parent or guardian details recorded for this candidate.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -832,11 +866,36 @@ export const StudentRegistryView: React.FC = () => {
                 {/* Tab 4: Proctor */}
                 {dossierTab === 'proctor' && (
                   <div className="p-4 space-y-3 text-xs text-[#181C1E]">
-                    <div className="p-3 bg-[#F0F4F6] rounded-lg border border-[#DFE3E5] space-y-1">
-                      <div className="text-[10px] font-bold text-[#74777E] uppercase">Assigned Faculty Proctor</div>
-                      <div className="font-semibold">Prof. Manjunath Swamy (Dept of CSE)</div>
-                      <div className="text-[#44474D]">Office: BVB Academic Block L03-304</div>
-                      <div className="text-[#016A62] font-semibold mt-1">✓ Proctor Character Clearance Endorsed</div>
+                    <div className="p-3 bg-[#F0F4F6] rounded-lg border border-[#DFE3E5] space-y-2">
+                      <div className="text-[10px] font-bold text-[#74777E] uppercase tracking-wider">Assigned Faculty Proctor</div>
+                      {activeDossier.proctor_name || activeDossier.proctor_user_id ? (
+                        <>
+                          <div className="font-semibold text-sm text-[#07203C]">
+                            {activeDossier.proctor_name || 'Assigned Institutional Proctor'}
+                            {activeDossier.proctor_department && (
+                              <span className="text-[#44474D] font-normal text-xs ml-1.5">
+                                (Dept of {activeDossier.proctor_department})
+                              </span>
+                            )}
+                          </div>
+                          {activeDossier.proctor_user_id && (
+                            <div className="text-[#74777E] font-mono text-[11px]">
+                              Proctor Staff ID: {activeDossier.proctor_user_id}
+                            </div>
+                          )}
+                          <div className="text-[#016A62] font-semibold mt-1 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#016A62]" />
+                            <span>Proctor Assignment Active & Verified</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-1.5 py-1">
+                          <div className="text-[#BA1A1A] font-semibold">Not assigned</div>
+                          <p className="text-[11px] text-[#74777E]">
+                            No faculty proctor is currently assigned to this student profile. Assign a proctor via Admissions desk.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -845,16 +904,34 @@ export const StudentRegistryView: React.FC = () => {
                 {dossierTab === 'audit' && (
                   <div className="p-4 space-y-2 text-xs">
                     <span className="text-[10px] font-bold text-[#74777E] uppercase block mb-1">Dossier Audit Entries</span>
-                    <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
-                      <div className="font-semibold text-[#181C1E]">Fee Submission Recorded</div>
-                      <div className="text-[11px] text-[#74777E]">SBI Collect transaction receipt uploaded via portal.</div>
-                      <span className="font-mono text-[10px] text-[#74777E]">12-Jul-2024 08:30:15 IST</span>
-                    </div>
-                    <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
-                      <div className="font-semibold text-[#181C1E]">Hostel Terms Cryptographically Signed</div>
-                      <div className="text-[11px] text-[#74777E]">Resident accepted 5-clause statutory agreement.</div>
-                      <span className="font-mono text-[10px] text-[#74777E]">15-Jul-2024 09:12:00 IST</span>
-                    </div>
+                    {activeDossier.fee_payment_timestamp ? (
+                      <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
+                        <div className="font-semibold text-[#181C1E]">Fee Submission Recorded</div>
+                        <div className="text-[11px] text-[#74777E]">SBI Collect transaction receipt uploaded via portal.</div>
+                        <span className="font-mono text-[10px] text-[#74777E]">
+                          {new Date(activeDossier.fee_payment_timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
+                        <div className="font-semibold text-[#74777E]">Fee Submission Pending</div>
+                        <div className="text-[11px] text-[#74777E]">No fee receipt has been recorded yet.</div>
+                      </div>
+                    )}
+                    {activeDossier.terms_accepted_at ? (
+                      <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
+                        <div className="font-semibold text-[#181C1E]">Hostel Terms Cryptographically Signed</div>
+                        <div className="text-[11px] text-[#74777E]">Resident accepted 5-clause statutory agreement.</div>
+                        <span className="font-mono text-[10px] text-[#74777E]">
+                          {new Date(activeDossier.terms_accepted_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-[#F0F4F6] rounded border border-[#DFE3E5]">
+                        <div className="font-semibold text-[#BA1A1A]">Terms & Conditions Pending</div>
+                        <div className="text-[11px] text-[#74777E]">Student has not yet acknowledged the residency terms.</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

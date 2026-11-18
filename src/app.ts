@@ -948,7 +948,10 @@ export async function buildApp(db?: DatabaseService): Promise<FastifyInstance> {
       });
       return reply.send(students);
     } catch (err: any) {
-      return reply.code(err.message?.startsWith('FORBIDDEN') ? 403 : 400).send({ error: err.message });
+      let code = 400;
+      if (err.message?.startsWith('UNAUTHORIZED')) code = 401;
+      else if (err.message?.startsWith('FORBIDDEN')) code = 403;
+      return reply.code(code).send({ error: err.message });
     }
   });
 
