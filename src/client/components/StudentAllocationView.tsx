@@ -78,12 +78,14 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
   const inspectorHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const shouldFocusInspectorHeadingRef = useRef(false);
   const [myAllocation, setMyAllocation] = useState<any>(null);
+  const [allocationRetrievalError, setAllocationRetrievalError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [myProfile, setMyProfile] = useState<any>(null);
   const [termsStatus, setTermsStatus] = useState<any>(null);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const fetchMyDataRequestIdRef = useRef(0);
 
   // Roommate group input state
   const [roommatePriority1, setRoommatePriority1] = useState<string>('');
@@ -154,29 +156,69 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
   // Student First-Time Allocation Onboarding Guide
   const [showOnboardingGuide, setShowOnboardingGuide] = useState(() => !isAllocationOnboardingCompleted());
 
-  // Load student profile & terms status
+  // Load student profile & terms status with strict response handling & race-condition prevention
   const fetchMyData = async () => {
     if (!session?.profileId) return;
+    const currentRequestId = ++fetchMyDataRequestIdRef.current;
+
     try {
-      const [pRes, tRes, gRes, aRes] = await Promise.all([
+      const [pRes, tRes, gRes, aRes, allocRes] = await Promise.all([
         apiFetch(`/api/students/${session.profileId}`),
         apiFetch(`/api/students/${session.profileId}/terms-status`),
         apiFetch(`/api/roommate-groups/student/${session.profileId}?cycleId=${cycleId}`),
         apiFetch(`/api/room-change-requests?cycleId=${cycleId}`),
+        apiFetch(`/api/students/${session.profileId}/allocation`),
       ]);
+
+      // Guard against overlapping or stale async responses overwriting newer state
+      if (currentRequestId !== fetchMyDataRequestIdRef.current) {
+        return;
+      }
 
       if (pRes.ok) {
         const prof = await pRes.json();
         setMyProfile(prof);
-        if (prof.allocated_seat_id) {
+      }
+
+      // Handle dedicated authoritative allocation endpoint responses strictly
+      if (allocRes.status === 200) {
+        const alloc = await allocRes.json();
+        if (alloc && alloc.seat_id) {
+          // Scenario 1: HTTP 200 with valid confirmed allocation
+          setAllocationRetrievalError(null);
           setMyAllocation({
-            allocationId: prof.allocation_id || `alloc_${prof.id}`,
-            seatId: prof.allocated_seat_id,
-            roomNumber: prof.allocated_room_number,
-            seatLabel: prof.allocated_seat_label,
-            buildingName: prof.allocated_building_name,
+            allocationId: alloc.allocation_id || `alloc_${session.profileId}`,
+            seatId: alloc.seat_id,
+            roomNumber: alloc.room_number,
+            seatLabel: alloc.seat_label,
+            buildingName: alloc.building_name,
+            allocationStatus: alloc.allocation_status,
+            confirmedAt: alloc.confirmed_at,
+            cycleId: alloc.cycle_id,
+            resultsPublishedAt: alloc.results_published_at,
           });
+        } else {
+          // Scenario 2: HTTP 200 with empty / no valid allocation
+          setAllocationRetrievalError(null);
+          setMyAllocation(null);
         }
+      } else if (allocRes.status === 404) {
+        // Scenario 3: HTTP 404 (No current allocation found)
+        // Clear allocation state and never resurrect stale allocation data from profile
+        setAllocationRetrievalError(null);
+        setMyAllocation(null);
+      } else if (allocRes.status === 401 || allocRes.status === 403) {
+        // Scenario 4: HTTP 401 / 403 (Unauthorized / Forbidden)
+        // Clear allocation state, do not fall back to profile data, and record authorization error
+        setMyAllocation(null);
+        const errData = await allocRes.json().catch(() => ({}));
+        setAllocationRetrievalError(errData.error || 'Access to authoritative allocation details is unauthorized or forbidden.');
+      } else {
+        // Scenario 5: HTTP 500 / other HTTP server errors
+        // Do not present profile fallback data as confirmed allocation; display clear retrieval error
+        setMyAllocation(null);
+        const errData = await allocRes.json().catch(() => ({}));
+        setAllocationRetrievalError(errData.error || `Unable to retrieve allocation details (HTTP ${allocRes.status}).`);
       }
 
       if (tRes.ok) {
@@ -195,24 +237,30 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
         const requests = await aRes.json();
         if (requests.length > 0) setRoomChangeStatus(requests[0]);
       }
-    } catch (e) {}
+    } catch (e: any) {
+      if (currentRequestId === fetchMyDataRequestIdRef.current) {
+        // Network failure / unexpected error: clear state and display retrieval error
+        setMyAllocation(null);
+        setAllocationRetrievalError(e.message || 'Network error encountered while retrieving authoritative allocation details.');
+      }
+    }
   };
 
   // Sync telemetry into local active session & waiting entry states dynamically
   useEffect(() => {
     if (!telemetry) return;
 
-    if (telemetry.activeTurn.isMyTurn && telemetry.activeTurn.hasActiveTurn) {
+    if (telemetry.activeTurn?.isMyTurn && telemetry.activeTurn?.hasActiveTurn) {
       setActiveSession((prev: any) => ({
         ...prev,
         sessionId: prev?.sessionId || `sess_${cycleId}_${session?.profileId}`,
         cycleId,
         studentId: session?.profileId,
         status: 'ACTIVE',
-        expiresAt: telemetry.activeTurn.expiresAt || new Date(Date.now() + telemetry.activeTurn.remainingSeconds * 1000).toISOString(),
+        expiresAt: telemetry.activeTurn.expiresAt || new Date(Date.now() + (telemetry.activeTurn.remainingSeconds || 0) * 1000).toISOString(),
         remainingSeconds: telemetry.activeTurn.remainingSeconds,
       }));
-    } else if (!telemetry.activeTurn.isMyTurn && activeSession && !telemetry.isPaused) {
+    } else if (!telemetry.activeTurn?.isMyTurn && activeSession && !telemetry.isPaused) {
       setActiveSession(null);
     }
 
@@ -371,7 +419,11 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
     });
 
     const interval = setInterval(refreshStatus, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      // Invalidate in-flight fetchMyData calls on unmount or dependency re-trigger
+      fetchMyDataRequestIdRef.current++;
+      clearInterval(interval);
+    };
   }, [floorId, cycleId, waitingEntry?.poolId, session?.profileId]);
 
   // Join waiting room
@@ -1200,6 +1252,28 @@ export const StudentAllocationView: React.FC<StudentAllocationViewProps> = ({ in
             onLeaveWaitingRoom={handleLeaveWaitingRoom}
             leavingLoading={leavingQueueLoading}
           />
+
+          {/* Authoritative Allocation Retrieval Failure Alert */}
+          {allocationRetrievalError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3.5 bg-[#FFF0E6] dark:bg-amber-950/40 border border-[#FFD1B3] dark:border-amber-900/50 text-[#C94A00] dark:text-amber-300 text-xs font-medium rounded-lg flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#E06A26] dark:text-amber-400 shrink-0" aria-hidden="true" />
+                <span>Authoritative Allocation Retrieval Notice: {allocationRetrievalError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllocationRetrievalError(null)}
+                aria-label="Dismiss allocation error notice"
+                className="text-[#C94A00] dark:text-amber-400 hover:opacity-75 focus:outline-none p-0.5 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {errorMsg && (
             <div
